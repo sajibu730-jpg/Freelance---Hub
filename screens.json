@@ -1,0 +1,69 @@
+[
+  {
+    "id": "splash",
+    "title": "Freelance Hub",
+    "type": "splash"
+  },
+  {
+    "id": "auth",
+    "title": "Login / Signup",
+    "type": "auth"
+  },
+  {
+    "id": "home",
+    "title": "Home",
+    "type": "dashboard"
+  },
+  {
+    "id": "free_courses",
+    "title": "Free Courses",
+    "type": "course_list",
+    "access": "free"
+  },
+  {
+    "id": "paid_courses",
+    "title": "Paid Courses",
+    "type": "course_list",
+    "access": "paid"
+  },
+  {
+    "id": "jobs",
+    "title": "Freelance Jobs",
+    "type": "job_list"
+  },
+  {
+    "id": "job_details",
+    "title": "Job Details",
+    "type": "job_details"
+  },
+  {
+    "id": "proposal",
+    "title": "Submit Proposal",
+    "type": "form"
+  },
+  {
+    "id": "messages",
+    "title": "Messages",
+    "type": "chat"
+  },
+  {
+    "id": "profile",
+    "title": "Profile & Portfolio",
+    "type": "profile"
+  },
+  {
+    "id": "premium",
+    "title": "Premium Membership",
+    "type": "subscription"
+  },
+  {
+    "id": "notifications",
+    "title": "Notifications",
+    "type": "notifications"
+  },
+  {
+    "id": "admin",
+    "title": "Admin Dashboard",
+    "type": "admin"
+  }
+]
