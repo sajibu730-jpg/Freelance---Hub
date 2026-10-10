@@ -372,7 +372,22 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var error by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
-    fun reload(){scope.launch(Dispatchers.IO){runCatching{marketplace.listWorkSubmissions(j.id)}.onSuccess{withContext(Dispatchers.Main){submissions=it}}.onFailure{e->withContext(Dispatchers.Main){error=e.message?:"Unable to load submissions."}}}}}
+    
+fun reload() {
+    scope.launch {
+        runCatching {
+            withContext(Dispatchers.IO) {
+                marketplace.listWorkSubmissions(j.id)
+            }
+        }.onSuccess {
+            submissions = it
+            error = ""
+        }.onFailure { e ->
+            error = e.message ?: "Unable to load submissions."
+        }
+    }
+}
+
     LaunchedEffect(Unit){reload()}
     Column(Modifier.fillMaxSize().padding(20.dp)){
         Text("Client Work Review",style=MaterialTheme.typography.headlineSmall);Text(j.title,style=MaterialTheme.typography.titleMedium);Spacer(Modifier.height(10.dp))
