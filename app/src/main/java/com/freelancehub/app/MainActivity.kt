@@ -467,7 +467,7 @@ fun reload() {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
                         Text(j.title,style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
                         IconButton(onClick={repo.toggleFavoriteJob(j.id); favoriteVersion++}){
-                            Icon(if(favorite) Icons.Default.Star else Icons.Default.StarBorder,contentDescription=if(favorite)"Remove favorite" else "Save favorite")
+                            Text(if(favorite) "★" else "☆")
                         }
                     }
                     Text(j.client);Text("Budget: ${j.budget}");Text(j.skills);Text(if(j.remote)"Remote • Global" else "On-site");Text("Status: ${j.status}")
