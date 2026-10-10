@@ -108,7 +108,7 @@ class MainActivity:ComponentActivity(){
     var showMatching by remember{mutableStateOf(false)}
     var showFreelancerAnalysis by remember{mutableStateOf(false)}
     var activityVersion by remember{mutableStateOf(0)}
-    Scaffold(bottomBar={NavigationBar{listOf("Home","Jobs","Courses","Messages","Profile").forEachIndexed{i,n->NavigationBarItem(selected=tab==i,onClick={tab=i},icon={Icon(listOf(Icons.Default.Home,Icons.Default.Work,Icons.Default.School,Icons.Default.Chat,Icons.Default.Person)[i],n)},label={Text(n)})}}}){p->
+    icon={Icon(listOf(Icons.Default.Home,Icons.Default.Business,Icons.Default.MenuBook,Icons.Default.Email,Icons.Default.Person)[i],contentDescription=n)}
         Box(Modifier.padding(p)){when{
             showPostJob->RemotePostJobScreen(role,remoteMarketplace,{showPostJob=false}){activityVersion++;showPostJob=false}
             showWorkChecker->WorkCheckerScreen({showWorkChecker=false})
