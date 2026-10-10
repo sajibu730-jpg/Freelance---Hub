@@ -569,7 +569,7 @@ fun CoursesScreen(){
                 }
             }
         }}
-        TextButton(onClick={reload},enabled=!loading){Text("Refresh courses")}
+        TextButton(onClick={reload() },enabled=!loading){Text("Refresh courses")}
     }
 }
 
