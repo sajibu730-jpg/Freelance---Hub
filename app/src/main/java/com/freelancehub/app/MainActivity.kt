@@ -876,7 +876,7 @@ private fun analyzeFreelancerProfile(p:UserProfile):FreelancerAnalysis{
     return FreelancerAnalysis(readiness,strengths.ifEmpty{listOf("No strengths detected yet")},gaps.ifEmpty{listOf("No major profile gaps detected")},categories)
 }
 
-private fun parseTokens(value:String):List<String>=value.split(Regex("[,;\\n]" )).map{it.trim().lowercase()}.filter{it.length>=2}.distinct()
+private fun parseTokens(value:String):List<String> = value.split(Regex("[,;\\n]" )).map{it.trim().lowercase()}.filter{it.length>=2}.distinct()
 
 data class ProjectAnalysisResult(val completeness:Int,val strengths:List<String>,val gaps:List<String>,val suggestedSkills:List<String>)
 
