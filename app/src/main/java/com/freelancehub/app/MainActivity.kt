@@ -617,12 +617,46 @@ private fun CourseDetailsScreen(course:RemoteCourse,enrolled:Boolean,repo:Remote
         checkout?.let { session ->
             Spacer(Modifier.height(10.dp))
             Text("Checkout session: ${session.checkoutId}",style=MaterialTheme.typography.bodySmall)
-            Button(enabled=!busy,onClick={
-                busy=true;error=""
-                scope.launch{runCatching{withContext(Dispatchers.IO){repo!!.checkoutStatus(session.checkoutId)}}
-                    .onSuccess{status->paymentStatus=status;if(status.paid){error="Payment verified. Refreshing your enrollment…";runCatching{withContext(Dispatchers.IO){repo!!.myCourses()}}.onSuccess{list->if(list.any{it.courseId==course.id})onEnrolled(list.first{it.courseId==course.id})}} else error="Payment status: ${status.status}. Access is granted only after backend verification."}}
-                    .onFailure{error=it.message?:"Unable to verify payment status."}.also{busy=false}}
-            },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Checking payment…" else "Refresh payment status")}
+            
+Button(
+    enabled = !busy,
+    onClick = {
+        busy = true
+        error = ""
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    repo!!.checkoutStatus(session.checkoutId)
+                }
+            }.onSuccess { status ->
+                paymentStatus = status
+                if (status.paid) {
+                    error = "Payment verified. Refreshing your enrollment…"
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            repo!!.myCourses()
+                        }
+                    }.onSuccess { list ->
+                        list.firstOrNull { it.courseId == course.id }
+                            ?.let { onEnrolled(it) }
+                    }.onFailure {
+                        error = it.message ?: "Unable to refresh enrollment."
+                    }
+                } else {
+                    error = "Payment status: ${status.status}. Access is granted only after backend verification."
+                }
+            }.onFailure {
+                error = it.message ?: "Unable to verify payment status."
+            }.also {
+                busy = false
+            }
+        }
+    },
+    modifier = Modifier.fillMaxWidth()
+) {
+    Text(if (busy) "Checking payment…" else "Refresh payment status")
+}
+
             paymentStatus?.let{Text("Payment status: ${it.status}",style=MaterialTheme.typography.bodySmall)}
         }
         Text("Paid-course access is granted only by the production backend after verified payment; the APK never unlocks paid content locally.",style=MaterialTheme.typography.bodySmall)
