@@ -714,7 +714,10 @@ fun RemoteCommunicationScreen(){
             Text(if (loading) "Loading…" else "Conversations", style = MaterialTheme.typography.titleLarge)
             if (conversations.isEmpty() && !loading) Text("No server conversations yet.")
             conversations.forEach { conversation ->
-                ElevatedCard(Modifier.fillMaxWidth().padding(vertical = 5.dp), onClick = { selected = conversation; error = "" }) {
+                ElevatedCard(
+    onClick = { selected = conversation; error = "" },
+    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)
+) {
                     Column(Modifier.padding(14.dp)) {
                         Text(conversation.participantName.ifBlank { conversation.participantId }, style = MaterialTheme.typography.titleMedium)
                         if (conversation.jobId.isNotBlank()) Text("Job: ${conversation.jobId}")
