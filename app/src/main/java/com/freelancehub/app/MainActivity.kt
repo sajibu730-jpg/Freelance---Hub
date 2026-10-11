@@ -978,7 +978,7 @@ data class JobMatch(val job:Job,val score:Int,val reasons:List<String>)
             if(!loading && profile?.role!=UserRole.FREELANCER) Text("Use a Freelancer account to use skill-aware matching.")
             if(!loading && profile?.role==UserRole.FREELANCER && matches.isEmpty()) Text("No direct matches found. Review live jobs manually.")
         }
-        items(matches){m->ElevatedCard(Modifier.fillMaxWidth().padding(vertical=6.dp)){Column(Modifier.padding(16.dp)){Text(m.title,style=MaterialTheme.typography.titleMedium);Text("Match: ${m.score}%");if(m.skills.isNotEmpty())Text("Skills: ${m.skills.joinToString(", ")}");m.reasons.forEach{Text("• $it")}}}}
+        items(matches){m->ElevatedCard(Modifier.fillMaxWidth().padding(vertical=6.dp)){Column(Modifier.padding(16.dp)){Text(m.job.title,style=MaterialTheme.typography.titleMedium);Text("Match: ${m.score}%");if(m.job.skills.isNotEmpty())Text("Skills: ${m.job.skills.joinToString(", ")}");m.reasons.forEach{Text("• $it")}}}}
         item{Spacer(Modifier.height(8.dp));Text("Matching is guidance, not a guarantee of hiring or earnings.");TextButton(onClick=back){Text("Back")}}
     }
 }
