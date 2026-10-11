@@ -5,7 +5,9 @@ plugins {
 }
 
 android {
-    namespace = "com.freelancehub.app"
+    namespace = "com.freelancehub.app"buildFeatures {
+    buildConfig = true
+}
     compileSdk = 35
 
     defaultConfig {
