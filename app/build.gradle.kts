@@ -4,6 +4,16 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val backendBaseUrl = providers.environmentVariable("FREELANCE_HUB_API_URL")
+    .orElse(providers.gradleProperty("backendBaseUrl"))
+    .orElse("")
+    .get()
+
+val backendProjectId = providers.environmentVariable("FREELANCE_HUB_PROJECT_ID")
+    .orElse(providers.gradleProperty("backendProjectId"))
+    .orElse("")
+    .get()
+
 android {
     namespace = "com.freelancehub.app"
     compileSdk = 35
@@ -14,6 +24,17 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField(
+            "String",
+            "BACKEND_BASE_URL",
+            "\"${backendBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+        )
+        buildConfigField(
+            "String",
+            "BACKEND_PROJECT_ID",
+            "\"${backendProjectId.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+        )
     }
 
     compileOptions {
