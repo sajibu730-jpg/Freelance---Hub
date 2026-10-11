@@ -14,6 +14,11 @@ val backendProjectId = providers.environmentVariable("FREELANCE_HUB_PROJECT_ID")
     .orElse("")
     .get()
 
+val supabaseAnonKey = providers.environmentVariable("FREELANCE_HUB_SUPABASE_ANON_KEY")
+    .orElse(providers.gradleProperty("supabaseAnonKey"))
+    .orElse("")
+    .get()
+
 android {
     namespace = "com.freelancehub.app"
     compileSdk = 35
@@ -30,10 +35,17 @@ android {
             "BACKEND_BASE_URL",
             "\"${backendBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\""
         )
+
         buildConfigField(
             "String",
             "BACKEND_PROJECT_ID",
             "\"${backendProjectId.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+        )
+
+        buildConfigField(
+            "String",
+            "SUPABASE_ANON_KEY",
+            "\"${supabaseAnonKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
         )
     }
 
@@ -59,5 +71,6 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview:1.7.6")
     implementation("androidx.compose.material3:material3:1.3.1")
     implementation("com.google.android.play:app-update:2.1.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling:1.7.6")
 }
