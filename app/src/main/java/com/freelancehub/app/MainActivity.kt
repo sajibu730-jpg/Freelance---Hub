@@ -103,7 +103,14 @@ visualTransformation = if (passwordVisible) VisualTransformation.None else Passw
 trailingIcon = {
 Row {
 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-Text(if (passwordVisible) "⊘" else "👁")
+Icon(
+imageVector = if (passwordVisible)
+Icons.Filled.VisibilityOff
+else
+Icons.Filled.Visibility,
+contentDescription = if (passwordVisible) "Hide password" else "Show password"
+)
+
 }
 IconButton(
 onClick = {
