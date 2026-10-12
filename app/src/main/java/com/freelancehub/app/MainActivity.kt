@@ -17,6 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.freelancehub.app.data.*
@@ -89,7 +92,27 @@ class MainActivity:ComponentActivity(){
         Text("Freelance Hub",style=MaterialTheme.typography.headlineLarge);Text("Global freelance marketplace",style=MaterialTheme.typography.bodyLarge);Spacer(Modifier.height(24.dp))
         if(!authConfigured){Text("Production backend is not configured. Local/demo authentication is disabled.",color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(12.dp))}
         if(signup){OutlinedTextField(name,{name=it},label={Text("Full name")},modifier=Modifier.fillMaxWidth());Spacer(Modifier.height(10.dp));Text("Account type",style=MaterialTheme.typography.titleMedium);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=role==UserRole.FREELANCER,onClick={role=UserRole.FREELANCER},label={Text("Freelancer")});FilterChip(selected=role==UserRole.CLIENT,onClick={role=UserRole.CLIENT},label={Text("Client")})};Spacer(Modifier.height(10.dp))}
-        OutlinedTextField(email,{email=it},label={Text("Email")},modifier=Modifier.fillMaxWidth());Spacer(Modifier.height(10.dp));OutlinedTextField(pass,{pass=it},label={Text("Password (8+ chars, letter + number)")},visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth());if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(18.dp));
+        OutlinedTextField(email,{email=it},label={Text("Email")},modifier=Modifier.fillMaxWidth());Spacer(Modifier.height(10.dp))
+val clipboardManager = LocalClipboardManager.current
+var passwordVisible by remember { mutableStateOf(false) }
+OutlinedTextField(
+value = pass,
+onValueChange = { pass = it },
+label = { Text("Password") },
+visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+trailingIcon = {
+Row {
+IconButton(onClick = { passwordVisible = !passwordVisible }) {
+Icon(if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "Show or hide password")
+}
+IconButton(onClick = { if (pass.isNotEmpty()) clipboardManager.setText(AnnotatedString(pass)) }, enabled = pass.isNotEmpty()) {
+Icon(Icons.Filled.ContentCopy, contentDescription = "Copy password")
+}
+}
+},
+modifier = Modifier.fillMaxWidth()
+)
+if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(18.dp));
         Button(onClick={if(valid){busy=true;error="";onLogin(email.trim(),name.trim(),pass,role,signup){msg->busy=false;error=msg}}},enabled=valid&&!busy,modifier=Modifier.fillMaxWidth()){Text(if(busy)"Authenticating…" else if(signup)"Create account" else "Sign in")}
         Text("Authentication is performed by the configured production backend; credentials are never stored as local account data.",style=MaterialTheme.typography.bodySmall);TextButton(onClick={signup=!signup;error=""}){Text(if(signup)"Already have an account? Sign in" else "Create a new account")}
     }
