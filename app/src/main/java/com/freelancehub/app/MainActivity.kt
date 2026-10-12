@@ -103,7 +103,7 @@ visualTransformation = if (passwordVisible) VisualTransformation.None else Passw
 trailingIcon = {
 Row {
 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-Text(if (passwordVisible) "👁̸" else "👁")
+Text(if (passwordVisible) "⊘" else "👁")
 }
 IconButton(
 onClick = {
@@ -113,7 +113,7 @@ clipboardManager.setText(AnnotatedString(pass))
 },
 enabled = pass.isNotEmpty()
 ) {
-Text("📋")
+Text("Copy")
 }
 }
 },
