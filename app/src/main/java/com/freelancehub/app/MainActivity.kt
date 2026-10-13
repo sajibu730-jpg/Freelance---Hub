@@ -6,6 +6,9 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -88,7 +91,15 @@ class MainActivity:ComponentActivity(){
 @Composable fun LoginScreen(authConfigured:Boolean,onLogin:(String,String,String,UserRole,Boolean,(String)->Unit)->Unit){
     var signup by remember{mutableStateOf(false)};var name by remember{mutableStateOf("")};var email by remember{mutableStateOf("")};var pass by remember{mutableStateOf("")};var role by remember{mutableStateOf(UserRole.FREELANCER)};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
     val valid=authConfigured && Validation.email(email)&&Validation.password(pass)&&( !signup || Validation.text(name,2,80))
-    Column(Modifier.fillMaxSize().padding(28.dp),verticalArrangement=Arrangement.Center){
+    Column(
+    modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)
+        .verticalScroll(rememberScrollState())
+        .imePadding()
+        .padding(28.dp),
+    verticalArrangement = Arrangement.Center
+) {
         Text("Freelance Hub",style=MaterialTheme.typography.headlineLarge);Text("Global freelance marketplace",style=MaterialTheme.typography.bodyLarge);Spacer(Modifier.height(24.dp))
         if(!authConfigured){Text("Production backend is not configured. Local/demo authentication is disabled.",color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(12.dp))}
         if(signup){OutlinedTextField(name,{name=it},label={Text("Full name")},modifier=Modifier.fillMaxWidth());Spacer(Modifier.height(10.dp));Text("Account type",style=MaterialTheme.typography.titleMedium);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=role==UserRole.FREELANCER,onClick={role=UserRole.FREELANCER},label={Text("Freelancer")});FilterChip(selected=role==UserRole.CLIENT,onClick={role=UserRole.CLIENT},label={Text("Client")})};Spacer(Modifier.height(10.dp))}
