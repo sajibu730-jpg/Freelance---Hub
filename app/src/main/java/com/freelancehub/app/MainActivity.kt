@@ -105,9 +105,9 @@ Row {
 IconButton(onClick = { passwordVisible = !passwordVisible }) {
 Icon(
 imageVector = if (passwordVisible)
-Icons.Filled.VisibilityOff
+    Icons.Filled.Visibility
 else
-Icons.Filled.Visibility,
+    Icons.Filled.VisibilityOff
 contentDescription = if (passwordVisible) "Hide password" else "Show password"
 )
 
