@@ -89,58 +89,316 @@ class MainActivity:ComponentActivity(){
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun LoginScreen(authConfigured:Boolean,onLogin:(String,String,String,UserRole,Boolean,(String)->Unit)->Unit){
-    var signup by remember{mutableStateOf(false)};var name by remember{mutableStateOf("")};var email by remember{mutableStateOf("")};var pass by remember{mutableStateOf("")};var role by remember{mutableStateOf(UserRole.FREELANCER)};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
-    val valid=authConfigured && Validation.email(email)&&Validation.password(pass)&&( !signup || Validation.text(name,2,80))
-    Column(
-    modifier = Modifier
-        .fillMaxSize()
-        .background(MaterialTheme.colorScheme.background)
-        .verticalScroll(rememberScrollState())
-        .imePadding()
-        .padding(28.dp),
-    verticalArrangement = if (WindowInsets.isImeVisible) Arrangement.Top else Arrangement.Center
+@Composable
+fun LoginScreen(
+    authConfigured: Boolean,
+    onLogin: (String, String, String, UserRole, Boolean, (String) -> Unit) -> Unit
 ) {
-        Text("Freelance Hub",style=MaterialTheme.typography.headlineLarge);Text("Global freelance marketplace",style=MaterialTheme.typography.bodyLarge);Spacer(Modifier.height(24.dp))
-        if(!authConfigured){Text("Production backend is not configured. Local/demo authentication is disabled.",color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(12.dp))}
-        if(signup){OutlinedTextField(name,{name=it},label={Text("Full name")},modifier=Modifier.fillMaxWidth());Spacer(Modifier.height(10.dp));Text("Account type",style=MaterialTheme.typography.titleMedium);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){FilterChip(selected=role==UserRole.FREELANCER,onClick={role=UserRole.FREELANCER},label={Text("Freelancer")});FilterChip(selected=role==UserRole.CLIENT,onClick={role=UserRole.CLIENT},label={Text("Client")})};Spacer(Modifier.height(10.dp))}
-        OutlinedTextField(email,{email=it},label={Text("Email")},modifier=Modifier.fillMaxWidth());Spacer(Modifier.height(10.dp))
-val clipboardManager = LocalClipboardManager.current
-var passwordVisible by remember { mutableStateOf(false) }
-OutlinedTextField(
-value = pass,
-onValueChange = { pass = it },
-label = { Text("Password") },
-visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-trailingIcon = {
-Row {
-IconButton(onClick = { passwordVisible = !passwordVisible }) {
-Icon(
-imageVector = if (passwordVisible)
-    Icons.Filled.Visibility
-else
-    Icons.Filled.VisibilityOff,
-contentDescription = if (passwordVisible) "Hide password" else "Show password"
-)
+    var signup by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var pass by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf(UserRole.FREELANCER) }
+    var error by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
 
-}
-IconButton(
-onClick = {
-if (pass.isNotEmpty()) {
-clipboardManager.setText(AnnotatedString(pass))
-}
-},
-enabled = pass.isNotEmpty()
-) {
-Text("Copy")
-}
-}
-},
-modifier = Modifier.fillMaxWidth()
-)
-if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(18.dp));
-        Button(onClick={if(valid){busy=true;error="";onLogin(email.trim(),name.trim(),pass,role,signup){msg->busy=false;error=msg}}},enabled=valid&&!busy,modifier=Modifier.fillMaxWidth()){Text(if(busy)"Authenticating…" else if(signup)"Create account" else "Sign in")}
-        Text("Authentication is performed by the configured production backend; credentials are never stored as local account data.",style=MaterialTheme.typography.bodySmall);TextButton(onClick={signup=!signup;error=""}){Text(if(signup)"Already have an account? Sign in" else "Create a new account")}
+    val clipboardManager = LocalClipboardManager.current
+    val navy = androidx.compose.ui.graphics.Color(0xFF142B52)
+    val blue = androidx.compose.ui.graphics.Color(0xFF2878E5)
+    val light = androidx.compose.ui.graphics.Color(0xFFF2F6FC)
+    val dark = androidx.compose.ui.graphics.Color(0xFF17243A)
+
+    val valid = authConfigured &&
+        Validation.email(email) &&
+        Validation.password(pass) &&
+        (!signup || Validation.text(name, 2, 80))
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(light)
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = if (WindowInsets.isImeVisible)
+            Arrangement.Top else Arrangement.Center
+    ) {
+        // Header
+        androidx.compose.material3.Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = navy,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 22.dp,
+                    vertical = 24.dp
+                )
+            ) {
+                Text(
+                    "Freelance Hub",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = androidx.compose.ui.graphics.Color.White
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Your work. Your world. Your future.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = androidx.compose.ui.graphics.Color(0xFFD8E6FF)
+                )
+                Spacer(Modifier.height(14.dp))
+                androidx.compose.material3.Surface(
+                    color = androidx.compose.ui.graphics.Color(0xFF294773),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50.dp)
+                ) {
+                    Text(
+                        "GLOBAL FREELANCE MARKETPLACE",
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 7.dp
+                        ),
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        // Login card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = androidx.compose.ui.graphics.Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(22.dp)
+            ) {
+                Text(
+                    if (signup) "Create your account" else "Welcome back",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = navy
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    if (signup)
+                        "Start building your professional future."
+                    else
+                        "Sign in to continue your journey.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.ui.graphics.Color(0xFF68758A)
+                )
+
+                Spacer(Modifier.height(22.dp))
+
+                if (!authConfigured) {
+                    Text(
+                        "Production backend is not configured. Local/demo authentication is disabled.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                if (signup) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Full name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        "Account type",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = navy
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = role == UserRole.FREELANCER,
+                            onClick = { role = UserRole.FREELANCER },
+                            label = { Text("Freelancer") }
+                        )
+
+                        FilterChip(
+                            selected = role == UserRole.CLIENT,
+                            onClick = { role = UserRole.CLIENT },
+                            label = { Text("Client") }
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = pass,
+                    onValueChange = { pass = it },
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    trailingIcon = {
+                        Row(
+                            verticalAlignment =
+                                androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    passwordVisible = !passwordVisible
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (passwordVisible)
+                                        Icons.Filled.Visibility
+                                    else
+                                        Icons.Filled.VisibilityOff,
+                                    contentDescription = if (passwordVisible)
+                                        "Hide password"
+                                    else
+                                        "Show password",
+                                    tint = navy
+                                )
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    if (pass.isNotEmpty()) {
+                                        clipboardManager.setText(
+                                            AnnotatedString(pass)
+                                        )
+                                    }
+                                },
+                                enabled = pass.isNotEmpty()
+                            ) {
+                                Text("Copy", color = blue)
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (error.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Button(
+                    onClick = {
+                        if (valid && !busy) {
+                            busy = true
+                            error = ""
+
+                            onLogin(
+                                email.trim(),
+                                name.trim(),
+                                pass,
+                                role,
+                                signup
+                            ) { msg ->
+                                busy = false
+                                error = msg
+                            }
+                        }
+                    },
+                    enabled = valid && !busy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                        14.dp
+                    ),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = navy
+                    )
+                ) {
+                    if (busy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = androidx.compose.ui.graphics.Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
+
+                    Text(
+                        if (busy) "Authenticating..."
+                        else if (signup) "Create account"
+                        else "Sign In",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                Text(
+                    "Your account is authenticated through the configured production backend.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = androidx.compose.ui.graphics.Color(0xFF68758A)
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = {
+                        signup = !signup
+                        error = ""
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (signup)
+                            "Already have an account? Sign in"
+                        else
+                            "Create a new account",
+                        color = blue
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        Text(
+            "Professional opportunities. A global community.",
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodySmall,
+            color = androidx.compose.ui.graphics.Color(0xFF68758A),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
     }
 }
 @Composable fun MainShell(repo:AppRepository,logout:()->Unit){
