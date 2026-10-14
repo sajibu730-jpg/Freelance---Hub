@@ -87,6 +87,7 @@ class MainActivity:ComponentActivity(){
         } }
     }
 }
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun LoginScreen(authConfigured:Boolean,onLogin:(String,String,String,UserRole,Boolean,(String)->Unit)->Unit){
     var signup by remember{mutableStateOf(false)};var name by remember{mutableStateOf("")};var email by remember{mutableStateOf("")};var pass by remember{mutableStateOf("")};var role by remember{mutableStateOf(UserRole.FREELANCER)};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
