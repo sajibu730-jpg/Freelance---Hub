@@ -98,7 +98,7 @@ class MainActivity:ComponentActivity(){
         .verticalScroll(rememberScrollState())
         .imePadding()
         .padding(28.dp),
-    verticalArrangement = Arrangement.Top
+    verticalArrangement = if (WindowInsets.isImeVisible) Arrangement.Top else Arrangement.Center
 ) {
         Text("Freelance Hub",style=MaterialTheme.typography.headlineLarge);Text("Global freelance marketplace",style=MaterialTheme.typography.bodyLarge);Spacer(Modifier.height(24.dp))
         if(!authConfigured){Text("Production backend is not configured. Local/demo authentication is disabled.",color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(12.dp))}
