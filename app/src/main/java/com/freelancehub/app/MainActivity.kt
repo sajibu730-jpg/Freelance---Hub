@@ -536,12 +536,7 @@ TextButton(
     }
 }
 
-                    ) {
-                        Text(
-                            text = if (signup) "Sign in" else "Create a new account",
-                            color = blue
-                        )
-                    }
+
                 }
 
                 HorizontalDivider(
