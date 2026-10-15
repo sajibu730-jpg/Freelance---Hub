@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.VisualTransformation
@@ -108,7 +109,9 @@ fun LoginScreen(
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var passwordVisible by remember { mutableStateOf(false) }
+var openingSignup by remember { mutableStateOf(false) }
+var passwordVisible by remember { mutableStateOf(false) }
+val scope = rememberCoroutineScope()
 
     val clipboardManager = LocalClipboardManager.current
 
@@ -492,12 +495,47 @@ fun LoginScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    TextButton(
-                        onClick = {
-                            signup = !signup
-                            error = ""
-                            busy = false
-                        }
+                    
+TextButton(
+    enabled = !openingSignup,
+    onClick = {
+        if (signup) {
+            signup = false
+            error = ""
+            busy = false
+        } else if (!openingSignup) {
+            openingSignup = true
+            scope.launch {
+                delay(2200)
+                signup = true
+                error = ""
+                busy = false
+                openingSignup = false
+            }
+        }
+    }
+) {
+    Row(
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (openingSignup) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = blue
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Opening account setup…", color = blue)
+        } else {
+            Text(
+                text = if (signup) "Sign in" else "Create a new account",
+                color = blue
+            )
+        }
+    }
+}
+
                     ) {
                         Text(
                             text = if (signup) "Sign in" else "Create a new account",
