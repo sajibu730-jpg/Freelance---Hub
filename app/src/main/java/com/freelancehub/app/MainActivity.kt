@@ -172,7 +172,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
             ) {
                 Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                    color = white
+                    color = paleBlue   
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Work,
