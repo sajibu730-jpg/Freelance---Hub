@@ -92,7 +92,14 @@ class MainActivity:ComponentActivity(){
 @Composable
 fun LoginScreen(
     authConfigured: Boolean,
-    onLogin: (String, String, String, UserRole, Boolean, (String) -> Unit) -> Unit
+    onLogin: (
+        String,
+        String,
+        String,
+        UserRole,
+        Boolean,
+        (String) -> Unit
+    ) -> Unit
 ) {
     var signup by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -104,6 +111,7 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
 
     val clipboardManager = LocalClipboardManager.current
+
     val navy = androidx.compose.ui.graphics.Color(0xFF142B52)
     val blue = androidx.compose.ui.graphics.Color(0xFF2878E5)
     val light = androidx.compose.ui.graphics.Color(0xFFF2F6FC)
@@ -120,7 +128,361 @@ fun LoginScreen(
             .background(light)
             .verticalScroll(rememberScrollState())
             .imePadding()
-            .padding(horizontal = 18.dp, vertical =                    
+            .padding(
+                horizontal = 18.dp,
+                vertical = if (WindowInsets.isImeVisible) 12.dp else 28.dp
+            ),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        verticalArrangement = if (WindowInsets.isImeVisible) {
+            Arrangement.Top
+        } else {
+            Arrangement.Center
+        }
+    ) {
+        Spacer(Modifier.height(8.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+            color = navy
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 24.dp,
+                    vertical = 26.dp
+                ),
+                horizontalAlignment =
+                    androidx.compose.ui.Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = androidx.compose.ui.graphics.Color.White
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Work,
+                        contentDescription = "Freelance Hub",
+                        tint = navy,
+                        modifier = Modifier.padding(14.dp).size(34.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                Text(
+                    text = "Freelance Hub",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = androidx.compose.ui.graphics.Color.White
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    text = "Your work. Your future. Global opportunities.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.ui.graphics.Color(0xFFDCE8FA)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(22.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            color = androidx.compose.ui.graphics.Color.White,
+            shadowElevation = 5.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(22.dp)
+            ) {
+                Text(
+                    text = if (signup) "Create your account" else "Welcome back",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = navy
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    text = if (signup) {
+                        "Start your global freelance journey."
+                    } else {
+                        "Sign in to continue to your workspace."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = dark
+                )
+
+                Spacer(Modifier.height(22.dp))
+
+                if (!authConfigured) {
+                    Text(
+                        text = "Production backend is not configured. " +
+                            "Authentication is unavailable.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                if (signup) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Full name") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Person,
+                                contentDescription = null
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                            14.dp
+                        )
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Text(
+                        text = "Choose account type",
+                        color = navy,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FilterChip(
+                            selected = role == UserRole.FREELANCER,
+                            onClick = { role = UserRole.FREELANCER },
+                            label = { Text("Freelancer") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Work,
+                                    contentDescription = null
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        FilterChip(
+                            selected = role == UserRole.CLIENT,
+                            onClick = { role = UserRole.CLIENT },
+                            label = { Text("Client") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Business,
+                                    contentDescription = null
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                }
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Email,
+                            contentDescription = null
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                        14.dp
+                    )
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = pass,
+                    onValueChange = { pass = it },
+                    label = { Text("Password") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = null
+                        )
+                    },
+                    visualTransformation = if (passwordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        Row(
+                            verticalAlignment =
+                                androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    passwordVisible = !passwordVisible
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (passwordVisible) {
+                                        Icons.Filled.Visibility
+                                    } else {
+                                        Icons.Filled.VisibilityOff
+                                    },
+                                    contentDescription = if (passwordVisible) {
+                                        "Hide password"
+                                    } else {
+                                        "Show password"
+                                    },
+                                    tint = blue
+                                )
+                            }
+
+                            TextButton(
+                                enabled = pass.isNotEmpty(),
+                                onClick = {
+                                    clipboardManager.setText(
+                                        AnnotatedString(pass)
+                                    )
+                                }
+                            ) {
+                                Text("Copy")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                        14.dp
+                    )
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                if (error.isNotBlank()) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Button(
+                    onClick = {
+                        if (valid && !busy) {
+                            busy = true
+                            error = ""
+
+                            onLogin(
+                                email.trim(),
+                                name.trim(),
+                                pass,
+                                role,
+                                signup
+                            ) { message ->
+                                busy = false
+                                error = message
+                            }
+                        }
+                    },
+                    enabled = valid && !busy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                        14.dp
+                    ),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = blue
+                    )
+                ) {
+                    if (busy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = androidx.compose.ui.graphics.Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (signup) {
+                                "Create account"
+                            } else {
+                                "Sign In"
+                            },
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                Text(
+                    text = "Your credentials are handled by the configured " +
+                        "authentication backend.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = dark
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                HorizontalDivider(
+                    color = androidx.compose.ui.graphics.Color(0xFFE4EAF3)
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment =
+                        androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (signup) {
+                            "Already have an account?"
+                        } else {
+                            "New to Freelance Hub?"
+                        },
+                        color = dark,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    TextButton(
+                        onClick = {
+                            signup = !signup
+                            error = ""
+                            busy = false
+                        }
+                    ) {
+                        Text(
+                            text = if (signup) {
+                                "Sign in"
+                            } else {
+                                "Create a new account"
+                            },
+                            color = blue
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+    }
+}                    
 @Composable fun MainShell(repo:AppRepository,logout:()->Unit){
     val context=LocalContext.current
     val backend=remember{RuntimeBackendConfig.current()}
