@@ -120,11 +120,17 @@ LaunchedEffect(signup) {
 }
     val clipboardManager = LocalClipboardManager.current
 
-    val navy = androidx.compose.ui.graphics.Color(0xFF142B52)
-    val blue = androidx.compose.ui.graphics.Color(0xFF2878E5)
-    val light = androidx.compose.ui.graphics.Color(0xFFF1F5FB)
-    val dark = androidx.compose.ui.graphics.Color(0xFF26364D)
-    val white = androidx.compose.ui.graphics.Color.White
+    
+val navy = androidx.compose.ui.graphics.Color(0xFF142B52)
+val blue = androidx.compose.ui.graphics.Color(0xFF4169E1)
+val light = androidx.compose.ui.graphics.Color(0xFFF0F5FF)
+val dark = androidx.compose.ui.graphics.Color(0xFF26364D)
+val white = androidx.compose.ui.graphics.Color.White
+
+val lavender = androidx.compose.ui.graphics.Color(0xFFF0EEFF)
+val teal = androidx.compose.ui.graphics.Color(0xFF14A89A)
+val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
+
     val keyboardOpen = WindowInsets.isImeVisible
 
     val valid = authConfigured &&
