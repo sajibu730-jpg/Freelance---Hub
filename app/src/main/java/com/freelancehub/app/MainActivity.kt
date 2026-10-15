@@ -177,7 +177,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Icon(
                         imageVector = Icons.Filled.Work,
                         contentDescription = "Freelance Hub",
-                        tint = navy,
+                        tint = blue,
                         modifier = Modifier
                             .padding(14.dp)
                             .size(34.dp)
