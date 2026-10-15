@@ -114,8 +114,10 @@ fun LoginScreen(
 
     val navy = androidx.compose.ui.graphics.Color(0xFF142B52)
     val blue = androidx.compose.ui.graphics.Color(0xFF2878E5)
-    val light = androidx.compose.ui.graphics.Color(0xFFF2F6FC)
-    val dark = androidx.compose.ui.graphics.Color(0xFF17243A)
+    val light = androidx.compose.ui.graphics.Color(0xFFF1F5FB)
+    val dark = androidx.compose.ui.graphics.Color(0xFF26364D)
+    val white = androidx.compose.ui.graphics.Color.White
+    val keyboardOpen = WindowInsets.isImeVisible
 
     val valid = authConfigured &&
         Validation.email(email) &&
@@ -126,130 +128,172 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(light)
-            .verticalScroll(rememberScrollState())
             .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(
-                horizontal = 18.dp,
-                vertical = if (WindowInsets.isImeVisible) 12.dp else 28.dp
+                horizontal = 20.dp,
+                vertical = if (keyboardOpen) 10.dp else 24.dp
             ),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = if (WindowInsets.isImeVisible) {
+        verticalArrangement = if (keyboardOpen) {
             Arrangement.Top
         } else {
             Arrangement.Center
         }
     ) {
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (keyboardOpen) 0.dp else 8.dp))
 
+        // BRAND HEADER
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
             color = navy
         ) {
             Column(
-                modifier = Modifier.padding(
-                    horizontal = 24.dp,
-                    vertical = 26.dp
-                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp, vertical = 22.dp),
                 horizontalAlignment =
                     androidx.compose.ui.Alignment.CenterHorizontally
             ) {
                 Surface(
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    color = androidx.compose.ui.graphics.Color.White
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    color = white
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Work,
                         contentDescription = "Freelance Hub",
                         tint = navy,
-                        modifier = Modifier.padding(14.dp).size(34.dp)
+                        modifier = Modifier
+                            .padding(14.dp)
+                            .size(34.dp)
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Text(
                     text = "Freelance Hub",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = androidx.compose.ui.graphics.Color.White
+                    color = white
                 )
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(5.dp))
 
                 Text(
                     text = "Your work. Your future. Global opportunities.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = androidx.compose.ui.graphics.Color(0xFFDCE8FA)
                 )
+
+                if (!keyboardOpen) {
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment =
+                            androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = androidx.compose.ui.graphics.Color(0xFF91E2BD),
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Text(
+                            text = "A professional space to work and grow",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = white
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(20.dp))
 
+        // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-            color = androidx.compose.ui.graphics.Color.White,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+            color = white,
             shadowElevation = 5.dp
         ) {
             Column(
                 modifier = Modifier.padding(22.dp)
             ) {
-                Text(
-                    text = if (signup) "Create your account" else "Welcome back",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = navy
-                )
+                if (signup) {
+                    TextButton(
+                        onClick = {
+                            signup = false
+                            error = ""
+                            busy = false
+                        }
+                    ) {
+                        Text("← Back to Sign In", color = blue)
+                    }
 
-                Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(4.dp))
 
-                Text(
-                    text = if (signup) {
-                        "Start your global freelance journey."
-                    } else {
-                        "Sign in to continue to your workspace."
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = dark
-                )
-
-                Spacer(Modifier.height(22.dp))
-
-                if (!authConfigured) {
                     Text(
-                        text = "Production backend is not configured. " +
-                            "Authentication is unavailable.",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        text = "Create your account",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = navy
                     )
 
-                    Spacer(Modifier.height(12.dp))
-                }
+                    Spacer(Modifier.height(6.dp))
 
-                if (signup) {
+                    Text(
+                        text = "Start your journey with Freelance Hub.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = dark
+                    )
+
+                    Spacer(Modifier.height(18.dp))
+
+                    Text(
+                        text = "ACCOUNT SETUP  •  STEP 1",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = blue
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        repeat(3) { index ->
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(4.dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                                color = if (index == 0) blue else light
+                            ) {}
+                        }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
                         label = { Text("Full name") },
                         leadingIcon = {
-                            Icon(
-                                Icons.Filled.Person,
-                                contentDescription = null
-                            )
+                            Icon(Icons.Filled.Person, contentDescription = null)
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(
-                            14.dp
-                        )
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     )
 
                     Spacer(Modifier.height(14.dp))
 
                     Text(
-                        text = "Choose account type",
-                        color = navy,
-                        style = MaterialTheme.typography.titleMedium
+                        text = "I want to join as",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = navy
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -263,10 +307,7 @@ fun LoginScreen(
                             onClick = { role = UserRole.FREELANCER },
                             label = { Text("Freelancer") },
                             leadingIcon = {
-                                Icon(
-                                    Icons.Filled.Work,
-                                    contentDescription = null
-                                )
+                                Icon(Icons.Filled.Work, contentDescription = null)
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -276,46 +317,63 @@ fun LoginScreen(
                             onClick = { role = UserRole.CLIENT },
                             label = { Text("Client") },
                             leadingIcon = {
-                                Icon(
-                                    Icons.Filled.Business,
-                                    contentDescription = null
-                                )
+                                Icon(Icons.Filled.Business, contentDescription = null)
                             },
                             modifier = Modifier.weight(1f)
                         )
                     }
 
                     Spacer(Modifier.height(14.dp))
+                } else {
+                    Text(
+                        text = "Welcome back",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = navy
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = "Sign in to continue to your workspace.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = dark
+                    )
+
+                    Spacer(Modifier.height(22.dp))
                 }
 
+                if (!authConfigured) {
+                    Text(
+                        text = "Authentication is unavailable because the production backend is not configured.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
                     label = { Text("Email") },
                     leadingIcon = {
-                        Icon(
-                            Icons.Filled.Email,
-                            contentDescription = null
-                        )
+                        Icon(Icons.Filled.Email, contentDescription = null)
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
-                        14.dp
-                    )
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
 
                 Spacer(Modifier.height(14.dp))
 
+                // PASSWORD FIELD — EYE AND COPY PRESERVED
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
                     label = { Text("Password") },
                     leadingIcon = {
-                        Icon(
-                            Icons.Filled.Lock,
-                            contentDescription = null
-                        )
+                        Icon(Icons.Filled.Lock, contentDescription = null)
                     },
                     visualTransformation = if (passwordVisible) {
                         VisualTransformation.None
@@ -350,9 +408,7 @@ fun LoginScreen(
                             TextButton(
                                 enabled = pass.isNotEmpty(),
                                 onClick = {
-                                    clipboardManager.setText(
-                                        AnnotatedString(pass)
-                                    )
+                                    clipboardManager.setText(AnnotatedString(pass))
                                 }
                             ) {
                                 Text("Copy")
@@ -361,12 +417,10 @@ fun LoginScreen(
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
-                        14.dp
-                    )
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(16.dp))
 
                 if (error.isNotBlank()) {
                     Text(
@@ -375,11 +429,10 @@ fun LoginScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                 }
 
-                Spacer(Modifier.height(10.dp))
-
+                // PRIMARY ACTION
                 Button(
                     onClick = {
                         if (valid && !busy) {
@@ -402,9 +455,7 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
-                        14.dp
-                    ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(15.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = blue
                     )
@@ -412,37 +463,18 @@ fun LoginScreen(
                     if (busy) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(22.dp),
-                            color = androidx.compose.ui.graphics.Color.White,
+                            color = white,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
-                            text = if (signup) {
-                                "Create account"
-                            } else {
-                                "Sign In"
-                            },
+                            text = if (signup) "Create account" else "Sign In",
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
                 }
 
                 Spacer(Modifier.height(14.dp))
-
-                Text(
-                    text = "Your credentials are handled by the configured " +
-                        "authentication backend.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = dark
-                )
-
-                Spacer(Modifier.height(10.dp))
-
-                HorizontalDivider(
-                    color = androidx.compose.ui.graphics.Color(0xFFE4EAF3)
-                )
-
-                Spacer(Modifier.height(8.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -468,21 +500,53 @@ fun LoginScreen(
                         }
                     ) {
                         Text(
-                            text = if (signup) {
-                                "Sign in"
-                            } else {
-                                "Create a new account"
-                            },
+                            text = if (signup) "Sign in" else "Create a new account",
                             color = blue
                         )
                     }
                 }
+
+                HorizontalDivider(
+                    color = androidx.compose.ui.graphics.Color(0xFFE4EAF3)
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment =
+                        androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = blue,
+                        modifier = Modifier.size(15.dp)
+                    )
+
+                    Spacer(Modifier.width(6.dp))
+
+                    Text(
+                        text = "Your account credentials are protected.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = dark
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            text = "FREELANCE HUB  •  GLOBAL OPPORTUNITIES",
+            style = MaterialTheme.typography.labelSmall,
+            color = androidx.compose.ui.graphics.Color(0xFF6D7D94)
+        )
+
+        Spacer(Modifier.height(8.dp))
     }
-}                    
+}
 @Composable fun MainShell(repo:AppRepository,logout:()->Unit){
     val context=LocalContext.current
     val backend=remember{RuntimeBackendConfig.current()}
