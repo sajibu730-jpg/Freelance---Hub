@@ -113,6 +113,11 @@ var openingSignup by remember { mutableStateOf(false) }
 var passwordVisible by remember { mutableStateOf(false) }
 val scope = rememberCoroutineScope()
 
+val loginScrollState = rememberScrollState()
+
+LaunchedEffect(signup) {
+    loginScrollState.scrollTo(0)
+}
     val clipboardManager = LocalClipboardManager.current
 
     val navy = androidx.compose.ui.graphics.Color(0xFF142B52)
@@ -132,7 +137,7 @@ val scope = rememberCoroutineScope()
             .fillMaxSize()
             .background(light)
             .imePadding()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(loginScrollState)
             .padding(
                 horizontal = 20.dp,
                 vertical = if (keyboardOpen) 10.dp else 24.dp
