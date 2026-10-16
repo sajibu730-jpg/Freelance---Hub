@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
@@ -613,6 +614,48 @@ TextButton(
     var showMatching by remember{mutableStateOf(false)}
     var showFreelancerAnalysis by remember{mutableStateOf(false)}
     var activityVersion by remember{mutableStateOf(0)}
+    var showExitDialog by remember { mutableStateOf(false) }
+
+BackHandler {
+    when {
+        showExitDialog -> showExitDialog = false
+        showPostJob -> showPostJob = false
+        showWorkChecker -> showWorkChecker = false
+        showProjectAnalysis -> showProjectAnalysis = false
+        showMatching -> showMatching = false
+        showFreelancerAnalysis -> showFreelancerAnalysis = false
+        editing -> editing = false
+        tab != 0 -> tab = 0
+        else -> showExitDialog = true
+    }
+}
+
+if (showExitDialog) {
+    AlertDialog(
+        onDismissRequest = { showExitDialog = false },
+        title = { Text("Exit Freelance Hub?") },
+        text = {
+            Text("Do you want to exit the app?")
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    showExitDialog = false
+                    (context as? android.app.Activity)?.finish()
+                }
+            ) {
+                Text("Exit")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { showExitDialog = false }
+            ) {
+                Text("Stay")
+            }
+        }
+    )
+}
         Scaffold(bottomBar={NavigationBar{listOf("Home","Jobs","Courses","Messages","Profile").forEachIndexed{i,n->NavigationBarItem(selected=tab==i,onClick={tab=i},icon={Text(listOf("⌂","▣","▤","✉","●")[i])},label={Text(n)})}}}){p->
         
         val pageBackground = when {
