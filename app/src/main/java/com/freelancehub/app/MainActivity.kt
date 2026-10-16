@@ -614,7 +614,27 @@ TextButton(
     var showFreelancerAnalysis by remember{mutableStateOf(false)}
     var activityVersion by remember{mutableStateOf(0)}
         Scaffold(bottomBar={NavigationBar{listOf("Home","Jobs","Courses","Messages","Profile").forEachIndexed{i,n->NavigationBarItem(selected=tab==i,onClick={tab=i},icon={Text(listOf("⌂","▣","▤","✉","●")[i])},label={Text(n)})}}}){p->
-        Box(Modifier.padding(p)){when{
+        
+        val pageBackground = when {
+            showPostJob -> androidx.compose.ui.graphics.Color(0xFFF0F6FF)
+            showWorkChecker -> androidx.compose.ui.graphics.Color(0xFFEAF8F2)
+            showProjectAnalysis -> androidx.compose.ui.graphics.Color(0xFFF2EEFF)
+            showMatching -> androidx.compose.ui.graphics.Color(0xFFEAF3FF)
+            showFreelancerAnalysis -> androidx.compose.ui.graphics.Color(0xFFEAF8F5)
+            editing -> androidx.compose.ui.graphics.Color.White
+            tab == 0 -> androidx.compose.ui.graphics.Color(0xFFF0F5FF)
+            tab == 1 -> androidx.compose.ui.graphics.Color(0xFFECF8F2)
+            tab == 2 -> androidx.compose.ui.graphics.Color(0xFFF3F0FF)
+            tab == 3 -> androidx.compose.ui.graphics.Color(0xFFFFF5EC)
+            else -> androidx.compose.ui.graphics.Color.White
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(p)
+                .background(pageBackground)
+        ) { when {
+
             showPostJob->RemotePostJobScreen(role,remoteMarketplace,{showPostJob=false}){activityVersion++;showPostJob=false}
             showWorkChecker->WorkCheckerScreen({showWorkChecker=false})
             showProjectAnalysis->ProjectAnalysisScreen({showProjectAnalysis=false})
