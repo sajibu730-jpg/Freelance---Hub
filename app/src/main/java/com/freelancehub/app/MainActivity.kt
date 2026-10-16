@@ -141,7 +141,14 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(light)
+            .background(
+    androidx.compose.ui.graphics.Brush.verticalGradient(
+        colors = listOf(
+            androidx.compose.ui.graphics.Color(0xFFDCE8FF),
+            androidx.compose.ui.graphics.Color(0xFFF7F9FF)
+        )
+    )
+)
             .imePadding()
             .verticalScroll(loginScrollState)
             .padding(
@@ -159,10 +166,11 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
         // BRAND HEADER
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
-            color = navy
-        ) {
+    modifier = Modifier.fillMaxWidth(),
+    shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+    color = navy,
+    shadowElevation = 10.dp
+) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
