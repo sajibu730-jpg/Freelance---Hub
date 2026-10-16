@@ -150,12 +150,10 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         )
     )
 )
-            .imePadding()
-            .verticalScroll(loginScrollState)
             .padding(
-                horizontal = 20.dp,
-                vertical = if (keyboardOpen) 10.dp else 24.dp
-            ),
+    horizontal = 0.dp,
+    vertical = if (keyboardOpen) 10.dp else 0.dp
+),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         verticalArrangement = if (keyboardOpen) {
             Arrangement.Top
@@ -168,7 +166,9 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         
         // BRAND HEADER — GLOBAL FREELANCE HUB DESIGN
 Surface(
-    modifier = Modifier.fillMaxWidth(),
+    modifier = Modifier
+    .fillMaxWidth()
+    .padding(horizontal = 18.dp),
     shape = androidx.compose.foundation.shape.RoundedCornerShape(
         topStart = 0.dp,
         topEnd = 0.dp,
@@ -392,7 +392,7 @@ Surface(
                     Spacer(Modifier.height(14.dp))
                 } else {
                     Text(
-                        text = "Welcome back",
+                        text = "Welcome Back",
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy
                     )
