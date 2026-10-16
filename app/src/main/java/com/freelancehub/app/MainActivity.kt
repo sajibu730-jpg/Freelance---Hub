@@ -165,67 +165,115 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     ) {
         Spacer(Modifier.height(if (keyboardOpen) 0.dp else 8.dp))
 
-        // BRAND HEADER
+        
+        // BRAND HEADER — NAVY BLUE GLOBAL DESIGN
         Surface(
-    modifier = Modifier.fillMaxWidth(),
-    shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
-    color = navy,
-    shadowElevation = 10.dp
-) {
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = 38.dp,
+                bottomEnd = 38.dp
+            ),
+            color = navy,
+            shadowElevation = 8.dp
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 22.dp, vertical = 22.dp),
+                    .background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color(0xFF071B43),
+                                androidx.compose.ui.graphics.Color(0xFF123D83),
+                                androidx.compose.ui.graphics.Color(0xFF0757B8)
+                            )
+                        )
+                    )
+                    .padding(
+                        horizontal = 22.dp,
+                        vertical = 26.dp
+                    ),
                 horizontalAlignment =
                     androidx.compose.ui.Alignment.CenterHorizontally
             ) {
-                Surface(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                    color = paleBlue   
+                Row(
+                    verticalAlignment =
+                        androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Work,
-                        contentDescription = "Freelance Hub",
-                        tint = blue,
-                        modifier = Modifier
-                            .padding(14.dp)
-                            .size(34.dp)
+                    Surface(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                            14.dp
+                        ),
+                        color = androidx.compose.ui.graphics.Color(
+                            0xFFDBF2FF
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Work,
+                            contentDescription = "Freelance Hub logo",
+                            tint = androidx.compose.ui.graphics.Color(
+                                0xFF0878E8
+                            ),
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(36.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Text(
+                        text = "Freelance Hub",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = white
                     )
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
 
                 Text(
-                    text = "Freelance Hub",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = white
+                    text = "Your work. Your world. Your future.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = androidx.compose.ui.graphics.Color(0xFFDCEBFF)
                 )
 
-                Spacer(Modifier.height(5.dp))
+                Spacer(Modifier.height(18.dp))
 
-                Text(
-                    text = "Your work. Your future. Global opportunities.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = androidx.compose.ui.graphics.Color(0xFFDCE8FA)
-                )
-
-                if (!keyboardOpen) {
-                    Spacer(Modifier.height(12.dp))
-
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                        30.dp
+                    ),
+                    color = androidx.compose.ui.graphics.Color(0xFF1455A5),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        androidx.compose.ui.graphics.Color(0xFF428DEB)
+                    )
+                ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(
+                            horizontal = 18.dp,
+                            vertical = 10.dp
+                        ),
                         verticalAlignment =
-                            androidx.compose.ui.Alignment.CenterVertically
+                            androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = androidx.compose.ui.graphics.Color(0xFF91E2BD),
-                            modifier = Modifier.size(17.dp)
+                            imageVector = Icons.Filled.Public,
+                            contentDescription = "Global marketplace",
+                            tint = androidx.compose.ui.graphics.Color(
+                                0xFFBCEBFF
+                            ),
+                            modifier = Modifier.size(24.dp)
                         )
+
+                        Spacer(Modifier.width(10.dp))
+
                         Text(
-                            text = "A professional space to work and grow",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "GLOBAL FREELANCE MARKETPLACE",
+                            style = MaterialTheme.typography.labelLarge,
                             color = white
                         )
                     }
@@ -234,6 +282,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         }
 
         Spacer(Modifier.height(20.dp))
+
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
