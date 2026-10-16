@@ -150,7 +150,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         )
     )
 )
-            .padding(
+ .verticalScroll(loginScrollState)        .padding(
     horizontal = 0.dp,
     vertical = if (keyboardOpen) 10.dp else 0.dp
 ),
