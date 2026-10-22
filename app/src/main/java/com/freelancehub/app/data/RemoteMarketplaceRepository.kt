@@ -113,7 +113,9 @@ class RemoteMarketplaceRepository(
         require(input.issues.length <= 10_000)
         require(input.solutions.length <= 10_000)
         require(input.results.length <= 10_000)
-        val payload = JSONObject()
+                val payload = JSONObject()
+            .put("action", "analyze_submission")
+            .put("submission_id", submissionId)
             .put("completed_requirements", input.completedRequirements.trim())
             .put("issues", input.issues.trim())
             .put("solutions", input.solutions.trim())
@@ -121,7 +123,7 @@ class RemoteMarketplaceRepository(
             .put("future_improvements", input.futureImprovements.trim())
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPost("/work-submissions/$submissionId/analysis", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/functions/v1/bright-handler", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
         )
         return parseWorkAnalysis(JSONObject(String(response, StandardCharsets.UTF_8)))
     }
