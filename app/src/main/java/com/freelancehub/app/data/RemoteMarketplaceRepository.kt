@@ -16,17 +16,21 @@ class RemoteMarketplaceRepository(
     private val client: SecureApiClient,
     private val accessTokenProvider: () -> String?
 ) {
-    fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
-        require(limit in 1..50) { "limit must be 1..50" }
-        val query = buildString {
-            append("?limit=").append(limit)
-            if (!cursor.isNullOrBlank()) append("&cursor=").append(java.net.URLEncoder.encode(cursor, "UTF-8"))
-        }
-        val response = client.readJsonResponse(client.openGet("/jobs$query", accessTokenProvider()))
-        val root = JSONObject(String(response, StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: root.optJSONArray("jobs") ?: JSONArray()
-        return (0 until items.length()).map { parseJob(items.getJSONObject(it)) }
+    
+fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
+    require(limit in 1..50) { "limit must be 1..50" }
+
+    val path = "/rest/v1/jobs?select=*&order=created_at.desc&limit=$limit"
+    val response = client.readJsonResponse(
+        client.openGet(path, accessTokenProvider())
+    )
+
+    val items = JSONArray(String(response, StandardCharsets.UTF_8))
+    return (0 until items.length()).map { index ->
+        parseJob(items.getJSONObject(index))
     }
+}
+
 
     fun createJob(input: RemoteJobCreate): RemoteJob {
         require(input.title.length in 3..160)
