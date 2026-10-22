@@ -1,43 +1,125 @@
+
 package com.freelancehub.app.data
 
 import com.freelancehub.app.network.SecureApiClient
+import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 
-/** Server-backed account/profile source. No SharedPreferences fallback is permitted. */
+/** Server-backed account/profile source. */
 class RemoteAccountRepository(
     private val client: SecureApiClient,
     private val accessTokenProvider: () -> String?
 ) {
-    fun currentUser(): RemoteAccount = parseUser(
-        JSONObject(String(client.readJsonResponse(client.openGet("/me", accessTokenProvider())), StandardCharsets.UTF_8))
-    )
+    fun currentUser(): RemoteAccount {
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in again to load your account")
+
+        val authUser = JSONObject(
+            String(
+                client.readJsonResponse(
+                    client.openGet("/auth/v1/user", token)
+                ),
+                StandardCharsets.UTF_8
+            )
+        )
+
+        val userId = authUser.optString("id")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+            "Supabase Auth returned an invalid user id"
+        }
+
+        val bytes = client.readJsonResponse(
+            client.openGet(
+                "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio",
+                token
+            )
+        )
+
+        val rows = JSONArray(String(bytes, StandardCharsets.UTF_8))
+        val profile = if (rows.length() > 0) {
+            rows.getJSONObject(0)
+        } else {
+            JSONObject()
+        }
+
+        return RemoteAccount(
+            id = userId,
+            email = authUser.optString("email"),
+            displayName = profile.optString("display_name"),
+            bio = profile.optString("bio"),
+            role = UserRole.FREELANCER,
+            capabilities = "",
+            skills = ""
+        )
+    }
 
     fun updateProfile(input: RemoteProfileUpdate): RemoteAccount {
         require(Validation.text(input.displayName, 2, 120))
         require(Validation.text(input.bio, 0, 500))
-        require(Validation.text(input.capabilities, 0, 2000))
-        require(Validation.text(input.skills, 0, 1000))
+
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in again to update your profile")
+
+        val authUser = JSONObject(
+            String(
+                client.readJsonResponse(
+                    client.openGet("/auth/v1/user", token)
+                ),
+                StandardCharsets.UTF_8
+            )
+        )
+
+        val userId = authUser.optString("id")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+            "Supabase Auth returned an invalid user id"
+        }
+
+        val existingBytes = client.readJsonResponse(
+            client.openGet(
+                "/rest/v1/profiles?id=eq.$userId&select=id",
+                token
+            )
+        )
+        val existing = JSONArray(
+            String(existingBytes, StandardCharsets.UTF_8)
+        )
+
         val payload = JSONObject()
             .put("display_name", input.displayName.trim())
             .put("bio", input.bio.trim())
-            .put("capabilities", input.capabilities.trim())
-            .put("skills", input.skills.trim())
-            .toString().toByteArray(StandardCharsets.UTF_8)
-        return parseUser(JSONObject(String(client.readJsonResponse(
-            client.openJsonPatch("/me", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
-        ), StandardCharsets.UTF_8)))
-    }
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
 
-    private fun parseUser(x: JSONObject) = RemoteAccount(
-        id = x.optString("id"),
-        email = x.getString("email"),
-        displayName = x.optString("display_name", x.optString("name")),
-        bio = x.optString("bio"),
-        role = runCatching { UserRole.valueOf(x.optString("role", UserRole.FREELANCER.name)) }.getOrDefault(UserRole.FREELANCER),
-        capabilities = x.optString("capabilities"),
-        skills = x.optString("skills")
-    )
+        if (existing.length() > 0) {
+            client.readJsonResponse(
+                client.openJsonPatch(
+                    "/rest/v1/profiles?id=eq.$userId",
+                    payload,
+                    token,
+                    SecureApiClient.newIdempotencyKey()
+                )
+            )
+        } else {
+            val newProfile = JSONObject()
+                .put("id", userId)
+                .put("display_name", input.displayName.trim())
+                .put("bio", input.bio.trim())
+                .toString()
+                .toByteArray(StandardCharsets.UTF_8)
+
+            client.readJsonResponse(
+                client.openJsonPost(
+                    "/rest/v1/profiles",
+                    newProfile,
+                    token,
+                    SecureApiClient.newIdempotencyKey()
+                )
+            )
+        }
+
+        return currentUser()
+    }
 }
 
 data class RemoteAccount(
