@@ -73,6 +73,10 @@ class SecureApiClient(private val config: BackendConfig) {
         // application-level validation step.
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "application/json")
+        // Supabase project API key
+config.anonKey.takeIf { it.isNotBlank() }?.let {
+    connection.setRequestProperty("apikey", it)
+}
         connection.setRequestProperty(SecurityHeaders.REQUEST_ID, UUID.randomUUID().toString())
         accessToken?.takeIf { ApiRequestSecurityRules.canSendAccessToken(it) }?.let {
             connection.setRequestProperty("Authorization", "Bearer ${it.trim()}")
