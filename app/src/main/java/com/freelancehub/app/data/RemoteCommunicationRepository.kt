@@ -1,3 +1,4 @@
+
 package com.freelancehub.app.data
 
 import com.freelancehub.app.network.SecureApiClient
@@ -5,28 +6,36 @@ import com.freelancehub.app.security.MessageValidation
 import org.json.JSONArray
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
-import java.net.URLEncoder
 
-/** Server-backed messaging and notification source. No local fallback is permitted. */
+/** Server-backed messaging and notification source. */
 class RemoteCommunicationRepository(
     private val client: SecureApiClient,
     private val accessTokenProvider: () -> String?
 ) {
     fun listConversations(limit: Int = 50, cursor: String? = null): List<RemoteConversation> {
         require(limit in 1..50)
-        val query = pageQuery(limit, cursor)
-        val root = JSONObject(String(client.readJsonResponse(client.openGet("/conversations$query", accessTokenProvider())), StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: JSONArray()
-        return (0 until items.length()).map { c ->
-            val x = items.getJSONObject(c)
+        val token = requireAccessToken()
+        val userId = currentUserId(token)
+        val path = "/rest/v1/conversations?select=id,job_id,client_id,freelancer_id,updated_at&order=updated_at.desc&limit=$limit"
+        val rows = JSONArray(String(
+            client.readJsonResponse(client.openGet(path, token)),
+            StandardCharsets.UTF_8
+        ))
+
+        return (0 until rows.length()).map { i ->
+            val x = rows.getJSONObject(i)
+            val clientId = x.optString("client_id")
+            val freelancerId = x.optString("freelancer_id")
+            val otherId = if (userId == clientId) freelancerId else clientId
+
             RemoteConversation(
                 id = x.getString("id"),
-                jobId = x.optString("job_id"),
-                participantId = x.optString("participant_id"),
-                participantName = x.optString("participant_name"),
-                lastMessage = x.optString("last_message"),
-                lastMessageAt = x.optString("last_message_at"),
-                unreadCount = x.optInt("unread_count", 0)
+                jobId = x.optString("job_id", ""),
+                participantId = otherId,
+                participantName = "",
+                lastMessage = "",
+                lastMessageAt = x.optString("updated_at", ""),
+                unreadCount = 0
             )
         }
     }
@@ -34,72 +43,121 @@ class RemoteCommunicationRepository(
     fun listMessages(conversationId: String, limit: Int = 50, cursor: String? = null): List<RemoteMessage> {
         requireUuid(conversationId)
         require(limit in 1..50)
-        val query = pageQuery(limit, cursor)
-        val root = JSONObject(String(client.readJsonResponse(client.openGet("/conversations/$conversationId/messages$query", accessTokenProvider())), StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: JSONArray()
-        return (0 until items.length()).map { parseMessage(items.getJSONObject(it)) }
+        val token = requireAccessToken()
+        val path = "/rest/v1/messages?select=id,conversation_id,sender_id,body,read_at,created_at" +
+            "&conversation_id=eq.$conversationId&order=created_at.asc&limit=$limit"
+        val rows = JSONArray(String(
+            client.readJsonResponse(client.openGet(path, token)),
+            StandardCharsets.UTF_8
+        ))
+        return (0 until rows.length()).map { parseMessage(rows.getJSONObject(it)) }
     }
 
     fun sendMessage(conversationId: String, body: String): RemoteMessage {
         requireUuid(conversationId)
+        val token = requireAccessToken()
         val normalized = MessageValidation.normalize(body)
-        require(MessageValidation.validate(normalized) == null) { MessageValidation.validate(normalized) ?: "Invalid message" }
-        val payload = JSONObject().put("body", normalized).toString().toByteArray(StandardCharsets.UTF_8)
-        return parseMessage(JSONObject(String(client.readJsonResponse(
-            client.openJsonPost("/conversations/$conversationId/messages", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
-        ), StandardCharsets.UTF_8)))
+        val validationError = MessageValidation.validate(normalized)
+        require(validationError == null) { validationError ?: "Invalid message" }
+
+        val senderId = currentUserId(token)
+        val payload = JSONObject()
+            .put("conversation_id", conversationId)
+            .put("sender_id", senderId)
+            .put("body", normalized)
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+
+        val response = client.readJsonResponse(
+            client.openJsonPost(
+                "/rest/v1/messages?select=id,conversation_id,sender_id,body,read_at,created_at",
+                payload,
+                token,
+                SecureApiClient.newIdempotencyKey()
+            )
+        )
+        val rows = JSONArray(String(response, StandardCharsets.UTF_8))
+        check(rows.length() > 0) {
+            "The server did not return the saved message. Check Prefer: return=representation."
+        }
+        return parseMessage(rows.getJSONObject(0))
     }
 
+    // Message UPDATE is not attempted until a secure read-receipt RLS policy exists.
     fun markMessageRead(messageId: String): Boolean {
         requireUuid(messageId)
-        client.readJsonResponse(client.openJsonPatch(
-            "/messages/$messageId/read", ByteArray(0), accessTokenProvider(), SecureApiClient.newIdempotencyKey()
-        ))
-        return true
+        return false
     }
 
     fun listNotifications(limit: Int = 50, cursor: String? = null): List<RemoteNotification> {
         require(limit in 1..50)
-        val query = pageQuery(limit, cursor)
-        val root = JSONObject(String(client.readJsonResponse(client.openGet("/notifications$query", accessTokenProvider())), StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: JSONArray()
-        return (0 until items.length()).map { n ->
-            val x = items.getJSONObject(n)
+        val token = requireAccessToken()
+        val path = "/rest/v1/notifications?select=id,title,body,created_at,is_read,read_at" +
+            "&order=created_at.desc&limit=$limit"
+        val rows = JSONArray(String(
+            client.readJsonResponse(client.openGet(path, token)),
+            StandardCharsets.UTF_8
+        ))
+
+        return (0 until rows.length()).map { i ->
+            val x = rows.getJSONObject(i)
             RemoteNotification(
                 id = x.getString("id"),
-                title = x.getString("title"),
-                message = x.getString("message"),
-                createdAt = x.optString("created_at"),
-                read = !x.isNull("read_at")
+                title = x.optString("title", ""),
+                message = x.optString("body", ""),
+                createdAt = x.optString("created_at", ""),
+                read = x.optBoolean("is_read", false) || !x.isNull("read_at")
             )
         }
     }
 
     fun markNotificationRead(notificationId: String): Boolean {
         requireUuid(notificationId)
-        client.readJsonResponse(client.openJsonPatch(
-            "/notifications/$notificationId/read", ByteArray(0), accessTokenProvider(), SecureApiClient.newIdempotencyKey()
-        ))
+        val token = requireAccessToken()
+        val payload = JSONObject()
+            .put("is_read", true)
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+
+        client.readJsonResponse(
+            client.openJsonPatch(
+                "/rest/v1/notifications?id=eq.$notificationId",
+                payload,
+                token,
+                SecureApiClient.newIdempotencyKey()
+            )
+        )
         return true
     }
+
+    private fun currentUserId(token: String): String {
+        val user = JSONObject(String(
+            client.readJsonResponse(client.openGet("/auth/v1/user", token)),
+            StandardCharsets.UTF_8
+        ))
+        val id = user.optString("id")
+        requireUuid(id)
+        return id
+    }
+
+    private fun requireAccessToken(): String =
+        accessTokenProvider()?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("Please sign in again to use Messages")
 
     private fun parseMessage(x: JSONObject) = RemoteMessage(
         id = x.getString("id"),
         conversationId = x.getString("conversation_id"),
         senderId = x.getString("sender_id"),
-        senderName = x.optString("sender_name"),
+        senderName = "",
         body = x.getString("body"),
-        createdAt = x.optString("created_at"),
+        createdAt = x.optString("created_at", ""),
         read = !x.isNull("read_at")
     )
 
-    private fun pageQuery(limit: Int, cursor: String?): String = buildString {
-        append("?limit=").append(limit)
-        if (!cursor.isNullOrBlank()) append("&cursor=").append(URLEncoder.encode(cursor, "UTF-8"))
-    }
-
     private fun requireUuid(value: String) {
-        require(value.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid resource id" }
+        require(value.matches(
+            Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+        )) { "Invalid resource id" }
     }
 }
 
