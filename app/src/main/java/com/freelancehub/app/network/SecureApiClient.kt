@@ -87,9 +87,30 @@ config.anonKey.takeIf { it.isNotBlank() }?.let {
     fun readJsonResponse(connection: HttpURLConnection): ByteArray {
         val status = connection.responseCode
         val contentLength = connection.getHeaderFieldLong("Content-Length", -1L)
-        require(com.freelancehub.app.security.ApiResponseSecurityRules.canAcceptJson(
-            status, connection.contentType, contentLength
-        )) { "Unexpected or unsafe API response" }
+                val contentType = connection.contentType
+            ?.substringBefore(';')
+            ?.trim()
+            ?.take(80)
+            ?: "missing"
+
+        if (!com.freelancehub.app.security.ApiResponseSecurityRules.canAcceptJson(
+                status, connection.contentType, contentLength
+            )
+        ) {
+            val reason = when {
+                status !in 200..299 -> "HTTP status $status"
+                contentLength > com.freelancehub.app.security.ApiResponseSecurityRules.maxResponseBytes() ->
+                    "response exceeds size limit"
+                status != HttpURLConnection.HTTP_NO_CONTENT &&
+                    contentType != "missing" &&
+                    contentType != "application/json" &&
+                    !contentType.endsWith("+json") -> "non-JSON Content-Type"
+                else -> "response failed safety checks"
+            }
+            throw IllegalStateException(
+                "API response rejected (${connection.url.path}): $reason; Content-Type=$contentType"
+            )
+        }
         if (status == HttpURLConnection.HTTP_NO_CONTENT) return ByteArray(0)
         val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             ?: throw IllegalStateException("API request failed with HTTP $status")
