@@ -645,11 +645,22 @@ TextButton(
 }
 
 @Composable fun MainShell(repo:AppRepository, auth: com.freelancehub.app.auth.AuthService, logout:()->Unit){
-    val context=LocalContext.current
-    
-val remoteMarketplace=remember{RemoteMarketplaceRepository(SecureApiClient(backend),auth::accessTokenForApiBlocking)}
-val remoteAccount=remember{RemoteAccountRepository(SecureApiClient(backend),auth::accessTokenForApiBlocking)}
-    val remoteAccount=remember{RemoteAccountRepository(SecureApiClient(backend),TokenStore(context)::readAccessToken)}
+    val context = LocalContext.current
+    val backend = remember { RuntimeBackendConfig.current() }
+
+    val remoteMarketplace = remember {
+        RemoteMarketplaceRepository(
+            SecureApiClient(backend),
+            auth::accessTokenForApiBlocking
+        )
+    }
+
+    val remoteAccount = remember {
+        RemoteAccountRepository(
+            SecureApiClient(backend),
+            auth::accessTokenForApiBlocking
+        )
+    }
     var tab by remember{mutableStateOf(0)}
     var editing by remember{mutableStateOf(false)}
     var role by remember{mutableStateOf(repo.profile().role)}
