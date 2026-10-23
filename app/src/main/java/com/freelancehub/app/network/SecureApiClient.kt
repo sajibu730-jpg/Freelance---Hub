@@ -93,6 +93,17 @@ config.anonKey.takeIf { it.isNotBlank() }?.let {
             ?.take(80)
             ?: "missing"
 
+        if (status !in 200..299) {
+            val errorBody = connection.errorStream?.use { input ->
+                input.bufferedReader().use { it.readText().take(500) }
+            }.orEmpty()
+
+            throw IllegalStateException(
+                "API request rejected (${connection.url.path}): HTTP $status; " +
+                    errorBody
+            )
+        }
+
         if (!com.freelancehub.app.security.ApiResponseSecurityRules.canAcceptJson(
                 status, connection.contentType, contentLength
             )
