@@ -46,12 +46,19 @@ class SecureApiClient(private val config: BackendConfig) {
         path: String,
         body: ByteArray,
         accessToken: String? = null,
-        idempotencyKey: String? = null
+        idempotencyKey: String? = null,
+        preferRepresentation: Boolean = false
     ): HttpURLConnection {
         require(ApiRequestSecurityRules.canSendBody(body)) { "Request body is too large" }
         idempotencyKey?.let { require(ApiRequestSecurityRules.canUseIdempotencyKey(it)) { "Idempotency key is invalid" } }
         return open("POST", path, accessToken, body).also { connection ->
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            if (preferRepresentation) {
+    connection.setRequestProperty("Prefer", "return=representation")
+}
+            if (preferRepresentation) {
+    connection.setRequestProperty("Prefer", "return=representation")
+}
             idempotencyKey?.let { connection.setRequestProperty(SecurityHeaders.IDEMPOTENCY_KEY, it) }
             connection.doOutput = true
             connection.outputStream.use { it.write(body) }
