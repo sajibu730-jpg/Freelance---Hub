@@ -125,6 +125,37 @@ class AuthService(context: Context) {
         }
     }
 
+    @Synchronized
+    fun accessTokenForApiBlocking(): String? {
+        val access = tokenStore.readAccessToken() ?: return null
+
+        val expiresAt = runCatching {
+            val parts = access.split(".")
+            require(parts.size == 3)
+
+            val payloadBytes = android.util.Base64.decode(
+                parts[1],
+                android.util.Base64.URL_SAFE or
+                    android.util.Base64.NO_WRAP or
+                    android.util.Base64.NO_PADDING
+            )
+
+            JSONObject(
+                String(payloadBytes, StandardCharsets.UTF_8)
+            ).optLong("exp", 0L)
+        }.getOrDefault(0L)
+
+        if (expiresAt == 0L) return access
+
+        return if (
+            expiresAt <= System.currentTimeMillis() / 1000L + 90L
+        ) {
+            refreshBlocking().accessToken
+        } else {
+            access
+        }
+    }
+
     private fun refreshBlocking(): AuthSession {
         require(isConfigured()) { "Supabase is not configured." }
 
