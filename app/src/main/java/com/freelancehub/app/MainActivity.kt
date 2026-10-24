@@ -766,7 +766,7 @@ Scaffold(bottomBar={
             editing->RemoteProfileScreen(remoteAccount,{editing=false},{logout()})
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
-            tab==2->CoursesScreen()
+            tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
             else->RemoteProfileScreen(remoteAccount,{editing=true},{logout()})
         }}
@@ -1749,6 +1749,158 @@ fun RemoteCommunicationScreen(){
     }
 }
 
+
+@Composable
+fun RemoteNotificationsScreen() {
+    val context = LocalContext.current
+    val config = remember { RuntimeBackendConfig.current() }
+    val tokenStore = remember { TokenStore(context.applicationContext) }
+
+    val repo = remember(config) {
+        if (config.isConfigured()) {
+            RemoteCommunicationRepository(
+                SecureApiClient(config)
+            ) { tokenStore.readAccessToken() }
+        } else null
+    }
+
+    var notifications by remember {
+        mutableStateOf<List<RemoteNotification>>(emptyList())
+    }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    fun loadNotifications() {
+        if (repo == null) {
+            loading = false
+            error = "Backend is not configured."
+            return
+        }
+
+        loading = true
+        error = ""
+
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    repo.listNotifications()
+                }
+            }.onSuccess {
+                notifications = it
+            }.onFailure {
+                error = it.message ?: "Unable to load notifications."
+            }
+
+            loading = false
+        }
+    }
+
+    LaunchedEffect(repo) {
+        loadNotifications()
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(20.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Text(
+                "Notifications",
+                style = MaterialTheme.typography.headlineSmall
+            )
+
+            IconButton(onClick = { loadNotifications() }) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Refresh notifications"
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        if (loading) {
+            CircularProgressIndicator()
+        }
+
+        if (error.isNotBlank()) {
+            Text(
+                error,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        if (!loading && error.isBlank() && notifications.isEmpty()) {
+            Text("No notifications yet.")
+        }
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(notifications) { notification ->
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            notification.title,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(notification.message)
+
+                        Spacer(Modifier.height(8.dp))
+
+                        if (!notification.read) {
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        runCatching {
+                                            withContext(Dispatchers.IO) {
+                                                repo?.markNotificationRead(
+                                                    notification.id
+                                                ) ?: error(
+                                                    "Backend is not configured."
+                                                )
+                                            }
+                                        }.onSuccess {
+                                            notifications =
+                                                notifications.map { item ->
+                                                    if (item.id == notification.id) {
+                                                        item.copy(read = true)
+                                                    } else {
+                                                        item
+                                                    }
+                                                }
+                                        }.onFailure {
+                                            error = it.message
+                                                ?: "Unable to mark as read."
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("Mark as read")
+                            }
+                        } else {
+                            Text(
+                                "Read",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable fun ReviewScreen(repo:AppRepository,j:Job,back:()->Unit,onSubmit:(Review)->Unit){
     val p=repo.profile();val accepted=repo.proposals().firstOrNull{it.jobId==j.id && it.status==com.freelancehub.app.data.ProposalStatus.ACCEPTED};
