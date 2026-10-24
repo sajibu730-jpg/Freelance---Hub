@@ -55,6 +55,65 @@ email = authUser.optString("email"),
         )
     }
 
+    fun updateCoverPhoto(
+        imageBytes: ByteArray,
+        contentType: String
+    ): RemoteAccount {
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in again to update your cover photo")
+
+        val userId = currentUser().id
+        val photoUrl = client.uploadCoverPhoto(
+            userId,
+            imageBytes,
+            contentType,
+            token
+        )
+
+        val existingBytes = client.readJsonResponse(
+            client.openGet(
+                "/rest/v1/profiles?id=eq.$userId&select=id",
+                token
+            )
+        )
+        val existing = JSONArray(
+            String(existingBytes, StandardCharsets.UTF_8)
+        )
+
+        val payload = JSONObject()
+            .put("cover_photo_url", photoUrl)
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+
+        if (existing.length() > 0) {
+            client.readJsonResponse(
+                client.openJsonPatch(
+                    "/rest/v1/profiles?id=eq.$userId",
+                    payload,
+                    token,
+                    SecureApiClient.newIdempotencyKey()
+                )
+            )
+        } else {
+            val newProfile = JSONObject()
+                .put("id", userId)
+                .put("cover_photo_url", photoUrl)
+                .toString()
+                .toByteArray(StandardCharsets.UTF_8)
+
+            client.readJsonResponse(
+                client.openJsonPost(
+                    "/rest/v1/profiles",
+                    newProfile,
+                    token,
+                    SecureApiClient.newIdempotencyKey()
+                )
+            )
+        }
+
+        return currentUser()
+    }
+
     fun updateProfile(input: RemoteProfileUpdate): RemoteAccount {
         require(Validation.text(input.displayName, 2, 120))
         require(Validation.text(input.bio, 0, 500))
