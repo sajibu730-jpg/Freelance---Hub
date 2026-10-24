@@ -91,6 +91,41 @@ config.anonKey.takeIf { it.isNotBlank() }?.let {
         return connection
     }
 
+    fun uploadCoverPhoto(
+        userId: String,
+        imageBytes: ByteArray,
+        contentType: String,
+        accessToken: String
+    ): String {
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+            "Invalid user id"
+        }
+        require(contentType in listOf("image/jpeg", "image/png", "image/webp")) {
+            "Only JPEG, PNG, and WebP images are allowed"
+        }
+        require(imageBytes.isNotEmpty() && imageBytes.size <= 5 * 1024 * 1024) {
+            "Image must be between 1 byte and 5 MB"
+        }
+
+        val extension = when (contentType) {
+            "image/jpeg" -> "jpg"
+            "image/png" -> "png"
+            else -> "webp"
+        }
+        val fileName = "${UUID.randomUUID()}.$extension"
+        val objectPath = "$userId/$fileName"
+        val requestPath = "/storage/v1/object/profile-covers/$objectPath"
+
+        val connection = open("POST", requestPath, accessToken, imageBytes)
+        connection.setRequestProperty("Content-Type", contentType)
+        connection.setRequestProperty("x-upsert", "false")
+        connection.doOutput = true
+        connection.outputStream.use { it.write(imageBytes) }
+        readJsonResponse(connection)
+
+        return "${config.baseUrl.trimEnd('/')}/storage/v1/object/public/profile-covers/$objectPath"
+    }
+
     fun readJsonResponse(connection: HttpURLConnection): ByteArray {
         val status = connection.responseCode
         val contentLength = connection.getHeaderFieldLong("Content-Length", -1L)
