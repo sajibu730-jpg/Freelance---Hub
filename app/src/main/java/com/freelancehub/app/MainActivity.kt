@@ -714,28 +714,52 @@ if (showExitDialog) {
 }
 
 Scaffold(bottomBar={
-    NavigationBar {
-        listOf("Home","Jobs","Notifications","Messages","Profile").forEachIndexed { i, n ->
-            NavigationBarItem(
-                selected = tab == i,
-                onClick = { tab = i },
-                icon = {
-                    Icon(
-                        imageVector = listOf(
-                            Icons.Filled.Home,
-                            Icons.Filled.Work,
-                            Icons.Filled.Notifications,
-                            Icons.Filled.Mail,
-                            Icons.Filled.Person
-                        )[i],
-                        contentDescription = n,
-                        modifier = Modifier.size(28.dp)
-                    )
-                },
-                label = { Text(n) }
+    
+NavigationBar(
+    containerColor = androidx.compose.ui.graphics.Color.White,
+    contentColor = androidx.compose.ui.graphics.Color(0xFF243B64),
+    tonalElevation = 8.dp
+) {
+    listOf(
+        "Home",
+        "Jobs",
+        "Notifications",
+        "Messages",
+        "Profile"
+    ).forEachIndexed { i, n ->
+        NavigationBarItem(
+            selected = tab == i,
+            onClick = { tab = i },
+            icon = {
+                Icon(
+                    imageVector = listOf(
+                        Icons.Filled.Home,
+                        Icons.Filled.Work,
+                        Icons.Filled.Notifications,
+                        Icons.Filled.Mail,
+                        Icons.Filled.Person
+                    )[i],
+                    contentDescription = n,
+                    modifier = Modifier.size(26.dp)
+                )
+            },
+            label = { Text(n) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor =
+                    androidx.compose.ui.graphics.Color(0xFF3157D5),
+                selectedTextColor =
+                    androidx.compose.ui.graphics.Color(0xFF243B64),
+                indicatorColor =
+                    androidx.compose.ui.graphics.Color(0xFFE8EDFF),
+                unselectedIconColor =
+                    androidx.compose.ui.graphics.Color(0xFF738096),
+                unselectedTextColor =
+                    androidx.compose.ui.graphics.Color(0xFF738096)
             )
-        }
+        )
     }
+}
+
 }) { p ->
         
         val pageBackground = when {
