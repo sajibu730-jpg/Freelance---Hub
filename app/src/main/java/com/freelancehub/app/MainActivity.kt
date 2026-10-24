@@ -712,7 +712,31 @@ if (showExitDialog) {
         }
     )
 }
-        Scaffold(bottomBar={NavigationBar{listOf("Home","Jobs","Courses","Messages","Profile").forEachIndexed{i,n->NavigationBarItem(selected=tab==i,onClick={tab=i},icon={Text(listOf("⌂","▣","▤","✉","●")[i])},label={Text(n)})}}}){p->
+
+Scaffold(bottomBar={
+    NavigationBar {
+        listOf("Home","Jobs","Notifications","Messages","Profile").forEachIndexed { i, n ->
+            NavigationBarItem(
+                selected = tab == i,
+                onClick = { tab = i },
+                icon = {
+                    Icon(
+                        imageVector = listOf(
+                            Icons.Filled.Home,
+                            Icons.Filled.Work,
+                            Icons.Filled.Notifications,
+                            Icons.Filled.Mail,
+                            Icons.Filled.Person
+                        )[i],
+                        contentDescription = n,
+                        modifier = Modifier.size(28.dp)
+                    )
+                },
+                label = { Text(n) }
+            )
+        }
+    }
+}) { p ->
         
         val pageBackground = when {
             showPostJob -> androidx.compose.ui.graphics.Color(0xFFF0F6FF)
