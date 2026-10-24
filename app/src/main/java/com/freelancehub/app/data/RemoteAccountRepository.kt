@@ -45,7 +45,8 @@ class RemoteAccountRepository(
 
         return RemoteAccount(
             id = userId,
-            email = authUser.optString("email"),
+coverPhotoUrl = profile.optString("cover_photo_url").takeIf { it.isNotBlank() },
+email = authUser.optString("email"),
             displayName = profile.optString("display_name"),
             bio = profile.optString("bio"),
             role = UserRole.FREELANCER,
