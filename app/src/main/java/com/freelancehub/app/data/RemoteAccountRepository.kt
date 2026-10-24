@@ -124,6 +124,7 @@ class RemoteAccountRepository(
 
 data class RemoteAccount(
     val id: String,
+    val coverPhotoUrl: String?,
     val email: String,
     val displayName: String,
     val bio: String,
