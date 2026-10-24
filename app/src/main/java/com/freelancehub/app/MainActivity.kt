@@ -31,6 +31,10 @@ import com.freelancehub.app.data.*
 import com.freelancehub.app.update.PlayUpdateManager
 import com.freelancehub.app.network.SecureApiClient
 import com.freelancehub.app.security.TokenStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.asImageBitmap
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
     override fun onCreate(b:Bundle?){
