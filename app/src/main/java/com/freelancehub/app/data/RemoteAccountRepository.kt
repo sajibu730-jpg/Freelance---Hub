@@ -31,7 +31,7 @@ class RemoteAccountRepository(
 
         val bytes = client.readJsonResponse(
             client.openGet(
-               "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,capabilities,skills,cover_photo_url,photo_url",
+               "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,capabilities,skills,cover_photo_url,photo_url,mobile_number",
                 token
             )
         )
