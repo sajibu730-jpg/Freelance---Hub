@@ -170,14 +170,21 @@ val payload = payloadJson.toString()
                 )
             )
         } else {
-                        val newProfile = JSONObject()
-                .put("id", userId)
-                .put("display_name", input.displayName.trim())
-                .put("bio", input.bio.trim())
-                .put("capabilities", input.capabilities.trim())
-                .put("skills", input.skills.trim())
-                .toString()
-                .toByteArray(StandardCharsets.UTF_8)
+                        
+val newProfileJson = JSONObject()
+    .put("id", userId)
+    .put("display_name", input.displayName.trim())
+    .put("bio", input.bio.trim())
+    .put("capabilities", input.capabilities.trim())
+    .put("skills", input.skills.trim())
+
+input.mobileNumber?.let {
+    newProfileJson.put("mobile_number", it.trim())
+}
+
+val newProfile = newProfileJson.toString()
+    .toByteArray(StandardCharsets.UTF_8)
+
 
             client.readJsonResponse(
                 client.openJsonPost(
