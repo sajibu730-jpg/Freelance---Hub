@@ -1974,7 +1974,7 @@ fun RemoteNotificationsScreen() {
             Text(if(p.skills.isBlank())"Skills: not added" else "Skills: ${p.skills}")
             Spacer(Modifier.height(20.dp))
             Button(onClick={editing=true},modifier=Modifier.fillMaxWidth()){Text("Edit profile")}
-            OutlinedButton(onClick=logout,modifier=Modifier.fillMaxWidth()){Text("Sign out")}
+            
         }
     }
 }
