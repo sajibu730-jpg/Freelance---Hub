@@ -31,7 +31,7 @@ class RemoteAccountRepository(
 
         val bytes = client.readJsonResponse(
             client.openGet(
-                "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,cover_photo_url",
+               "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,cover_photo_url,photo_url",
                 token
             )
         )
@@ -44,9 +44,10 @@ class RemoteAccountRepository(
         }
 
         return RemoteAccount(
-            id = userId,
-coverPhotoUrl = profile.optString("cover_photo_url").takeIf { it.isNotBlank() },
-email = authUser.optString("email"),
+    id = userId,
+    coverPhotoUrl = profile.optString("cover_photo_url").takeIf { it.isNotBlank() },
+    photoPath = profile.optString("photo_url").takeIf { it.isNotBlank() },
+    email = authUser.optString("email"),
             displayName = profile.optString("display_name"),
             bio = profile.optString("bio"),
             role = UserRole.FREELANCER,
@@ -185,6 +186,7 @@ email = authUser.optString("email"),
 data class RemoteAccount(
     val id: String,
     val coverPhotoUrl: String?,
+    val photoPath: String?,
     val email: String,
     val displayName: String,
     val bio: String,
