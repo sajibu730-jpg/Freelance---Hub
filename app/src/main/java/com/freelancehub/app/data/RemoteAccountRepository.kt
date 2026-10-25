@@ -205,5 +205,6 @@ data class RemoteProfileUpdate(
     val displayName: String,
     val bio: String,
     val capabilities: String,
-    val skills: String
+        val skills: String,
+    val mobileNumber: String? = null
 )
