@@ -31,7 +31,7 @@ class RemoteAccountRepository(
 
         val bytes = client.readJsonResponse(
             client.openGet(
-               "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,cover_photo_url,photo_url",
+               "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,capabilities,skills,cover_photo_url,photo_url",
                 token
             )
         )
@@ -51,8 +51,8 @@ class RemoteAccountRepository(
             displayName = profile.optString("display_name"),
             bio = profile.optString("bio"),
             role = UserRole.FREELANCER,
-            capabilities = "",
-            skills = ""
+                        capabilities = profile.optString("capabilities"),
+            skills = profile.optString("skills")
         )
     }
 
@@ -146,9 +146,11 @@ class RemoteAccountRepository(
             String(existingBytes, StandardCharsets.UTF_8)
         )
 
-        val payload = JSONObject()
+                val payload = JSONObject()
             .put("display_name", input.displayName.trim())
             .put("bio", input.bio.trim())
+            .put("capabilities", input.capabilities.trim())
+            .put("skills", input.skills.trim())
             .toString()
             .toByteArray(StandardCharsets.UTF_8)
 
@@ -162,10 +164,12 @@ class RemoteAccountRepository(
                 )
             )
         } else {
-            val newProfile = JSONObject()
+                        val newProfile = JSONObject()
                 .put("id", userId)
                 .put("display_name", input.displayName.trim())
                 .put("bio", input.bio.trim())
+                .put("capabilities", input.capabilities.trim())
+                .put("skills", input.skills.trim())
                 .toString()
                 .toByteArray(StandardCharsets.UTF_8)
 
