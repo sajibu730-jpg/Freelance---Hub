@@ -52,7 +52,8 @@ class RemoteAccountRepository(
             bio = profile.optString("bio"),
             role = UserRole.FREELANCER,
                         capabilities = profile.optString("capabilities"),
-            skills = profile.optString("skills")
+            skills = profile.optString("skills"),
+            mobileNumber = profile.optString("mobile_number")
         )
     }
 
@@ -196,7 +197,8 @@ data class RemoteAccount(
     val bio: String,
     val role: UserRole,
     val capabilities: String,
-    val skills: String
+        val skills: String,
+    val mobileNumber: String = ""
 )
 
 data class RemoteProfileUpdate(
