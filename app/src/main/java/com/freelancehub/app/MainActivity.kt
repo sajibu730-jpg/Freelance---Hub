@@ -1984,6 +1984,7 @@ fun RemoteNotificationsScreen() {
     var bio by remember{mutableStateOf(profile.bio)}
     var capabilities by remember{mutableStateOf(profile.capabilities)}
     var skills by remember{mutableStateOf(profile.skills)}
+    var mobileNumber by remember{mutableStateOf(profile.mobileNumber)}
     var error by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
@@ -1993,6 +1994,12 @@ fun RemoteNotificationsScreen() {
             Text("Edit profile",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
             OutlinedTextField(name,{name=it},label={Text("Name")},modifier=Modifier.fillMaxWidth())
             OutlinedTextField(profile.email,{},label={Text("Email (account identity)")},modifier=Modifier.fillMaxWidth(),readOnly=true)
+            OutlinedTextField(
+    mobileNumber,
+    { mobileNumber = it },
+    label = { Text("Mobile number") },
+    modifier = Modifier.fillMaxWidth()
+)
             OutlinedTextField(bio,{bio=it},label={Text("Bio")},minLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(capabilities,{capabilities=it},label={Text("What work can you do?")},minLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(skills,{skills=it},label={Text("Skills")},modifier=Modifier.fillMaxWidth())
@@ -2002,7 +2009,9 @@ fun RemoteNotificationsScreen() {
             Button(enabled=valid&&!busy,onClick={
                 busy=true;error=""
                 scope.launch(Dispatchers.IO){
-                    runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim()))}
+                    
+runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),mobileNumber.trim()))}
+
                         .onSuccess{withContext(Dispatchers.Main){done()}}
                         .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Profile update failed."}}
                 }
