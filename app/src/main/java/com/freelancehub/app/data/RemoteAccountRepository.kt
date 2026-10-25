@@ -147,13 +147,18 @@ class RemoteAccountRepository(
             String(existingBytes, StandardCharsets.UTF_8)
         )
 
-                val payload = JSONObject()
-            .put("display_name", input.displayName.trim())
-            .put("bio", input.bio.trim())
-            .put("capabilities", input.capabilities.trim())
-            .put("skills", input.skills.trim())
-            .toString()
-            .toByteArray(StandardCharsets.UTF_8)
+                val payloadJson = JSONObject()
+    .put("display_name", input.displayName.trim())
+    .put("bio", input.bio.trim())
+    .put("capabilities", input.capabilities.trim())
+    .put("skills", input.skills.trim())
+
+input.mobileNumber?.let {
+    payloadJson.put("mobile_number", it.trim())
+}
+
+val payload = payloadJson.toString()
+    .toByteArray(StandardCharsets.UTF_8)
 
         if (existing.length() > 0) {
             client.readJsonResponse(
