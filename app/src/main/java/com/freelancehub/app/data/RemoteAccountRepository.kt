@@ -166,7 +166,7 @@ val payload = payloadJson.toString()
                     "/rest/v1/profiles?id=eq.$userId",
                     payload,
                     token,
-                    SecureApiClient.newIdempotencyKey()
+                    SecureApiClient.newIdempotencyKey(),
                     preferRepresentation = true
                 )
             )
