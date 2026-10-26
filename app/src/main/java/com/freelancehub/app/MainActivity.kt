@@ -2011,8 +2011,7 @@ fun RemoteNotificationsScreen() {
                 busy=true;error=""
                 scope.launch(Dispatchers.IO){
                     
-runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),mobileNumber.trim()))}
-
+runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),mobileNumber.trim().takeIf { it != profile.mobileNumber.trim() }))}
                         .onSuccess{withContext(Dispatchers.Main){done()}}
                         .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Profile update failed."}}
                 }
