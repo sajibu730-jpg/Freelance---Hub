@@ -1967,6 +1967,7 @@ fun RemoteNotificationsScreen() {
         profile?.let{p->
             Text(if(p.displayName.isBlank())"Your profile is not completed yet." else p.displayName,style=MaterialTheme.typography.titleLarge)
             Text(p.email)
+            Text(if(p.mobileNumber.isBlank()) "Mobile number: not added" else "Mobile number: ${p.mobileNumber}")
             Text("Account type: ${p.role.name.lowercase().replaceFirstChar{it.uppercase()}}")
             Spacer(Modifier.height(8.dp))
             if(p.bio.isNotBlank()) Text(p.bio)
