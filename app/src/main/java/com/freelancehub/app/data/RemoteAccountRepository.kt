@@ -160,8 +160,9 @@ input.mobileNumber?.let {
 val payload = payloadJson.toString()
     .toByteArray(StandardCharsets.UTF_8)
 
+        
         if (existing.length() > 0) {
-            client.readJsonResponse(
+            val updatedBytes = client.readJsonResponse(
                 client.openJsonPatch(
                     "/rest/v1/profiles?id=eq.$userId",
                     payload,
@@ -170,7 +171,18 @@ val payload = payloadJson.toString()
                     preferRepresentation = true
                 )
             )
+
+            val updatedRows = JSONArray(
+                String(updatedBytes, StandardCharsets.UTF_8)
+            )
+
+            if (updatedRows.length() == 0) {
+                throw IllegalStateException(
+                    "Profile update was not confirmed by the server"
+                )
+            }
         } else {
+
                         
 val newProfileJson = JSONObject()
     .put("id", userId)
