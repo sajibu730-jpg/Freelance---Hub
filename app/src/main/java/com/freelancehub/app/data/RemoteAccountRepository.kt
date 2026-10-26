@@ -167,6 +167,7 @@ val payload = payloadJson.toString()
                     payload,
                     token,
                     SecureApiClient.newIdempotencyKey()
+                    preferRepresentation = true
                 )
             )
         } else {
