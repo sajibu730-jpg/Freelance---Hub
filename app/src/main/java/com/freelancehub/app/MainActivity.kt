@@ -1483,7 +1483,7 @@ fun reload() {
     var title by remember{mutableStateOf("")};var client by remember{mutableStateOf("")};var budget by remember{mutableStateOf("")};var skills by remember{mutableStateOf("")};var desc by remember{mutableStateOf("")};var deliverables by remember{mutableStateOf("")};var revisions by remember{mutableStateOf("")};var formats by remember{mutableStateOf("")};var reference by remember{mutableStateOf("")};var error by remember{mutableStateOf("")}
     val valid=Validation.text(title,3,120)&&Validation.text(client,2,120)&&Validation.text(budget,1,120)&&Validation.text(skills,2,500)&&Validation.text(desc,20,5000)&&Validation.text(deliverables,2,2000)&&Validation.text(revisions,2,500)&&Validation.text(formats,2,1000)&&reference.length<=2000&&ownerEmail.isNotBlank()
     Column(Modifier.fillMaxSize().padding(20.dp)){Text("Post a job",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp));
-    OutlinedTextField(title,{title=it},label={Text("Job title (3–120 chars)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(client,{client=it},label={Text("Client / company")},modifier=Modifier.fillMaxWidth());OutlinedTextField(budget,{budget=it},label={Text("Budget (USD)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(skills,{skills=it},label={Text("Skills")},modifier=Modifier.fillMaxWidth());
+    OutlinedTextField(title,{title=it},label={Text("Job title (3–120 chars)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(client,{client=it},label={Text("Client / company")},modifier=Modifier.fillMaxWidth());OutlinedTextField(budget,{budget=it},label={Text("Budget (USD)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(skills,{skills=it;error=""},label={Text("Skills")},modifier=Modifier.fillMaxWidth());
         OutlinedTextField(desc,{desc=it},label={Text("Description (min 20 chars)")},minLines=4,modifier=Modifier.fillMaxWidth());OutlinedTextField(deliverables,{deliverables=it},label={Text("Deliverables (required)")},minLines=2,modifier=Modifier.fillMaxWidth());OutlinedTextField(revisions,{revisions=it},label={Text("Revisions included (required)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(formats,{formats=it},label={Text("File formats / delivery method (required)")},modifier=Modifier.fillMaxWidth());OutlinedTextField(reference,{reference=it},label={Text("Reference / example (optional)")},modifier=Modifier.fillMaxWidth());if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error);Spacer(Modifier.height(12.dp));Button(onClick={if(valid){onSave(Job(id=(System.currentTimeMillis()%1000000).toInt(),title=title.trim(),client=client.trim(),budget=budget.trim(),skills=skills.trim(),description=desc.trim(),deliverables=deliverables.trim(),revisions=revisions.trim(),fileFormats=formats.trim(),reference=reference.trim(),ownerEmail=ownerEmail.trim()))}else error="Please complete the required fields and keep the text within the shown limits."},modifier=Modifier.fillMaxWidth()){Text("Publish job")};TextButton(onClick=back){Text("Cancel")}}
 }
 
@@ -1997,8 +1997,8 @@ fun RemoteNotificationsScreen() {
     LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
         item{
             Text("Edit profile",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
-            OutlinedTextField(name,{name=it},label={Text("Name")},modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(newEmail,{newEmail=it;emailMessage=""},label={Text("Email address")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+            OutlinedTextField(name,{name=it;error=""},label={Text("Name")},modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(newEmail,{newEmail=it;emailMessage="";error=""},label={Text("Email address")},modifier=Modifier.fillMaxWidth(),singleLine=true)
             Text("Changing email requires confirmation from the new address. Your current email stays active until confirmation.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(
                 enabled = !busy && Validation.email(newEmail) && !newEmail.trim().equals(profile.email.trim(), ignoreCase = true),
@@ -2011,7 +2011,7 @@ fun RemoteNotificationsScreen() {
                             .onSuccess {
                                 withContext(Dispatchers.Main) {
                                     busy = false
-                                    emailMessage = "Email change requested. Open the confirmation email sent to the new address."
+                                    emailMessage = "Email change request accepted. Check the new address for a confirmation message."
                                 }
                             }
                             .onFailure { e ->
@@ -2026,15 +2026,15 @@ fun RemoteNotificationsScreen() {
             if (emailMessage.isNotBlank()) Text(emailMessage,color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.bodySmall)
             OutlinedTextField(
                 mobileNumber,
-                { mobileNumber = it },
+                { mobileNumber = it; error = "" },
                 label = { Text("Mobile number (with country code)") },
                 placeholder = { Text("+971501234567") },
                 supportingText = { Text("Use international format starting with + and country code. A changed number can be changed again after six months.") },
                 isError = !mobileUnchanged && !mobileLooksInternational,
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(bio,{bio=it},label={Text("Bio")},minLines=3,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(capabilities,{capabilities=it},label={Text("What work can you do?")},minLines=3,modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(bio,{bio=it;error=""},label={Text("Bio")},minLines=3,modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(capabilities,{capabilities=it;error=""},label={Text("What work can you do?")},minLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(skills,{skills=it},label={Text("Skills")},modifier=Modifier.fillMaxWidth())
             Text("Account type: ${profile.role.name.lowercase().replaceFirstChar{it.uppercase()}} (cannot be changed after account creation)",style=MaterialTheme.typography.bodySmall)
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
