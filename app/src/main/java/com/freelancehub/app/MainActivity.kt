@@ -2036,7 +2036,7 @@ fun RemoteNotificationsScreen() {
             )
             OutlinedTextField(bio,{bio=it;error=""},label={Text("Bio")},minLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(capabilities,{capabilities=it;error=""},label={Text("What work can you do?")},minLines=3,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(skills,{skills=it},label={Text("Skills")},modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(skills,{skills=it;error=""},label={Text("Skills")},modifier=Modifier.fillMaxWidth())
             Text("Account type: ${profile.role.name.lowercase().replaceFirstChar{it.uppercase()}} (cannot be changed after account creation)",style=MaterialTheme.typography.bodySmall)
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
             Spacer(Modifier.height(12.dp))
