@@ -227,7 +227,7 @@ class AuthService(context: Context) {
         }
         val session = reauthenticateBlocking(currentPassword)
         request(
-            method = "PATCH",
+            method = "PUT",
             path = "/auth/v1/user",
             body = JSONObject().put("email", newEmail.trim()).toString(),
             accessToken = session.accessToken
