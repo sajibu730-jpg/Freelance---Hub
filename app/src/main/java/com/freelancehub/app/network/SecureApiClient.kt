@@ -62,9 +62,17 @@ fun openJsonPatch(
         connection.doOutput = true
         connection.outputStream.use { it.write(body) }
     }
+}
 
-    fun openJsonPut(path: String, body: ByteArray, accessToken: String? = null): HttpURLConnection {
-        require(ApiRequestSecurityRules.canSendBody(body)) { "Request body is too large" }
+
+    fun openJsonPut(
+        path: String,
+        body: ByteArray,
+        accessToken: String? = null
+    ): HttpURLConnection {
+        require(ApiRequestSecurityRules.canSendBody(body)) {
+            "Request body is too large"
+        }
         return open("PUT", path, accessToken, body).also { connection ->
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connection.doOutput = true
