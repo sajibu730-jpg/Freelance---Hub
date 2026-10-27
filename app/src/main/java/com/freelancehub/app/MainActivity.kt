@@ -791,12 +791,12 @@ NavigationBar(
             showProjectAnalysis->ProjectAnalysisScreen({showProjectAnalysis=false})
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
-            editing->RemoteProfileScreen(remoteAccount,{editing=false},{logout()})
+            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteAccount,{editing=true},{logout()})
+            else->RemoteProfileScreen(remoteAccount,auth,{editing=true},{logout()})
         }}
     }
 }
@@ -1941,82 +1941,195 @@ fun RemoteNotificationsScreen() {
         Button(onClick={if(reviewee.isNotBlank())onSubmit(Review(j.id,p.email,p.name,reviewee,revieweeName,rating,comment))},enabled=reviewee.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("Submit review")};Text("Reviews can be submitted once per participant per completed job.");TextButton(onClick=back){Text("Cancel")}}
 }
 
-@Composable fun RemoteProfileScreen(account:RemoteAccountRepository,edit:()->Unit,logout:()->Unit){
-    var profile by remember{mutableStateOf<RemoteAccount?>(null)}
-    var loading by remember{mutableStateOf(true)}
-    var error by remember{mutableStateOf("")}
-    var editing by remember{mutableStateOf(false)}
-    val scope=rememberCoroutineScope()
-    fun load(){
-        loading=true; error=""
-        scope.launch(Dispatchers.IO){
-            runCatching{account.currentUser()}.onSuccess{value->withContext(Dispatchers.Main){profile=value;loading=false}}
-                .onFailure{e->withContext(Dispatchers.Main){error=e.message?:"Unable to load profile.";loading=false}}
+private data class DialCountry(val name: String, val code: String)
+private val dialCountries = listOf(
+    DialCountry("Australia", "+61"), DialCountry("Bahrain", "+973"),
+    DialCountry("Bangladesh", "+880"), DialCountry("Brazil", "+55"),
+    DialCountry("Canada", "+1"), DialCountry("China", "+86"),
+    DialCountry("Egypt", "+20"), DialCountry("France", "+33"),
+    DialCountry("Germany", "+49"), DialCountry("Ghana", "+233"),
+    DialCountry("India", "+91"), DialCountry("Indonesia", "+62"),
+    DialCountry("Ireland", "+353"), DialCountry("Italy", "+39"),
+    DialCountry("Japan", "+81"), DialCountry("Jordan", "+962"),
+    DialCountry("Kenya", "+254"), DialCountry("Kuwait", "+965"),
+    DialCountry("Malaysia", "+60"), DialCountry("Mexico", "+52"),
+    DialCountry("Nepal", "+977"), DialCountry("Netherlands", "+31"),
+    DialCountry("New Zealand", "+64"), DialCountry("Nigeria", "+234"),
+    DialCountry("Oman", "+968"), DialCountry("Pakistan", "+92"),
+    DialCountry("Philippines", "+63"), DialCountry("Qatar", "+974"),
+    DialCountry("Saudi Arabia", "+966"), DialCountry("Singapore", "+65"),
+    DialCountry("South Africa", "+27"), DialCountry("South Korea", "+82"),
+    DialCountry("Spain", "+34"), DialCountry("Sri Lanka", "+94"),
+    DialCountry("Sweden", "+46"), DialCountry("Switzerland", "+41"),
+    DialCountry("Thailand", "+66"), DialCountry("Turkey", "+90"),
+    DialCountry("United Arab Emirates", "+971"), DialCountry("United Kingdom", "+44"),
+    DialCountry("United States", "+1"), DialCountry("Vietnam", "+84")
+)
+
+@Composable fun RemoteProfileScreen(account: RemoteAccountRepository, auth: com.freelancehub.app.auth.AuthService, edit: () -> Unit, logout: () -> Unit) {
+    var profile by remember { mutableStateOf<RemoteAccount?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf("") }
+    var editing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    fun load() {
+        loading = true
+        scope.launch(Dispatchers.IO) {
+            runCatching { account.currentUser() }
+                .onSuccess { value -> withContext(Dispatchers.Main) { profile = value; loading = false } }
+                .onFailure { e -> withContext(Dispatchers.Main) { error = e.message ?: "Unable to load profile."; loading = false } }
         }
     }
-    LaunchedEffect(Unit){load()}
-    if(editing && profile!=null){
-        RemoteProfileEditor(profile!!,account,{editing=false;load()},{editing=false})
+    LaunchedEffect(Unit) { load() }
+    if (editing && profile != null) {
+        RemoteProfileEditor(profile!!, account, auth, { editing = false; load() }, { editing = false })
         return
     }
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Profile",style=MaterialTheme.typography.headlineSmall)
+    Column(Modifier.fillMaxSize().padding(20.dp)) {
+        Text("Profile", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(12.dp))
-        if(loading) CircularProgressIndicator()
-        if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
-        profile?.let{p->
-            Text(if(p.displayName.isBlank())"Your profile is not completed yet." else p.displayName,style=MaterialTheme.typography.titleLarge)
+        if (loading) CircularProgressIndicator()
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+        profile?.let { p ->
+            Text(if (p.displayName.isBlank()) "Your profile is not completed yet." else p.displayName, style = MaterialTheme.typography.titleLarge)
             Text(p.email)
-            Text(if(p.mobileNumber.isBlank()) "Mobile number: not added" else "Mobile number: ${p.mobileNumber}")
-            Text("Account type: ${p.role.name.lowercase().replaceFirstChar{it.uppercase()}}")
+            Text(if (p.mobileNumber.isBlank()) "Mobile number: not added" else "Mobile number: " + p.mobileNumber)
+            Text("Account type: " + p.role.name.lowercase().replaceFirstChar { it.uppercase() })
             Spacer(Modifier.height(8.dp))
-            if(p.bio.isNotBlank()) Text(p.bio)
-            Text(if(p.capabilities.isBlank())"Capabilities: not added" else "Capabilities: ${p.capabilities}")
-            Text(if(p.skills.isBlank())"Skills: not added" else "Skills: ${p.skills}")
+            if (p.bio.isNotBlank()) Text(p.bio)
+            Text(if (p.capabilities.isBlank()) "Capabilities: not added" else "Capabilities: " + p.capabilities)
+            Text(if (p.skills.isBlank()) "Skills: not added" else "Skills: " + p.skills)
             Spacer(Modifier.height(20.dp))
-            Button(onClick={editing=true},modifier=Modifier.fillMaxWidth()){Text("Edit profile")}
-            
+            Button(onClick = { editing = true }, modifier = Modifier.fillMaxWidth()) { Text("Edit profile & security") }
         }
     }
 }
 
-@Composable fun RemoteProfileEditor(profile:RemoteAccount,account:RemoteAccountRepository,done:()->Unit,cancel:()->Unit){
-    var name by remember{mutableStateOf(profile.displayName)}
-    var bio by remember{mutableStateOf(profile.bio)}
-    var capabilities by remember{mutableStateOf(profile.capabilities)}
-    var skills by remember{mutableStateOf(profile.skills)}
-    var mobileNumber by remember{mutableStateOf(profile.mobileNumber)}
-    var error by remember{mutableStateOf("")}
-    var busy by remember{mutableStateOf(false)}
-    val scope=rememberCoroutineScope()
-    val valid=Validation.text(name,2,120)&&Validation.text(bio,0,500)&&Validation.text(capabilities,0,2000)&&Validation.text(skills,0,1000)
-    LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
-        item{
-            Text("Edit profile",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
-            OutlinedTextField(name,{name=it},label={Text("Name")},modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(profile.email,{},label={Text("Email (account identity)")},modifier=Modifier.fillMaxWidth(),readOnly=true)
-            OutlinedTextField(
-    mobileNumber,
-    { mobileNumber = it },
-    label = { Text("Mobile number") },
-    modifier = Modifier.fillMaxWidth()
-)
-            OutlinedTextField(bio,{bio=it},label={Text("Bio")},minLines=3,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(capabilities,{capabilities=it},label={Text("What work can you do?")},minLines=3,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(skills,{skills=it},label={Text("Skills")},modifier=Modifier.fillMaxWidth())
-            Text("Account type: ${profile.role.name.lowercase().replaceFirstChar{it.uppercase()}} (cannot be changed after account creation)",style=MaterialTheme.typography.bodySmall)
-            if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(12.dp))
-            Button(enabled=valid&&!busy,onClick={
-                busy=true;error=""
-                scope.launch(Dispatchers.IO){
-                    
-runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),mobileNumber.trim().takeIf { it != profile.mobileNumber.trim() }))}
-                        .onSuccess{withContext(Dispatchers.Main){done()}}
-                        .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Profile update failed."}}
+@Composable fun RemoteProfileEditor(profile: RemoteAccount, account: RemoteAccountRepository, auth: com.freelancehub.app.auth.AuthService, done: () -> Unit, cancel: () -> Unit) {
+    var name by remember { mutableStateOf(profile.displayName) }
+    var bio by remember { mutableStateOf(profile.bio) }
+    var capabilities by remember { mutableStateOf(profile.capabilities) }
+    var skills by remember { mutableStateOf(profile.skills) }
+    var selectedCountry by remember { mutableStateOf(dialCountries.firstOrNull { profile.mobileNumber.startsWith(it.code) } ?: dialCountries.first { it.name == "United Arab Emirates" }) }
+    var phoneDigits by remember { mutableStateOf(profile.mobileNumber.removePrefix(selectedCountry.code).filter { it.isDigit() }) }
+    var countrySearch by remember { mutableStateOf("") }
+    var countryDialog by remember { mutableStateOf(false) }
+    var currentPassword by remember { mutableStateOf("") }
+    var newEmail by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var otp by remember { mutableStateOf("") }
+    var otpRequested by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    var notice by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val valid = Validation.text(name, 2, 120) && Validation.text(bio, 0, 500) && Validation.text(capabilities, 0, 2000) && Validation.text(skills, 0, 1000)
+    val fullPhone = selectedCountry.code + phoneDigits.filter { it.isDigit() }.removePrefix("0")
+
+    if (countryDialog) {
+        AlertDialog(
+            onDismissRequest = { countryDialog = false },
+            title = { Text("Choose a country") },
+            text = {
+                Column {
+                    OutlinedTextField(countrySearch, { countrySearch = it }, label = { Text("Search country or dial code") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    LazyColumn(Modifier.heightIn(max = 320.dp)) {
+                        items(dialCountries.filter { it.name.contains(countrySearch, true) || it.code.contains(countrySearch.trim()) }) { country ->
+                            TextButton(onClick = { selectedCountry = country; countryDialog = false; countrySearch = "" }, modifier = Modifier.fillMaxWidth()) {
+                                Text(country.name + "  " + country.code, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
                 }
-            },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Saving…" else "Save profile")}
-            TextButton(onClick=cancel){Text("Cancel")}
+            },
+            confirmButton = { TextButton(onClick = { countryDialog = false }) { Text("Close") } }
+        )
+    }
+
+    LazyColumn(Modifier.fillMaxSize().padding(20.dp)) {
+        item {
+            Text("Profile & account security", style = MaterialTheme.typography.headlineSmall)
+            Text("Verify your identity before changing account credentials.")
+            Spacer(Modifier.height(16.dp))
+            Text("PROFILE DETAILS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            OutlinedTextField(name, { name = it }, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(selectedCountry.name + " (" + selectedCountry.code + ")", { countrySearch = it; countryDialog = true }, label = { Text("Search country or dial code") }, trailingIcon = { IconButton(onClick = { countryDialog = true }) { Icon(Icons.Filled.Search, contentDescription = "Search country") } }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(selectedCountry.code, {}, readOnly = true, label = { Text("Country code") }, modifier = Modifier.weight(0.38f), singleLine = true, trailingIcon = { IconButton(onClick = { countryDialog = true }) { Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose country") } })
+                OutlinedTextField(phoneDigits, { phoneDigits = it.filter(Char::isDigit).take(15) }, label = { Text("Mobile number") }, modifier = Modifier.weight(0.62f), singleLine = true)
+            }
+            Text("Phone changes require SMS verification and remain limited to once every six months.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(bio, { bio = it }, label = { Text("Professional bio") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(capabilities, { capabilities = it }, label = { Text("What work can you do?") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(skills, { skills = it }, label = { Text("Skills") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            Button(enabled = valid && !busy, onClick = {
+                busy = true; error = ""; notice = ""
+                scope.launch(Dispatchers.IO) {
+                    runCatching { account.updateProfile(RemoteProfileUpdate(name.trim(), bio.trim(), capabilities.trim(), skills.trim(), null)) }
+                        .onSuccess { withContext(Dispatchers.Main) { busy = false; notice = "Profile details saved. Mobile number is not changed until verified." } }
+                        .onFailure { e -> withContext(Dispatchers.Main) { busy = false; error = e.message ?: "Profile update failed." } }
+                }
+            }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Saving…" else "Save profile details") }
+
+            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            Text("VERIFY MOBILE NUMBER", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            OutlinedTextField(currentPassword, { currentPassword = it }, label = { Text("Current password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = PasswordVisualTransformation())
+            Button(enabled = !busy && phoneDigits.length >= 5 && currentPassword.isNotBlank() && fullPhone != profile.mobileNumber, onClick = {
+                busy = true; error = ""; notice = ""
+                scope.launch(Dispatchers.IO) {
+                    runCatching { auth.requestPhoneChangeBlocking(fullPhone, currentPassword) }
+                        .onSuccess { withContext(Dispatchers.Main) { busy = false; otpRequested = true; notice = "Verification code requested. Enter the SMS code below if delivery is enabled." } }
+                        .onFailure { e -> withContext(Dispatchers.Main) { busy = false; error = e.message ?: "Could not request phone verification." } }
+                }
+            }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Requesting…" else "Send SMS verification code") }
+            if (otpRequested) {
+                OutlinedTextField(otp, { otp = it.filter(Char::isDigit).take(8) }, label = { Text("SMS code") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                Button(enabled = !busy && otp.length >= 4, onClick = {
+                    busy = true; error = ""; notice = ""
+                    scope.launch(Dispatchers.IO) {
+                        runCatching {
+                            auth.verifyPhoneChangeBlocking(fullPhone, otp)
+                            account.updateProfile(RemoteProfileUpdate(name.trim(), bio.trim(), capabilities.trim(), skills.trim(), fullPhone))
+                        }.onSuccess { withContext(Dispatchers.Main) { busy = false; done() } }
+                            .onFailure { e -> withContext(Dispatchers.Main) { busy = false; error = e.message ?: "Phone verification failed." } }
+                    }
+                }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Verifying…" else "Verify code & save number") }
+            }
+
+            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            Text("CHANGE EMAIL", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            OutlinedTextField(profile.email, {}, label = { Text("Current email") }, modifier = Modifier.fillMaxWidth(), readOnly = true, singleLine = true)
+            OutlinedTextField(newEmail, { newEmail = it }, label = { Text("New email address") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Text("Complete the confirmation link from your email before treating the change as complete.", style = MaterialTheme.typography.bodySmall)
+            Button(enabled = !busy && newEmail.isNotBlank() && newEmail.trim() != profile.email && currentPassword.isNotBlank(), onClick = {
+                busy = true; error = ""; notice = ""
+                scope.launch(Dispatchers.IO) {
+                    runCatching { auth.requestEmailChangeBlocking(newEmail.trim(), currentPassword) }
+                        .onSuccess { withContext(Dispatchers.Main) { busy = false; notice = "Email change requested; confirmation is still required." } }
+                        .onFailure { e -> withContext(Dispatchers.Main) { busy = false; error = e.message ?: "Email change failed." } }
+                }
+            }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Requesting…" else "Verify & request email change") }
+
+            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            Text("CHANGE PASSWORD", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            OutlinedTextField(newPassword, { newPassword = it }, label = { Text("New password (8+ characters)") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = PasswordVisualTransformation())
+            OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("Confirm new password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = PasswordVisualTransformation())
+            Button(enabled = !busy && currentPassword.isNotBlank() && newPassword.length >= 8 && newPassword == confirmPassword && newPassword != currentPassword, onClick = {
+                busy = true; error = ""; notice = ""
+                scope.launch(Dispatchers.IO) {
+                    runCatching { auth.changePasswordBlocking(currentPassword, newPassword) }
+                        .onSuccess { withContext(Dispatchers.Main) { busy = false; newPassword = ""; confirmPassword = ""; currentPassword = ""; notice = "Password changed after current-password verification." } }
+                        .onFailure { e -> withContext(Dispatchers.Main) { busy = false; error = e.message ?: "Password change failed." } }
+                }
+            }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Changing…" else "Verify & change password") }
+            if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+            if (notice.isNotBlank()) Text(notice, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(12.dp))
+            Text("Account type: " + profile.role.name.lowercase().replaceFirstChar { it.uppercase() } + " (cannot be changed after account creation)", style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = cancel) { Text("Cancel") }
         }
     }
 }
