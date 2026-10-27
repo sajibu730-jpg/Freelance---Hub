@@ -1989,7 +1989,8 @@ fun RemoteNotificationsScreen() {
     var newEmail by remember{mutableStateOf(profile.email)}
     var emailMessage by remember{mutableStateOf("")}
     var error by remember{mutableStateOf("")}
-    var busy by remember{mutableStateOf(false)}
+    var saving by remember{mutableStateOf(false)}
+    var emailBusy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     val mobileUnchanged = mobileNumber.trim() == profile.mobileNumber.trim()
     val mobileLooksInternational = mobileNumber.trim().matches(Regex("^\\+[1-9][0-9]{7,14}$"))
@@ -2001,22 +2002,22 @@ fun RemoteNotificationsScreen() {
             OutlinedTextField(newEmail,{newEmail=it;emailMessage="";error=""},label={Text("Email address")},modifier=Modifier.fillMaxWidth(),singleLine=true)
             Text("Changing email requires confirmation from the new address. Your current email stays active until confirmation.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(
-                enabled = !busy && Validation.email(newEmail) && !newEmail.trim().equals(profile.email.trim(), ignoreCase = true),
+                enabled = !emailBusy && !saving && Validation.email(newEmail) && !newEmail.trim().equals(profile.email.trim(), ignoreCase = true),
                 onClick = {
-                    busy = true
+                    emailBusy = true
                     error = ""
                     emailMessage = ""
                     scope.launch(Dispatchers.IO) {
                         runCatching { account.requestEmailChange(newEmail.trim()) }
                             .onSuccess {
                                 withContext(Dispatchers.Main) {
-                                    busy = false
+                                    emailBusy = false
                                     emailMessage = "Email change request accepted. Check the new address for a confirmation message."
                                 }
                             }
                             .onFailure { e ->
                                 withContext(Dispatchers.Main) {
-                                    busy = false
+                                    emailBusy = false
                                     error = e.message ?: "Email change request failed."
                                 }
                             }
@@ -2039,15 +2040,15 @@ fun RemoteNotificationsScreen() {
             Text("Account type: ${profile.role.name.lowercase().replaceFirstChar{it.uppercase()}} (cannot be changed after account creation)",style=MaterialTheme.typography.bodySmall)
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
             Spacer(Modifier.height(12.dp))
-            Button(enabled=valid&&!busy,onClick={
-                busy=true;error=""
+            Button(enabled=valid&&!saving&&!emailBusy,onClick={
+                saving=true;error=""
                 scope.launch(Dispatchers.IO){
                     
 runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),mobileNumber.trim().takeIf { it != profile.mobileNumber.trim() }))}
                         .onSuccess{withContext(Dispatchers.Main){done()}}
-                        .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Profile update failed."}}
+                        .onFailure{e->withContext(Dispatchers.Main){saving=false;error=e.message?:"Profile update failed."}}
                 }
-            },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Saving…" else "Save profile")}
+            },modifier=Modifier.fillMaxWidth()){Text(if(saving)"Saving…" else "Save profile")}
             TextButton(onClick=cancel){Text("Cancel")}
         }
     }
