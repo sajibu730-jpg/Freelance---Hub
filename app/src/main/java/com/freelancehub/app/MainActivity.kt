@@ -1986,6 +1986,8 @@ fun RemoteNotificationsScreen() {
     var capabilities by remember{mutableStateOf(profile.capabilities)}
     var skills by remember{mutableStateOf(profile.skills)}
     var mobileNumber by remember{mutableStateOf(profile.mobileNumber)}
+    var newEmail by remember{mutableStateOf(profile.email)}
+    var emailMessage by remember{mutableStateOf("")}
     var error by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
@@ -1996,8 +1998,32 @@ fun RemoteNotificationsScreen() {
         item{
             Text("Edit profile",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
             OutlinedTextField(name,{name=it},label={Text("Name")},modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(profile.email,{},label={Text("Email (account identity)")},modifier=Modifier.fillMaxWidth(),readOnly=true)
-            Text("Email changes require confirmation and are not enabled in this editor yet.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(newEmail,{newEmail=it;emailMessage=""},label={Text("Email address")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+            Text("Changing email requires confirmation from the new address. Your current email stays active until confirmation.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(
+                enabled = !busy && Validation.email(newEmail) && !newEmail.trim().equals(profile.email.trim(), ignoreCase = true),
+                onClick = {
+                    busy = true
+                    error = ""
+                    emailMessage = ""
+                    scope.launch(Dispatchers.IO) {
+                        runCatching { account.requestEmailChange(newEmail.trim()) }
+                            .onSuccess {
+                                withContext(Dispatchers.Main) {
+                                    busy = false
+                                    emailMessage = "Email change requested. Open the confirmation email sent to the new address."
+                                }
+                            }
+                            .onFailure { e ->
+                                withContext(Dispatchers.Main) {
+                                    busy = false
+                                    error = e.message ?: "Email change request failed."
+                                }
+                            }
+                    }
+                }
+            ) { Text("Request email change") }
+            if (emailMessage.isNotBlank()) Text(emailMessage,color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.bodySmall)
             OutlinedTextField(
                 mobileNumber,
                 { mobileNumber = it },
