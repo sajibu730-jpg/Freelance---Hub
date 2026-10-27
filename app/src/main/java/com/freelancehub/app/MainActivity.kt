@@ -1997,7 +1997,7 @@ fun RemoteNotificationsScreen() {
             Text("Edit profile",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
             OutlinedTextField(name,{name=it},label={Text("Name")},modifier=Modifier.fillMaxWidth())
             OutlinedTextField(profile.email,{},label={Text("Email (account identity)")},modifier=Modifier.fillMaxWidth(),readOnly=true)
-            Text("To change your email, use account security settings. Email changes require confirmation.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Email changes require confirmation and are not enabled in this editor yet.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 mobileNumber,
                 { mobileNumber = it },
