@@ -190,6 +190,96 @@ class AuthService(context: Context) {
         return session
     }
 
+
+    /**
+     * Re-authenticate with the current password before any sensitive account change.
+     * Email changes remain pending until the Supabase confirmation link is completed.
+     */
+    private fun reauthenticateBlocking(currentPassword: String): AuthSession {
+        require(currentPassword.isNotBlank()) { "Enter your current password to verify your identity." }
+        val currentUser = request(
+            method = "GET",
+            path = "/auth/v1/user",
+            accessToken = tokenStore.readAccessToken()
+        )
+        val email = currentUser.optString("email")
+        require(email.isNotBlank()) { "Could not verify the current account email." }
+
+        val json = request(
+            method = "POST",
+            path = "/auth/v1/token?grant_type=password",
+            body = JSONObject().put("email", email).put("password", currentPassword).toString()
+        )
+        val access = json.optString("access_token")
+        val refresh = json.optString("refresh_token")
+        val user = json.optJSONObject("user") ?: error("Identity verification failed.")
+        require(access.isNotBlank() && refresh.isNotBlank()) {
+            "Identity verification did not return a valid session."
+        }
+        val session = makeSession(access, refresh, user, UserRole.FREELANCER)
+        tokenStore.saveSession(session.accessToken, session.refreshToken)
+        return session
+    }
+
+    fun requestEmailChangeBlocking(newEmail: String, currentPassword: String) {
+        require(newEmail.trim().matches(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))) {
+            "Enter a valid new email address."
+        }
+        val session = reauthenticateBlocking(currentPassword)
+        request(
+            method = "PATCH",
+            path = "/auth/v1/user",
+            body = JSONObject().put("email", newEmail.trim()).toString(),
+            accessToken = session.accessToken
+        )
+    }
+
+    fun changePasswordBlocking(currentPassword: String, newPassword: String) {
+        require(newPassword.length >= 8) { "Use at least 8 characters for the new password." }
+        val session = reauthenticateBlocking(currentPassword)
+        request(
+            method = "PUT",
+            path = "/auth/v1/user",
+            body = JSONObject().put("password", newPassword).toString(),
+            accessToken = session.accessToken
+        )
+    }
+
+    fun requestPhoneChangeBlocking(phoneE164: String, currentPassword: String) {
+        require(phoneE164.matches(Regex("^\\+[1-9][0-9]{6,14}$"))) {
+            "Choose a country code and enter a valid mobile number."
+        }
+        val session = reauthenticateBlocking(currentPassword)
+        request(
+            method = "PUT",
+            path = "/auth/v1/user",
+            body = JSONObject().put("phone", phoneE164).toString(),
+            accessToken = session.accessToken
+        )
+    }
+
+    fun verifyPhoneChangeBlocking(phoneE164: String, otp: String) {
+        require(otp.trim().matches(Regex("^[0-9]{4,8}$"))) {
+            "Enter the verification code sent to your phone."
+        }
+        val json = request(
+            method = "POST",
+            path = "/auth/v1/verify",
+            body = JSONObject()
+                .put("type", "phone_change")
+                .put("phone", phoneE164)
+                .put("token", otp.trim())
+                .toString()
+        )
+        val access = json.optString("access_token")
+        val refresh = json.optString("refresh_token")
+        val user = json.optJSONObject("user")
+        if (access.isNotBlank() && refresh.isNotBlank() && user != null) {
+            val session = makeSession(access, refresh, user, UserRole.FREELANCER)
+            tokenStore.saveSession(session.accessToken, session.refreshToken)
+        }
+    }
+
     fun logout(callback: ((Result<Unit>) -> Unit)? = null) {
         executor.execute {
             val result = runCatching {
