@@ -2036,8 +2036,28 @@ private val dialCountries = listOf(
     DialCountry("Norway", "+47"), DialCountry("Poland", "+48"),
     DialCountry("Portugal", "+351"), DialCountry("Romania", "+40"),
     DialCountry("Russia", "+7"), DialCountry("Taiwan", "+886"),
-    DialCountry("Ukraine", "+380"), DialCountry("Yemen", "+967")
-)
+    DialCountry("Ukraine", "+380"), DialCountry("Yemen", "+967"),
+    DialCountry("Anguilla", "+1"), DialCountry("Aruba", "+297"),
+    DialCountry("Bermuda", "+1"), DialCountry("British Virgin Islands", "+1"),
+    DialCountry("Cayman Islands", "+1"), DialCountry("Cocos (Keeling) Islands", "+61"),
+    DialCountry("Cook Islands", "+682"), DialCountry("Curacao", "+599"),
+    DialCountry("Falkland Islands", "+500"), DialCountry("Faroe Islands", "+298"),
+    DialCountry("French Guiana", "+594"), DialCountry("French Polynesia", "+689"),
+    DialCountry("Gibraltar", "+350"), DialCountry("Greenland", "+299"),
+    DialCountry("Guadeloupe", "+590"), DialCountry("Guam", "+1"),
+    DialCountry("Guernsey", "+44"), DialCountry("Isle of Man", "+44"),
+    DialCountry("Jersey", "+44"), DialCountry("Kosovo", "+383"),
+    DialCountry("Macau", "+853"), DialCountry("Martinique", "+596"),
+    DialCountry("Mayotte", "+262"), DialCountry("Montserrat", "+1"),
+    DialCountry("New Caledonia", "+687"), DialCountry("Niue", "+683"),
+    DialCountry("Norfolk Island", "+672"), DialCountry("Northern Mariana Islands", "+1"),
+    DialCountry("Puerto Rico", "+1"), DialCountry("Reunion", "+262"),
+    DialCountry("Saint Barthelemy", "+590"), DialCountry("Saint Helena", "+290"),
+    DialCountry("Saint Martin", "+590"), DialCountry("Sint Maarten", "+1"),
+    DialCountry("Tokelau", "+690"), DialCountry("Turks and Caicos Islands", "+1"),
+    DialCountry("US Virgin Islands", "+1"), DialCountry("Wallis and Futuna", "+681"),
+    DialCountry("Ivory Coast", "+225"), DialCountry("Korea, South", "+82")
+).distinctBy { it.name }
 
 @Composable fun RemoteProfileScreen(account: RemoteAccountRepository, auth: com.freelancehub.app.auth.AuthService, edit: () -> Unit, logout: () -> Unit) {
     var profile by remember { mutableStateOf<RemoteAccount?>(null) }
