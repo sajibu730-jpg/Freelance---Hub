@@ -116,6 +116,23 @@ class RemoteAccountRepository(
         return currentUser()
     }
 
+    fun requestEmailChange(newEmail: String) {
+        require(Validation.email(newEmail)) { "Enter a valid email address." }
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in again to change your email")
+        val current = currentUser()
+        require(!newEmail.trim().equals(current.email.trim(), ignoreCase = true)) {
+            "This is already your current email address."
+        }
+        val payload = JSONObject()
+            .put("email", newEmail.trim())
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        client.readJsonResponse(
+            client.openJsonPut("/auth/v1/user", payload, token)
+        )
+    }
+
     fun updateProfile(input: RemoteProfileUpdate): RemoteAccount {
         require(Validation.text(input.displayName, 2, 120))
         require(Validation.text(input.bio, 0, 500))
