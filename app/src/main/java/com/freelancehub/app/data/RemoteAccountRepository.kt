@@ -31,7 +31,7 @@ class RemoteAccountRepository(
 
         val bytes = client.readJsonResponse(
             client.openGet(
-               "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,capabilities,skills,cover_photo_url,photo_url,mobile_number",
+               "/rest/v1/profiles?id=eq.$userId&select=id,display_name,bio,capabilities,skills,cover_photo_url,photo_url,mobile_number,mobile_number_changed_at",
                 token
             )
         )
@@ -53,7 +53,8 @@ class RemoteAccountRepository(
             role = UserRole.FREELANCER,
                         capabilities = profile.optString("capabilities"),
             skills = profile.optString("skills"),
-            mobileNumber = profile.optString("mobile_number")
+            mobileNumber = profile.optString("mobile_number"),
+            mobileNumberChangedAt = profile.optString("mobile_number_changed_at").takeIf { it.isNotBlank() && it != "null" }
         )
     }
 
@@ -223,7 +224,8 @@ data class RemoteAccount(
     val role: UserRole,
     val capabilities: String,
         val skills: String,
-    val mobileNumber: String = ""
+    val mobileNumber: String = "",
+    val mobileNumberChangedAt: String? = null
 )
 
 data class RemoteProfileUpdate(
