@@ -1989,18 +1989,24 @@ fun RemoteNotificationsScreen() {
     var error by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
-    val valid=Validation.text(name,2,120)&&Validation.text(bio,0,500)&&Validation.text(capabilities,0,2000)&&Validation.text(skills,0,1000)
+    val mobileUnchanged = mobileNumber.trim() == profile.mobileNumber.trim()
+    val mobileLooksInternational = mobileNumber.trim().matches(Regex("^\\\\+[1-9][0-9]{7,14}$"))
+    val valid=Validation.text(name,2,120)&&Validation.text(bio,0,500)&&Validation.text(capabilities,0,2000)&&Validation.text(skills,0,1000)&&(mobileUnchanged || mobileLooksInternational)
     LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
         item{
             Text("Edit profile",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
             OutlinedTextField(name,{name=it},label={Text("Name")},modifier=Modifier.fillMaxWidth())
             OutlinedTextField(profile.email,{},label={Text("Email (account identity)")},modifier=Modifier.fillMaxWidth(),readOnly=true)
+            Text("To change your email, use account security settings. Email changes require confirmation.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
-    mobileNumber,
-    { mobileNumber = it },
-    label = { Text("Mobile number") },
-    modifier = Modifier.fillMaxWidth()
-)
+                mobileNumber,
+                { mobileNumber = it },
+                label = { Text("Mobile number (with country code)") },
+                placeholder = { Text("+971501234567") },
+                supportingText = { Text("Use international format starting with + and country code. A changed number can be changed again after six months.") },
+                isError = !mobileUnchanged && !mobileLooksInternational,
+                modifier = Modifier.fillMaxWidth()
+            )
             OutlinedTextField(bio,{bio=it},label={Text("Bio")},minLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(capabilities,{capabilities=it},label={Text("What work can you do?")},minLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(skills,{skills=it},label={Text("Skills")},modifier=Modifier.fillMaxWidth())
