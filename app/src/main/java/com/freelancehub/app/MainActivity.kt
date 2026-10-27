@@ -2026,6 +2026,12 @@ private val dialCountries = listOf(
     val scope = rememberCoroutineScope()
     val valid = Validation.text(name, 2, 120) && Validation.text(bio, 0, 500) && Validation.text(capabilities, 0, 2000) && Validation.text(skills, 0, 1000)
     val fullPhone = selectedCountry.code + phoneDigits.filter { it.isDigit() }.removePrefix("0")
+    val phoneCooldownUntil = remember(profile.mobileNumberChangedAt) {
+        runCatching {
+            profile.mobileNumberChangedAt?.let { java.time.OffsetDateTime.parse(it).plusMonths(6) }
+        }.getOrNull()
+    }
+    val phoneCooldownActive = phoneCooldownUntil?.isAfter(java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)) == true
 
     if (countryDialog) {
         AlertDialog(
@@ -2060,7 +2066,11 @@ private val dialCountries = listOf(
                 OutlinedTextField(selectedCountry.code, {}, readOnly = true, label = { Text("Country code") }, modifier = Modifier.weight(0.38f), singleLine = true, trailingIcon = { IconButton(onClick = { countryDialog = true }) { Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose country") } })
                 OutlinedTextField(phoneDigits, { phoneDigits = it.filter(Char::isDigit).take(15) }, label = { Text("Mobile number") }, modifier = Modifier.weight(0.62f), singleLine = true)
             }
-            Text("Phone changes require SMS verification and remain limited to once every six months.", style = MaterialTheme.typography.bodySmall)
+            if (phoneCooldownActive) {
+                Text("This mobile number is locked until " + phoneCooldownUntil!!.toLocalDate().toString() + " under the six-month rule.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            } else {
+                Text("Phone changes require SMS verification and remain limited to once every six months.", style = MaterialTheme.typography.bodySmall)
+            }
             OutlinedTextField(bio, { bio = it }, label = { Text("Professional bio") }, minLines = 3, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(capabilities, { capabilities = it }, label = { Text("What work can you do?") }, minLines = 3, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(skills, { skills = it }, label = { Text("Skills") }, modifier = Modifier.fillMaxWidth())
@@ -2077,7 +2087,7 @@ private val dialCountries = listOf(
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
             Text("VERIFY MOBILE NUMBER", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             OutlinedTextField(currentPassword, { currentPassword = it }, label = { Text("Current password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = PasswordVisualTransformation())
-            Button(enabled = !busy && phoneDigits.length >= 5 && currentPassword.isNotBlank() && fullPhone != profile.mobileNumber, onClick = {
+            Button(enabled = !busy && !phoneCooldownActive && phoneDigits.length >= 5 && currentPassword.isNotBlank() && fullPhone != profile.mobileNumber, onClick = {
                 busy = true; error = ""; notice = ""
                 scope.launch(Dispatchers.IO) {
                     runCatching { auth.requestPhoneChangeBlocking(fullPhone, currentPassword) }
