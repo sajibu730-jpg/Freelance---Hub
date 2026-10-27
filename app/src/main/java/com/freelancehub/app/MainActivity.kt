@@ -1990,7 +1990,7 @@ fun RemoteNotificationsScreen() {
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     val mobileUnchanged = mobileNumber.trim() == profile.mobileNumber.trim()
-    val mobileLooksInternational = mobileNumber.trim().matches(Regex("^\\\\+[1-9][0-9]{7,14}$"))
+    val mobileLooksInternational = mobileNumber.trim().matches(Regex("^\\+[1-9][0-9]{7,14}$"))
     val valid=Validation.text(name,2,120)&&Validation.text(bio,0,500)&&Validation.text(capabilities,0,2000)&&Validation.text(skills,0,1000)&&(mobileUnchanged || mobileLooksInternational)
     LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
         item{
