@@ -792,12 +792,12 @@ NavigationBar(
             showProjectAnalysis->ProjectAnalysisScreen({showProjectAnalysis=false})
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
-            editing->RemoteProfileScreen(remoteAccount,{editing=false},{logout()})
+            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteAccount,{editing=true},{logout()})
+            else->RemoteProfileScreen(remoteAccount,auth,{editing=true},{logout()})
         }}
     }
 }
@@ -1942,11 +1942,12 @@ fun RemoteNotificationsScreen() {
         Button(onClick={if(reviewee.isNotBlank())onSubmit(Review(j.id,p.email,p.name,reviewee,revieweeName,rating,comment))},enabled=reviewee.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("Submit review")};Text("Reviews can be submitted once per participant per completed job.");TextButton(onClick=back){Text("Cancel")}}
 }
 
-@Composable fun RemoteProfileScreen(account:RemoteAccountRepository,edit:()->Unit,logout:()->Unit){
+@Composable fun RemoteProfileScreen(account:RemoteAccountRepository,auth:com.freelancehub.app.auth.AuthService,edit:()->Unit,logout:()->Unit){
     var profile by remember{mutableStateOf<RemoteAccount?>(null)}
     var loading by remember{mutableStateOf(true)}
     var error by remember{mutableStateOf("")}
     var editing by remember{mutableStateOf(false)}
+    var security by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     fun load(){
         loading=true; error=""
@@ -1956,6 +1957,10 @@ fun RemoteNotificationsScreen() {
         }
     }
     LaunchedEffect(Unit){load()}
+    if(security && profile!=null){
+        RemoteAccountSecurityScreen(auth,profile!!.email,{security=false;load()},{security=false})
+        return
+    }
     if(editing && profile!=null){
         RemoteProfileEditor(profile!!,account,{editing=false;load()},{editing=false})
         return
@@ -1976,6 +1981,8 @@ fun RemoteNotificationsScreen() {
             Text(if(p.skills.isBlank())"Skills: not added" else "Skills: ${p.skills}")
             Spacer(Modifier.height(20.dp))
             Button(onClick={editing=true},modifier=Modifier.fillMaxWidth()){Text("Edit profile")}
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick={security=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Filled.Lock,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Account security")}
             
         }
     }
@@ -2076,6 +2083,77 @@ fun RemoteNotificationsScreen() {
             }
             OutlinedButton(onClick=cancel,modifier=Modifier.fillMaxWidth().height(50.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){Text("Cancel")}
         }
+    }
+}
+
+
+@Composable
+fun RemoteAccountSecurityScreen(
+    auth: com.freelancehub.app.auth.AuthService,
+    currentEmail: String,
+    done: () -> Unit,
+    back: () -> Unit
+) {
+    var method by remember { mutableStateOf("email") }
+    var target by remember { mutableStateOf("") }
+    var otp by remember { mutableStateOf("") }
+    var verifying by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
+    val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
+    Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF4F7FC)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Surface(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), color = navy) {
+            Column(Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(navy, blue))).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("SECURITY CENTER", color = androidx.compose.ui.graphics.Color(0xFFCEDBFF), style = MaterialTheme.typography.labelMedium)
+                Text("Verify account changes", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text("A change is not complete until Supabase verifies the new contact.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.86f))
+            }
+        }
+        ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Choose what to change", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") })
+                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile") })
+                }
+                Text(if (method == "email") "Current email: $currentEmail" else "Enter the new mobile number in international format, for example +9715XXXXXXXX.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
+                if (!verifying) {
+                    OutlinedTextField(value = target, onValueChange = { target = it.trimStart() }, label = { Text(if (method == "email") "New email address" else "New phone number (+country code)") }, leadingIcon = { Icon(if (method == "email") Icons.Filled.Email else Icons.Filled.Phone, contentDescription = null) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Button(enabled = !busy && target.isNotBlank() && (method != "email" || target.contains("@")), onClick = {
+                        busy = true; error = ""; message = ""
+                        val completion: (Result<Unit>) -> Unit = { result ->
+                            scope.launch(Dispatchers.Main) {
+                                busy = false
+                                result.onSuccess { verifying = true; message = "Verification requested. Check the new contact for the code sent by Supabase." }
+                                    .onFailure { e -> error = e.message ?: "Could not request verification." }
+                            }
+                        }
+                        if (method == "email") auth.requestEmailChange(target, completion) else auth.requestPhoneChange(target, completion)
+                    }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Requesting verification…" else "Next: send verification") }
+                } else {
+                    Text("Enter the verification code delivered to the new ${if (method == "email") "email address" else "mobile number"}.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                    OutlinedTextField(value = otp, onValueChange = { otp = it.filter(Char::isDigit).take(8) }, label = { Text("Verification code") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Button(enabled = !busy && otp.length >= 6, onClick = {
+                        busy = true; error = ""; message = ""
+                        auth.verifyAccountChange(if (method == "email") "email_change" else "phone_change", target, otp) { result ->
+                            scope.launch(Dispatchers.Main) {
+                                busy = false
+                                result.onSuccess { message = "Verification accepted. Refreshing account details…"; done() }
+                                    .onFailure { e -> error = e.message ?: "Verification failed." }
+                            }
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Verifying…" else "Verify and save") }
+                    TextButton(onClick = { verifying = false; otp = ""; error = ""; message = "" }) { Text("Change contact") }
+                }
+                if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
+                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+            }
+        }
+        Text("Password changes and password show/copy controls are not enabled here yet; they will be added with the password verification step.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+        OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Back to profile") }
     }
 }
 
