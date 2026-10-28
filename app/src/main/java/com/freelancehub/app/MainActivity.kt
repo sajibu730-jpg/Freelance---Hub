@@ -669,6 +669,7 @@ TextButton(
     }
     var tab by remember{mutableStateOf(0)}
     var editing by remember{mutableStateOf(false)}
+    var showSettings by remember{mutableStateOf(false)}
     var role by remember{mutableStateOf(repo.profile().role)}
     var showPostJob by remember{mutableStateOf(false)}
     var showWorkChecker by remember{mutableStateOf(false)}
@@ -686,6 +687,7 @@ BackHandler {
         showProjectAnalysis -> showProjectAnalysis = false
         showMatching -> showMatching = false
         showFreelancerAnalysis -> showFreelancerAnalysis = false
+        showSettings -> showSettings = false
         editing -> editing = false
         tab != 0 -> tab = 0
         else -> showExitDialog = true
@@ -793,12 +795,13 @@ NavigationBar(
             showProjectAnalysis->ProjectAnalysisScreen({showProjectAnalysis=false})
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
+            showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
             editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteAccount,auth,{editing=true},{logout()})
+            else->RemoteProfileScreen(remoteAccount,auth,{showSettings=true},{logout()})
         }}
     }
 }
@@ -1985,6 +1988,73 @@ fun RemoteNotificationsScreen() {
             OutlinedButton(onClick={edit()},modifier=Modifier.fillMaxWidth().height(52.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){Icon(Icons.Filled.Settings,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Settings")}
             
         }
+    }
+}
+
+@Composable
+fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehub.app.auth.AuthService, back: () -> Unit) {
+    var profile by remember { mutableStateOf<RemoteAccount?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf("") }
+    var editingProfile by remember { mutableStateOf(false) }
+    var security by remember { mutableStateOf(false) }
+    var pendingPhone by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    fun reloadProfile() {
+        loading = true; error = ""
+        scope.launch(Dispatchers.IO) {
+            val result = runCatching { account.currentUser() }
+            withContext(Dispatchers.Main) {
+                result.onSuccess { profile = it }.onFailure { error = it.message ?: "Unable to load account settings." }
+                loading = false
+            }
+        }
+    }
+    LaunchedEffect(Unit) { reloadProfile() }
+    val current = profile
+    if (current != null && editingProfile) {
+        RemoteProfileEditor(current, account, { editingProfile = false; reloadProfile() }, { editingProfile = false },
+            { phone -> pendingPhone = phone; editingProfile = false; security = true })
+        return
+    }
+    if (current != null && security) {
+        RemoteAccountSecurityScreen(auth, account, current.email, pendingPhone,
+            { security = false; pendingPhone = ""; reloadProfile() }, { security = false; pendingPhone = "" })
+        return
+    }
+    Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Surface(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), color = androidx.compose.ui.graphics.Color(0xFF102A56)) {
+            Column(Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF102A56), androidx.compose.ui.graphics.Color(0xFF3157D5)))).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.Settings, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFFDAE5FF), modifier = Modifier.size(30.dp))
+                Text("SETTINGS", color = androidx.compose.ui.graphics.Color(0xFFDAE5FF), style = MaterialTheme.typography.labelMedium)
+                Text("Manage your account", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text("Update your professional profile and protect your account.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.88f))
+            }
+        }
+        if (loading) CircularProgressIndicator()
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+        current?.let { p ->
+            Text("PROFILE SETTINGS", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color(0xFF536783))
+            ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
+                Row(Modifier.fillMaxWidth().clickable { editingProfile = true }.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = androidx.compose.ui.graphics.Color(0xFFE8EEFF)) { Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF3157D5), modifier = Modifier.padding(12.dp).size(24.dp)) }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text("Edit professional profile", style = MaterialTheme.typography.titleMedium); Text("Name, bio, services and skills", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B)) }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = "Open profile settings")
+                }
+            }
+            Text("SECURITY", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color(0xFF536783))
+            ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
+                Row(Modifier.fillMaxWidth().clickable { security = true }.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = androidx.compose.ui.graphics.Color(0xFFE2F6F1)) { Icon(Icons.Filled.Security, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF168675), modifier = Modifier.padding(12.dp).size(24.dp)) }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text("Account security", style = MaterialTheme.typography.titleMedium); Text("Change mobile, email and password with verification", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B)) }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = "Open account security")
+                }
+            }
+            Text("Signed in as " + p.email, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+        }
+        OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth().height(50.dp)) { Text("Back to profile") }
     }
 }
 
