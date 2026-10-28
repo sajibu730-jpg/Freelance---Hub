@@ -36,6 +36,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.clip
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
     override fun onCreate(b:Bundle?){
@@ -2267,7 +2268,7 @@ fun RemoteNotificationsScreen() {
                         onValueChange={countrySearch=it},
                         label={Text("Search countries")},
                         placeholder={Text("e.g. Bangladesh or +880")},
-                        leadingIcon={Icon(Icons.Filled.Search,contentDescription=null,color=blue)},
+                        leadingIcon={Icon(Icons.Filled.Search,contentDescription=null,tint=blue)},
                         trailingIcon={if(countrySearch.isNotEmpty()) IconButton(onClick={countrySearch=""}){Icon(Icons.Filled.Close,contentDescription="Clear search")} },
                         singleLine=true,
                         shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
@@ -2290,7 +2291,7 @@ fun RemoteNotificationsScreen() {
                                 val selected=country.second==countryCode
                                 Row(
                                     Modifier.fillMaxWidth()
-                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                        .then(Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)))
                                         .background(if(selected) androidx.compose.ui.graphics.Color(0xFFEAF0FF) else androidx.compose.ui.graphics.Color.Transparent)
                                         .clickable{countryCode=country.second;showCountryPicker=false;countrySearch=""}
                                         .padding(horizontal=12.dp,vertical=13.dp),
@@ -2357,7 +2358,7 @@ fun RemoteNotificationsScreen() {
                             onValueChange={mobileNumber=it.filter{ch->ch.isDigit()||ch==' '||ch=='-'}.take(18)},
                             label={Text("Mobile number")},
                             placeholder={Text("Enter phone number")},
-                            leadingIcon={Icon(Icons.Filled.Phone,contentDescription=null,color=blue)},
+                            leadingIcon={Icon(Icons.Filled.Phone,contentDescription=null,tint=blue)},
                             singleLine=true,
                             shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                             modifier=Modifier.weight(1f)
