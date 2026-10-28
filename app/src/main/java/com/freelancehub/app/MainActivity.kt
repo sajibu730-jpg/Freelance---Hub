@@ -1947,46 +1947,119 @@ fun RemoteNotificationsScreen() {
 }
 
 @Composable fun RemoteProfileScreen(account:RemoteAccountRepository,auth:com.freelancehub.app.auth.AuthService,edit:()->Unit,logout:()->Unit){
+    val context = LocalContext.current
     var profile by remember{mutableStateOf<RemoteAccount?>(null)}
     var loading by remember{mutableStateOf(true)}
+    var savingPhoto by remember{mutableStateOf(false)}
     var error by remember{mutableStateOf("")}
-    var editing by remember{mutableStateOf(false)}
-    var security by remember{mutableStateOf(false)}
-    var pendingPhone by remember{mutableStateOf("")}
+    var notice by remember{mutableStateOf("")}
     val scope=rememberCoroutineScope()
     fun load(){
-        loading=true; error=""
+        loading=true
         scope.launch(Dispatchers.IO){
-            runCatching{account.currentUser()}.onSuccess{value->withContext(Dispatchers.Main){profile=value;loading=false}}
-                .onFailure{e->withContext(Dispatchers.Main){error=e.message?:"Unable to load profile.";loading=false}}
+            val result=runCatching{account.currentUser()}
+            withContext(Dispatchers.Main){
+                result.onSuccess{profile=it}.onFailure{error=it.message?: "Unable to load profile."}
+                loading=false
+            }
         }
     }
+    fun uploadSelected(uri: Uri, isCover: Boolean) {
+        if (savingPhoto) return
+        savingPhoto = true
+        error = ""; notice = ""
+        scope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                val resolver = context.contentResolver
+                val type = resolver.getType(uri)?.lowercase()
+                    ?: throw IllegalArgumentException("Unable to identify this image type.")
+                val contentType = when (type) {
+                    "image/jpeg", "image/jpg" -> "image/jpeg"
+                    "image/png" -> "image/png"
+                    "image/webp" -> "image/webp"
+                    else -> throw IllegalArgumentException("Choose a JPEG, PNG, or WebP image.")
+                }
+                val bytes = resolver.openInputStream(uri)?.use { input ->
+                    val out = java.io.ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+                    var total = 0
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        total += n
+                        require(total <= 5 * 1024 * 1024) { "Image must be 5 MB or smaller." }
+                        out.write(buffer, 0, n)
+                    }
+                    out.toByteArray()
+                } ?: throw IllegalStateException("Unable to read the selected image.")
+                require(bytes.isNotEmpty()) { "The selected image is empty." }
+                if (isCover) account.updateCoverPhoto(bytes, contentType)
+                else account.updateProfilePhoto(bytes, contentType)
+            }
+            withContext(Dispatchers.Main) {
+                result.onSuccess {
+                    profile = it
+                    notice = if (isCover) "Cover photo saved successfully." else "Profile photo saved successfully."
+                }.onFailure { e -> error = e.message ?: "The photo could not be saved." }
+                savingPhoto = false
+            }
+        }
+    }
+    val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) uploadSelected(uri, false)
+    }
+    val coverPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) uploadSelected(uri, true)
+    }
     LaunchedEffect(Unit){load()}
-    if(security && profile!=null){
-        RemoteAccountSecurityScreen(auth,account,profile!!.email,pendingPhone,{security=false;pendingPhone="";load()},{security=false;pendingPhone=""})
-        return
-    }
-    if(editing && profile!=null){
-        RemoteProfileEditor(profile!!,account,{editing=false;load()},{editing=false},{phone->pendingPhone=phone;editing=false;security=true})
-        return
-    }
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Profile",style=MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(12.dp))
+    Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)){
+        Text("Profile",style=MaterialTheme.typography.headlineSmall,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
         if(loading) CircularProgressIndicator()
         if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
+        if(notice.isNotBlank()) Text(notice,color=androidx.compose.ui.graphics.Color(0xFF168675))
+        if(savingPhoto) Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){CircularProgressIndicator(modifier=Modifier.size(20.dp),strokeWidth=2.dp);Text("Saving photo securely…")}
         profile?.let{p->
-            Text(if(p.displayName.isBlank())"Your profile is not completed yet." else p.displayName,style=MaterialTheme.typography.titleLarge)
-            Text(p.email)
-            Text(if(p.mobileNumber.isBlank()) "Mobile number: not added" else "Mobile number: ${p.mobileNumber}")
-            Text("Account type: ${p.role.name.lowercase().replaceFirstChar{it.uppercase()}}")
-            Spacer(Modifier.height(8.dp))
-            if(p.bio.isNotBlank()) Text(p.bio)
-            Text(if(p.capabilities.isBlank())"Capabilities: not added" else "Capabilities: ${p.capabilities}")
-            Text(if(p.skills.isBlank())"Skills: not added" else "Skills: ${p.skills}")
-            Spacer(Modifier.height(20.dp))
-            OutlinedButton(onClick={edit()},modifier=Modifier.fillMaxWidth().height(52.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){Icon(Icons.Filled.Settings,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Settings")}
-            
+            ElevatedCard(Modifier.fillMaxWidth(),colors=CardDefaults.elevatedCardColors(containerColor=androidx.compose.ui.graphics.Color.White)){
+                Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    Surface(Modifier.fillMaxWidth().height(132.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),color=androidx.compose.ui.graphics.Color(0xFFE7EDFA)){
+                        Box(contentAlignment=androidx.compose.ui.Alignment.Center){
+                            Column(horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(6.dp)){
+                                Icon(Icons.Filled.Image,contentDescription=null,tint=androidx.compose.ui.graphics.Color(0xFF3157D5),modifier=Modifier.size(32.dp))
+                                Text(if(p.coverPhotoUrl.isNullOrBlank()) "No cover photo yet" else "Cover photo added",style=MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick={coverPhotoPicker.launch("image/*")},enabled=!savingPhoto,modifier=Modifier.fillMaxWidth().height(48.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)){
+                        Icon(Icons.Filled.PhotoCamera,contentDescription=null);Spacer(Modifier.width(8.dp));Text(if(p.coverPhotoUrl.isNullOrBlank())"Add cover photo" else "Change cover photo")
+                    }
+                    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){
+                        Surface(shape=androidx.compose.foundation.shape.CircleShape,color=androidx.compose.ui.graphics.Color(0xFFE7EDFA),modifier=Modifier.size(76.dp)){
+                            Box(contentAlignment=androidx.compose.ui.Alignment.Center){Icon(Icons.Filled.Person,contentDescription=null,tint=androidx.compose.ui.graphics.Color(0xFF3157D5),modifier=Modifier.size(38.dp))}
+                        }
+                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+                            Text(p.displayName.ifBlank{"Your profile"},style=MaterialTheme.typography.titleLarge,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text(p.email,style=MaterialTheme.typography.bodySmall,color=androidx.compose.ui.graphics.Color(0xFF65748B))
+                            Text("Profile photo",style=MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    OutlinedButton(onClick={profilePhotoPicker.launch("image/*")},enabled=!savingPhoto,modifier=Modifier.fillMaxWidth().height(48.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)){
+                        Icon(Icons.Filled.PhotoCamera,contentDescription=null);Spacer(Modifier.width(8.dp));Text(if(p.photoPath.isNullOrBlank())"Add profile photo" else "Change profile photo")
+                    }
+                }
+            }
+            ElevatedCard(Modifier.fillMaxWidth(),colors=CardDefaults.elevatedCardColors(containerColor=androidx.compose.ui.graphics.Color.White)){
+                Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    Text("Public profile details",style=MaterialTheme.typography.titleMedium)
+                    Text("Account type: ${p.role.name.lowercase().replaceFirstChar{it.uppercase()}}")
+                    if(p.bio.isNotBlank()) Text(p.bio)
+                    Text(if(p.capabilities.isBlank())"Services: not added" else "Services: ${p.capabilities}")
+                    Text(if(p.skills.isBlank())"Skills: not added" else "Skills: ${p.skills}")
+                    Text("Personal and account details can be managed in Settings.",style=MaterialTheme.typography.bodySmall,color=androidx.compose.ui.graphics.Color(0xFF65748B))
+                }
+            }
+            OutlinedButton(onClick={edit()},modifier=Modifier.fillMaxWidth().height(50.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)){
+                Icon(Icons.Filled.Settings,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Settings")
+            }
         }
     }
 }
