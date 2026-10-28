@@ -209,6 +209,97 @@ class AuthService(context: Context) {
         }
     }
 
+    /**
+     * Requests a Supabase Auth change. Supabase sends the confirmation to the
+     * configured email/SMS provider; this method never treats a request as verified.
+     */
+    fun requestEmailChange(newEmail: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(newEmail.trim().contains("@")) { "Enter a valid email address." }
+                val access = accessTokenForApiBlocking()
+                    ?: error("Please sign in again before changing your email.")
+                request(
+                    method = "PUT",
+                    path = "/auth/v1/user",
+                    body = JSONObject().put("email", newEmail.trim()).toString(),
+                    accessToken = access
+                )
+                Unit
+            })
+        }
+    }
+
+    fun requestPhoneChange(newPhone: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(newPhone.matches(Regex("^\\\\+[1-9][0-9]{7,14}$"))) {
+                    "Enter a valid phone number with country code, such as +9715XXXXXXXX."
+                }
+                val access = accessTokenForApiBlocking()
+                    ?: error("Please sign in again before changing your phone number.")
+                request(
+                    method = "PUT",
+                    path = "/auth/v1/user",
+                    body = JSONObject().put("phone", newPhone).toString(),
+                    accessToken = access
+                )
+                Unit
+            })
+        }
+    }
+
+    /**
+     * Verifies the OTP delivered by Supabase for a supported account change.
+     * The exact type and contact must match the pending change and Auth settings.
+     */
+    fun verifyAccountChange(
+        type: String,
+        target: String,
+        otp: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(type == "email_change" || type == "phone_change") {
+                    "Unsupported verification type."
+                }
+                require(otp.trim().matches(Regex("^[0-9]{6,8}$"))) {
+                    "Enter the verification code from your message."
+                }
+                val payload = JSONObject().apply {
+                    put("type", type)
+                    put("token", otp.trim())
+                    if (type == "email_change") put("email", target.trim())
+                    else put("phone", target.trim())
+                }
+                request("POST", "/auth/v1/verify", payload.toString())
+                Unit
+            })
+        }
+    }
+
+    /**
+     * Password updates are deliberately separate from contact-change verification.
+     * The caller must only expose this after its required verification step.
+     */
+    fun updatePassword(newPassword: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(newPassword.length >= 8) { "Use at least 8 characters for your password." }
+                val access = accessTokenForApiBlocking()
+                    ?: error("Please sign in again before changing your password.")
+                request(
+                    method = "PUT",
+                    path = "/auth/v1/user",
+                    body = JSONObject().put("password", newPassword).toString(),
+                    accessToken = access
+                )
+                Unit
+            })
+        }
+    }
+
     private fun makeSession(
         access: String,
         refresh: String,
