@@ -3083,7 +3083,7 @@ fun RemoteAccountSecurityScreen(
                             )
                         }
                     }
-                    Button(enabled = !busy && if (method == "email") target.isNotBlank() && target.contains("@") else phoneDigits.filter(Char::isDigit).length in 7..14, onClick = {
+                    Button(enabled = !busy && (if (method == "email") target.isNotBlank() && target.contains("@") else phoneTarget.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))), onClick = {
                         busy = true; error = ""; message = ""
                         val completion: (Result<Unit>) -> Unit = { result ->
                             scope.launch(Dispatchers.Main) {
