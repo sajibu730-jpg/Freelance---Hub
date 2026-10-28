@@ -117,6 +117,43 @@ class RemoteAccountRepository(
         return currentUser()
     }
 
+    fun updateProfilePhoto(
+        imageBytes: ByteArray,
+        contentType: String
+    ): RemoteAccount {
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in again to update your profile photo")
+        val userId = currentUser().id
+        val objectPath = client.uploadProfilePhoto(userId, imageBytes, contentType, token)
+        val existingBytes = client.readJsonResponse(
+            client.openGet("/rest/v1/profiles?id=eq.$userId&select=id", token)
+        )
+        val existing = JSONArray(String(existingBytes, StandardCharsets.UTF_8))
+        val payload = JSONObject().put("photo_url", objectPath).toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        if (existing.length() > 0) {
+            val updatedBytes = client.readJsonResponse(
+                client.openJsonPatch(
+                    "/rest/v1/profiles?id=eq.$userId", payload, token,
+                    SecureApiClient.newIdempotencyKey(), preferRepresentation = true
+                )
+            )
+            require(JSONArray(String(updatedBytes, StandardCharsets.UTF_8)).length() > 0) {
+                "Profile photo update was not confirmed by the server"
+            }
+        } else {
+            val newProfile = JSONObject().put("id", userId).put("photo_url", objectPath)
+                .toString().toByteArray(StandardCharsets.UTF_8)
+            client.readJsonResponse(
+                client.openJsonPost(
+                    "/rest/v1/profiles", newProfile, token,
+                    SecureApiClient.newIdempotencyKey(), preferRepresentation = true
+                )
+            )
+        }
+        return currentUser()
+    }
+
     fun updateCoverPhoto(
         imageBytes: ByteArray,
         contentType: String
