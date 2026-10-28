@@ -117,6 +117,12 @@ class RemoteAccountRepository(
         return currentUser()
     }
 
+    fun downloadProfilePhoto(objectPath: String): ByteArray {
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in again to load your profile photo")
+        return client.downloadProfilePhoto(objectPath, token)
+    }
+
     fun updateProfilePhoto(
         imageBytes: ByteArray,
         contentType: String
