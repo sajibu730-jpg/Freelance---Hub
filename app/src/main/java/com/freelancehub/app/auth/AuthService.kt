@@ -213,6 +213,28 @@ class AuthService(context: Context) {
      * Requests a Supabase Auth change. Supabase sends the confirmation to the
      * configured email/SMS provider; this method never treats a request as verified.
      */
+    /**
+     * Sends Supabase's password-recovery email. The user must follow the
+     * verified recovery link before choosing a new password.
+     */
+    fun requestPasswordReset(email: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Password recovery is unavailable because the backend is not configured." }
+                val target = email.trim()
+                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
+                    "Enter the email address for your account first."
+                }
+                request(
+                    method = "POST",
+                    path = "/auth/v1/recover",
+                    body = JSONObject().put("email", target).toString()
+                )
+                Unit
+            })
+        }
+    }
+
     fun requestEmailChange(newEmail: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
