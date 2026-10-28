@@ -966,7 +966,6 @@ fun RemoteHomeScreen(
                             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                                 DropdownMenuItem(text = { Text("Account settings") }, leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) }, onClick = { menuExpanded = false; onOpenSettings() })
                                 DropdownMenuItem(text = { Text("Refresh home") }, leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) }, onClick = { menuExpanded = false; reload() })
-                                DropdownMenuItem(text = { Text("Sign out") }, leadingIcon = { Icon(Icons.Filled.Logout, contentDescription = null) }, onClick = { menuExpanded = false; onLogout() })
                             }
                         }
                     }
