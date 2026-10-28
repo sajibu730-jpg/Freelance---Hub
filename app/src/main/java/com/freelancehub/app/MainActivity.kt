@@ -2034,7 +2034,7 @@ fun RemoteProfileScreen(
         if (current != null) {
             withContext(Dispatchers.IO) {
                 val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
-                    runCatching { android.graphics.BitmapFactory.decodeByteArray(account.downloadProfilePhoto(path), 0, account.downloadProfilePhoto(path).size) }.getOrNull()
+                    runCatching { account.downloadProfilePhoto(path).let { bytes -> android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
                 }
                 val cover = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
                     runCatching { java.net.URL(url).openConnection().apply {
@@ -2748,12 +2748,14 @@ fun RemoteAccountSecurityScreen(
                 Text("A change is not complete until Supabase verifies the new contact.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.86f))
             }
         }
+        if (method != "password") {
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Choose what to change", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") })
-                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile") })
+                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") })
+                    FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") })
                 }
                 Text(if (method == "email") "Current email: $currentEmail" else "Enter the new mobile number in international format, for example +9715XXXXXXXX.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
                 if (!verifying) {
@@ -2810,6 +2812,9 @@ fun RemoteAccountSecurityScreen(
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
             }
         }
+
+        }
+        if (method == "password") {
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Change password", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
@@ -2874,6 +2879,9 @@ fun RemoteAccountSecurityScreen(
                 }
             }
         }
+
+        }
+
         OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Back to profile") }
     }
 }
