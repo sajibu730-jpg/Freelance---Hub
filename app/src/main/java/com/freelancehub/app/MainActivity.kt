@@ -2233,6 +2233,7 @@ fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehu
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
     var security by remember { mutableStateOf(false) }
+    var editProfessional by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun reloadProfile() {
@@ -2250,6 +2251,17 @@ fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehu
 
     LaunchedEffect(Unit) { reloadProfile() }
     val current = profile
+
+    if (current != null && editProfessional) {
+        RemoteProfileEditor(
+            profile = current,
+            account = account,
+            done = { editProfessional = false; reloadProfile() },
+            cancel = { editProfessional = false },
+            openSecurity = { security = true }
+        )
+        return
+    }
 
     if (current != null && security) {
         RemoteAccountSecurityScreen(
@@ -2347,6 +2359,26 @@ fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehu
                     Icon(Icons.Filled.Security, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Open Security Center")
+                }
+            }
+        }
+
+        ElevatedCard(
+            Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Professional profile", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                Text("Edit your Bio, Services and Skills & Tools. These details appear on your public profile.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                Button(
+                    onClick = { editProfessional = true },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Filled.Edit, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Edit professional profile")
                 }
             }
         }
