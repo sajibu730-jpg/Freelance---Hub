@@ -854,7 +854,7 @@ NavigationBar(
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
             editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
-            tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true}){if(role==UserRole.CLIENT)showPostJob=true}
+            tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
@@ -873,9 +873,12 @@ fun RemoteHomeScreen(
     onProjectAnalysis: () -> Unit,
     onMatching: () -> Unit,
     onFreelancerAnalysis: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onLogout: () -> Unit,
     onPostJob: () -> Unit
 ) {
     var me by remember { mutableStateOf<RemoteAccount?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
     var jobs by remember { mutableStateOf<List<RemoteJob>>(emptyList()) }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
@@ -950,11 +953,23 @@ fun RemoteHomeScreen(
                         .padding(22.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        "🌐  GLOBAL FREELANCE MARKETPLACE",
-                        color = androidx.compose.ui.graphics.Color(0xFFBFD5FF),
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("🌐  GLOBAL FREELANCE MARKETPLACE", color = androidx.compose.ui.graphics.Color(0xFFBFD5FF), style = MaterialTheme.typography.labelMedium)
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Main menu", tint = white)
+                            }
+                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                DropdownMenuItem(text = { Text("Account settings") }, leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) }, onClick = { menuExpanded = false; onOpenSettings() })
+                                DropdownMenuItem(text = { Text("Refresh home") }, leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) }, onClick = { menuExpanded = false; reload() })
+                                DropdownMenuItem(text = { Text("Sign out") }, leadingIcon = { Icon(Icons.Filled.Logout, contentDescription = null) }, onClick = { menuExpanded = false; onLogout() })
+                            }
+                        }
+                    }
                     Text(
                         "Welcome to\nFreelance Hub",
                         color = white,
@@ -2016,7 +2031,6 @@ fun RemoteProfileScreen(
     var savingPhoto by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
-    var menuExpanded by remember { mutableStateOf(false) }
     var profileBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var coverBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     val scope = rememberCoroutineScope()
@@ -2142,32 +2156,15 @@ fun RemoteProfileScreen(
                             if (p.coverPhotoUrl.isNullOrBlank()) Text("Add a cover photo", color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = 18.dp))
                         }
                     }
-                    Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.End) {
-                        Box {
-                            IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "Profile menu", tint = androidx.compose.ui.graphics.Color.White)
-                            }
-                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                                DropdownMenuItem(
-                                    text = { Text("Account settings") },
-                                    leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                                    onClick = { menuExpanded = false; edit() }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Refresh profile") },
-                                    leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                                    onClick = { menuExpanded = false; load() }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Sign out") },
-                                    leadingIcon = { Icon(Icons.Filled.Logout, contentDescription = null) },
-                                    onClick = { menuExpanded = false; logout() }
-                                )
-                            }
-                        }
+                    IconButton(
+                        onClick = { coverPhotoPicker.launch("image/*") },
+                        enabled = !savingPhoto,
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(10.dp).size(40.dp)
+                            .background(androidx.compose.ui.graphics.Color(0xCC102A56), androidx.compose.foundation.shape.CircleShape)
+                    ) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = "Change cover photo", tint = androidx.compose.ui.graphics.Color.White)
                     }
                 }
-
                 Column(Modifier.fillMaxWidth().padding(top = 142.dp)) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -2215,33 +2212,7 @@ fun RemoteProfileScreen(
                 }
             }
 
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { coverPhotoPicker.launch("image/*") },
-                    enabled = !savingPhoto,
-                    modifier = Modifier.weight(1f),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (p.coverPhotoUrl.isNullOrBlank()) "Add cover" else "Change cover")
-                }
-                OutlinedButton(
-                    onClick = { profilePhotoPicker.launch("image/*") },
-                    enabled = !savingPhoto,
-                    modifier = Modifier.weight(1f),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Filled.PhotoCamera, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Profile photo")
-                }
-            }
-
-            ElevatedCard(
+ElevatedCard(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
             ) {
@@ -3113,10 +3084,10 @@ fun RemoteAccountSecurityScreen(
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Choose what to change", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") })
-                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") })
-                    FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") })
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") }, modifier = Modifier.fillMaxWidth())
+                    FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
+                    FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
                 }
                 if (method != "password") {
                 Text(if (method == "email") "Current email: $currentEmail" else "Select a country code, then enter your mobile number.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
