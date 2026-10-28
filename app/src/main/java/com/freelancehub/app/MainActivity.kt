@@ -2748,7 +2748,6 @@ fun RemoteAccountSecurityScreen(
                 Text("A change is not complete until Supabase verifies the new contact.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.86f))
             }
         }
-        if (method != "password") {
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Choose what to change", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
@@ -2757,6 +2756,7 @@ fun RemoteAccountSecurityScreen(
                     FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") })
                     FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") })
                 }
+                if (method != "password") {
                 Text(if (method == "email") "Current email: $currentEmail" else "Enter the new mobile number in international format, for example +9715XXXXXXXX.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
                 if (!verifying) {
                     OutlinedTextField(value = target, onValueChange = { target = it.trimStart() }, label = { Text(if (method == "email") "New email address" else "New phone number (+country code)") }, leadingIcon = { Icon(if (method == "email") Icons.Filled.Email else Icons.Filled.Phone, contentDescription = null) }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -2810,10 +2810,10 @@ fun RemoteAccountSecurityScreen(
                 }
                 if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                }
             }
         }
 
-        }
         if (method == "password") {
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
