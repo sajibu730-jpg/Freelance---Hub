@@ -58,6 +58,65 @@ class RemoteAccountRepository(
         )
     }
 
+    /**
+     * Checks the server-recorded six-month mobile-number cooldown before asking
+     * Supabase Auth to change the verified phone number.
+     */
+    fun ensureMobileChangeAllowed() {
+        val changedAt = currentUser().mobileNumberChangedAt ?: return
+        val raw = changedAt.take(19)
+        val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+        parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val changed = parser.parse(raw) ?: return
+        val allowedAt = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+            time = changed
+            add(java.util.Calendar.MONTH, 6)
+        }.time
+        if (System.currentTimeMillis() < allowedAt.time) {
+            val formatter = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            formatter.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            throw IllegalStateException(
+                "For account security, this mobile number cannot be changed again until ${formatter.format(allowedAt)}."
+            )
+        }
+    }
+
+    /**
+     * Saves the phone only after Supabase Auth confirms that the same phone is verified.
+     */
+    fun syncVerifiedPhoneToProfile(): RemoteAccount {
+        ensureMobileChangeAllowed()
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in again to save the verified mobile number")
+        val authUser = JSONObject(
+            String(client.readJsonResponse(client.openGet("/auth/v1/user", token)), StandardCharsets.UTF_8)
+        )
+        val phone = authUser.optString("phone")
+        val confirmedAt = authUser.optString("phone_confirmed_at")
+        require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$""")) && confirmedAt.isNotBlank()) {
+            "Verify the new mobile number before saving it to your profile."
+        }
+        val userId = authUser.optString("id")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+            "Supabase Auth returned an invalid user id"
+        }
+        val payload = JSONObject().put("mobile_number", phone).toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        val updatedBytes = client.readJsonResponse(
+            client.openJsonPatch(
+                "/rest/v1/profiles?id=eq.$userId",
+                payload,
+                token,
+                SecureApiClient.newIdempotencyKey(),
+                preferRepresentation = true
+            )
+        )
+        require(JSONArray(String(updatedBytes, StandardCharsets.UTF_8)).length() > 0) {
+            "The verified number was not confirmed as saved by the server."
+        }
+        return currentUser()
+    }
+
     fun updateCoverPhoto(
         imageBytes: ByteArray,
         contentType: String
