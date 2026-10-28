@@ -779,8 +779,7 @@ if (showExitDialog) {
 }
 
 Scaffold(bottomBar={
-    
-NavigationBar(
+    if (!WindowInsets.isImeVisible) NavigationBar(
     containerColor = androidx.compose.ui.graphics.Color.White,
     contentColor = androidx.compose.ui.graphics.Color(0xFF243B64),
     tonalElevation = 8.dp
