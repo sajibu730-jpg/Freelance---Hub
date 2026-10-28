@@ -119,6 +119,10 @@ fun LoginScreen(
     var busy by remember { mutableStateOf(false) }
 var openingSignup by remember { mutableStateOf(false) }
 var passwordVisible by remember { mutableStateOf(false) }
+var resetBusy by remember { mutableStateOf(false) }
+var resetMessage by remember { mutableStateOf("") }
+val screenContext = LocalContext.current
+val resetAuthService = remember(screenContext) { AuthService(screenContext) }
 val scope = rememberCoroutineScope()
 
 val loginScrollState = rememberScrollState()
@@ -493,7 +497,58 @@ Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(6.dp))
+
+                if (!signup) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            enabled = !resetBusy,
+                            onClick = {
+                                if (email.trim().isBlank()) {
+                                    error = "Enter your account email first, then tap Forgot password."
+                                    resetMessage = ""
+                                } else {
+                                    resetBusy = true
+                                    error = ""
+                                    resetMessage = ""
+                                    resetAuthService.requestPasswordReset(email) { result ->
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            resetBusy = false
+                                            result.onSuccess {
+                                                resetMessage = "If an account exists for this email, a password recovery message has been sent. Check your inbox and spam folder."
+                                            }.onFailure { failure ->
+                                                error = failure.message ?: "Could not request password recovery. Please try again."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ) {
+                            if (resetBusy) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text("Forgot password?")
+                        }
+                    }
+                }
+
+                if (resetMessage.isNotBlank()) {
+                    Text(
+                        text = resetMessage,
+                        color = teal,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                Spacer(Modifier.height(8.dp))
 
                 if (error.isNotBlank()) {
                     Text(
