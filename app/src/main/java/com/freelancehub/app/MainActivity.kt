@@ -2254,21 +2254,66 @@ fun RemoteNotificationsScreen() {
     if(showCountryPicker){
         AlertDialog(
             onDismissRequest={showCountryPicker=false;countrySearch=""},
-            title={Text("Choose country code",fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=navy)},
+            title={
+                Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
+                    Text("Select your country",fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=navy,style=MaterialTheme.typography.titleLarge)
+                    Text("Search by country name or calling code",color=muted,style=MaterialTheme.typography.bodySmall)
+                }
+            },
             text={
-                Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-                    OutlinedTextField(countrySearch,{countrySearch=it},label={Text("Search country")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                    LazyColumn(Modifier.heightIn(max=320.dp)){
-                        items(countries.filter{it.first.contains(countrySearch,true)||it.second.contains(countrySearch)}){
-                            Row(Modifier.fillMaxWidth().clickable{countryCode=it.second;showCountryPicker=false;countrySearch=""}.padding(vertical=12.dp,horizontal=6.dp),horizontalArrangement=Arrangement.SpaceBetween){
-                                Text(it.first);Text(it.second,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,color=blue)
+                Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    OutlinedTextField(
+                        value=countrySearch,
+                        onValueChange={countrySearch=it},
+                        label={Text("Search countries")},
+                        placeholder={Text("e.g. Bangladesh or +880")},
+                        leadingIcon={Icon(Icons.Filled.Search,contentDescription=null,color=blue)},
+                        trailingIcon={if(countrySearch.isNotEmpty()) IconButton(onClick={countrySearch=""}){Icon(Icons.Filled.Close,contentDescription="Clear search")} },
+                        singleLine=true,
+                        shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        modifier=Modifier.fillMaxWidth()
+                    )
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                        Text("COUNTRY",style=MaterialTheme.typography.labelSmall,color=muted,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text("CODE",style=MaterialTheme.typography.labelSmall,color=muted,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                    }
+                    val filteredCountries=countries.filter{it.first.contains(countrySearch,true)||it.second.contains(countrySearch)}
+                    if(filteredCountries.isEmpty()){
+                        Column(Modifier.fillMaxWidth().padding(vertical=24.dp),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){
+                            Icon(Icons.Filled.SearchOff,contentDescription=null,tint=muted,modifier=Modifier.size(32.dp))
+                            Text("No matching country found",color=muted,style=MaterialTheme.typography.bodyMedium)
+                            Text("Try another country name or code.",color=muted,style=MaterialTheme.typography.bodySmall)
+                        }
+                    }else{
+                        LazyColumn(Modifier.heightIn(max=340.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                            items(filteredCountries){country->
+                                val selected=country.second==countryCode
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                        .background(if(selected) androidx.compose.ui.graphics.Color(0xFFEAF0FF) else androidx.compose.ui.graphics.Color.Transparent)
+                                        .clickable{countryCode=country.second;showCountryPicker=false;countrySearch=""}
+                                        .padding(horizontal=12.dp,vertical=13.dp),
+                                    horizontalArrangement=Arrangement.SpaceBetween,
+                                    verticalAlignment=androidx.compose.ui.Alignment.CenterVertically
+                                ){
+                                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
+                                        Text(country.first,color=navy,fontWeight=if(selected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium)
+                                        if(selected) Text("Currently selected",color=blue,style=MaterialTheme.typography.labelSmall)
+                                    }
+                                    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                                        Text(country.second,color=blue,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                                        if(selected) Icon(Icons.Filled.CheckCircle,contentDescription="Selected",tint=blue,modifier=Modifier.size(18.dp))
+                                    }
+                                }
                             }
-                            HorizontalDivider()
                         }
                     }
                 }
             },
-            confirmButton={TextButton(onClick={showCountryPicker=false;countrySearch=""}){Text("Close")}}
+            confirmButton={TextButton(onClick={showCountryPicker=false;countrySearch=""}){Text("Done",color=blue,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)}},
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            containerColor=androidx.compose.ui.graphics.Color.White
         )
     }
     LazyColumn(
@@ -2292,14 +2337,33 @@ fun RemoteNotificationsScreen() {
                     OutlinedTextField(name,{name=it},label={Text("Full name")},leadingIcon={Icon(Icons.Filled.Person,contentDescription=null)},singleLine=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
                     OutlinedTextField(profile.email,{},label={Text("Account email")},leadingIcon={Icon(Icons.Filled.Email,contentDescription=null)},singleLine=true,readOnly=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
                     Text("To change your email, use Account security settings.",style=MaterialTheme.typography.bodySmall,color=muted)
-                    Text("Mobile number",style=MaterialTheme.typography.labelLarge,color=navy)
+                    Text("Mobile number",style=MaterialTheme.typography.labelLarge,color=navy,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
-                        OutlinedButton(onClick={showCountryPicker=true},modifier=Modifier.widthIn(min=104.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),contentPadding=PaddingValues(horizontal=12.dp,vertical=16.dp)){
-                            Text(countryCode,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold);Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose country code")
+                        OutlinedButton(
+                            onClick={showCountryPicker=true},
+                            modifier=Modifier.widthIn(min=106.dp),
+                            shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            contentPadding=PaddingValues(horizontal=10.dp,vertical=17.dp),
+                            colors=ButtonDefaults.outlinedButtonColors(contentColor=navy)
+                        ){
+                            Column(horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(2.dp)){
+                                Text("CODE",style=MaterialTheme.typography.labelSmall,color=muted)
+                                Text(countryCode,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=blue)
+                            }
+                            Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose country code",tint=blue)
                         }
-                        OutlinedTextField(mobileNumber,{mobileNumber=it.filter{ch->ch.isDigit()||ch==' '||ch=='-'}.take(18)},label={Text("Phone number")},leadingIcon={Icon(Icons.Filled.Phone,contentDescription=null)},singleLine=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.weight(1f))
+                        OutlinedTextField(
+                            value=mobileNumber,
+                            onValueChange={mobileNumber=it.filter{ch->ch.isDigit()||ch==' '||ch=='-'}.take(18)},
+                            label={Text("Mobile number")},
+                            placeholder={Text("Enter phone number")},
+                            leadingIcon={Icon(Icons.Filled.Phone,contentDescription=null,color=blue)},
+                            singleLine=true,
+                            shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            modifier=Modifier.weight(1f)
+                        )
                     }
-                    Text("Choose a country code, then enter your number without the country prefix.",style=MaterialTheme.typography.bodySmall,color=muted)
+                    Text("Tap the country code to search worldwide calling codes.",style=MaterialTheme.typography.bodySmall,color=muted)
                 }
             }
         }
