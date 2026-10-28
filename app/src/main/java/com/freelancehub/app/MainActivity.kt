@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.freelancehub.app.data.*
+import com.freelancehub.app.auth.AuthService
 import com.freelancehub.app.update.PlayUpdateManager
 import com.freelancehub.app.network.SecureApiClient
 import com.freelancehub.app.security.TokenStore
