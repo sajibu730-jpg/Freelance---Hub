@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -2751,7 +2752,7 @@ fun RemoteAccountSecurityScreen(
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Choose what to change", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") })
                     FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") })
                     FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") })
