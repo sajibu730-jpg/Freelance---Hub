@@ -2809,8 +2809,6 @@ fun RemoteAccountSecurityScreen(
                     }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Verifying…" else "Verify and save") }
                     TextButton(onClick = { verifying = false; otp = ""; error = ""; message = "" }) { Text("Change contact") }
                 }
-                if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
-                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -2883,6 +2881,8 @@ fun RemoteAccountSecurityScreen(
 
         }
 
+        if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Back to profile") }
     }
 }
