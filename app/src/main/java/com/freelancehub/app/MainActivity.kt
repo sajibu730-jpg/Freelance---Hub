@@ -1949,6 +1949,7 @@ fun RemoteNotificationsScreen() {
     var error by remember{mutableStateOf("")}
     var editing by remember{mutableStateOf(false)}
     var security by remember{mutableStateOf(false)}
+    var pendingPhone by remember{mutableStateOf("")}
     val scope=rememberCoroutineScope()
     fun load(){
         loading=true; error=""
@@ -1959,11 +1960,11 @@ fun RemoteNotificationsScreen() {
     }
     LaunchedEffect(Unit){load()}
     if(security && profile!=null){
-        RemoteAccountSecurityScreen(auth,profile!!.email,{security=false;load()},{security=false})
+        RemoteAccountSecurityScreen(auth,account,profile!!.email,pendingPhone,{security=false;pendingPhone="";load()},{security=false;pendingPhone=""})
         return
     }
     if(editing && profile!=null){
-        RemoteProfileEditor(profile!!,account,{editing=false;load()},{editing=false})
+        RemoteProfileEditor(profile!!,account,{editing=false;load()},{editing=false},{phone->pendingPhone=phone;editing=false;security=true})
         return
     }
     Column(Modifier.fillMaxSize().padding(20.dp)){
@@ -1989,7 +1990,7 @@ fun RemoteNotificationsScreen() {
     }
 }
 
-@Composable fun RemoteProfileEditor(profile:RemoteAccount,account:RemoteAccountRepository,done:()->Unit,cancel:()->Unit){
+@Composable fun RemoteProfileEditor(profile:RemoteAccount,account:RemoteAccountRepository,done:()->Unit,cancel:()->Unit,openSecurity:(String)->Unit){
     var name by remember{mutableStateOf(profile.displayName)}
     var bio by remember{mutableStateOf(profile.bio)}
     var capabilities by remember{mutableStateOf(profile.capabilities)}
@@ -2384,8 +2385,10 @@ fun RemoteNotificationsScreen() {
             Button(enabled=valid&&!busy&&mobileNumber.isNotBlank(),onClick={
                 busy=true;error=""
                 scope.launch(Dispatchers.IO){
-                    runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),(countryCode+mobileNumber.filterNot{it.isWhitespace()||it=='-'}).takeIf{it != profile.mobileNumber.trim()}))}
-                        .onSuccess{withContext(Dispatchers.Main){done()}}
+                    val proposedPhone=(countryCode+mobileNumber.filterNot{it.isWhitespace()||it=='-'}).trim()
+                    val phoneChanged=proposedPhone != profile.mobileNumber.trim()
+                    runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),null))}
+                        .onSuccess{withContext(Dispatchers.Main){if(phoneChanged)openSecurity(proposedPhone) else done()}}
                         .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Profile update failed."}}
                 }
             },modifier=Modifier.fillMaxWidth().height(54.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){
@@ -2401,12 +2404,14 @@ fun RemoteNotificationsScreen() {
 @Composable
 fun RemoteAccountSecurityScreen(
     auth: com.freelancehub.app.auth.AuthService,
+    account: RemoteAccountRepository,
     currentEmail: String,
+    initialPhone: String = "",
     done: () -> Unit,
     back: () -> Unit
 ) {
-    var method by remember { mutableStateOf("email") }
-    var target by remember { mutableStateOf("") }
+    var method by remember { mutableStateOf(if (initialPhone.isBlank()) "email" else "phone") }
+    var target by remember { mutableStateOf(initialPhone) }
     var otp by remember { mutableStateOf("") }
     var verifying by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -2449,7 +2454,17 @@ fun RemoteAccountSecurityScreen(
                                     .onFailure { e -> error = e.message ?: "Could not request verification." }
                             }
                         }
-                        if (method == "email") auth.requestEmailChange(target, completion) else auth.requestPhoneChange(target, completion)
+                        if (method == "email") {
+                            auth.requestEmailChange(target, completion)
+                        } else {
+                            scope.launch(Dispatchers.IO) {
+                                val check = runCatching { account.ensureMobileChangeAllowed() }
+                                withContext(Dispatchers.Main) {
+                                    check.onSuccess { auth.requestPhoneChange(target, completion) }
+                                        .onFailure { e -> busy = false; error = e.message ?: "Mobile number change is not currently allowed." }
+                                }
+                            }
+                        }
                     }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Requesting verification…" else "Next: send verification") }
                 } else {
                     Text("Enter the verification code delivered to the new ${if (method == "email") "email address" else "mobile number"}.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
@@ -2459,8 +2474,20 @@ fun RemoteAccountSecurityScreen(
                         auth.verifyAccountChange(if (method == "email") "email_change" else "phone_change", target, otp) { result ->
                             scope.launch(Dispatchers.Main) {
                                 busy = false
-                                result.onSuccess { message = "Verification accepted. Refreshing account details…"; done() }
-                                    .onFailure { e -> error = e.message ?: "Verification failed." }
+                                result.onSuccess {
+                                    if (method == "phone") {
+                                        scope.launch(Dispatchers.IO) {
+                                            val saved = runCatching { account.syncVerifiedPhoneToProfile() }
+                                            withContext(Dispatchers.Main) {
+                                                saved.onSuccess { message = "Mobile number verified and saved to your profile."; done() }
+                                                    .onFailure { e -> error = e.message ?: "The verified number could not be saved to the profile." }
+                                            }
+                                        }
+                                    } else {
+                                        message = "Email verification accepted. Refreshing account details…"
+                                        done()
+                                    }
+                                }.onFailure { e -> error = e.message ?: "Verification failed." }
                             }
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Verifying…" else "Verify and save") }
