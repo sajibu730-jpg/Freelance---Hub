@@ -2069,65 +2069,129 @@ fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehu
     var profile by remember { mutableStateOf<RemoteAccount?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
-    var editingProfile by remember { mutableStateOf(false) }
     var security by remember { mutableStateOf(false) }
-    var pendingPhone by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+
     fun reloadProfile() {
-        loading = true; error = ""
+        loading = true
+        error = ""
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
             withContext(Dispatchers.Main) {
-                result.onSuccess { profile = it }.onFailure { error = it.message ?: "Unable to load account settings." }
+                result.onSuccess { profile = it }
+                    .onFailure { error = it.message ?: "Unable to load account settings." }
                 loading = false
             }
         }
     }
+
     LaunchedEffect(Unit) { reloadProfile() }
     val current = profile
-    if (current != null && editingProfile) {
-        RemoteProfileEditor(current, account, { editingProfile = false; reloadProfile() }, { editingProfile = false },
-            { phone -> pendingPhone = phone; editingProfile = false; security = true })
-        return
-    }
+
     if (current != null && security) {
-        RemoteAccountSecurityScreen(auth, account, current.email, pendingPhone,
-            { security = false; pendingPhone = ""; reloadProfile() }, { security = false; pendingPhone = "" })
+        RemoteAccountSecurityScreen(
+            auth = auth,
+            account = account,
+            currentEmail = current.email,
+            done = { security = false; reloadProfile() },
+            back = { security = false; reloadProfile() }
+        )
         return
     }
-    Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Surface(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), color = androidx.compose.ui.graphics.Color(0xFF102A56)) {
-            Column(Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF102A56), androidx.compose.ui.graphics.Color(0xFF3157D5)))).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Filled.Settings, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFFDAE5FF), modifier = Modifier.size(30.dp))
-                Text("SETTINGS", color = androidx.compose.ui.graphics.Color(0xFFDAE5FF), style = MaterialTheme.typography.labelMedium)
-                Text("Manage your account", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Text("Update your professional profile and protect your account.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.88f))
+
+    Column(
+        Modifier.fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color(0xFFF3F6FC))
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+            color = androidx.compose.ui.graphics.Color(0xFF102A56)
+        ) {
+            Column(
+                Modifier.background(
+                    androidx.compose.ui.graphics.Brush.linearGradient(
+                        listOf(
+                            androidx.compose.ui.graphics.Color(0xFF102A56),
+                            androidx.compose.ui.graphics.Color(0xFF3157D5)
+                        )
+                    )
+                ).padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Filled.Settings,
+                    contentDescription = null,
+                    tint = androidx.compose.ui.graphics.Color(0xFFDAE5FF),
+                    modifier = Modifier.size(30.dp)
+                )
+                Text("ACCOUNT SETTINGS", color = androidx.compose.ui.graphics.Color(0xFFDAE5FF), style = MaterialTheme.typography.labelMedium)
+                Text(
+                    "Manage your account",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+                Text(
+                    "Your profile page is for your profile and cover photos only. Manage sensitive account changes securely here.",
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.88f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
+
         if (loading) CircularProgressIndicator()
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+
         current?.let { p ->
-            Text("PROFILE SETTINGS", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color(0xFF536783))
-            ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
-                Row(Modifier.fillMaxWidth().clickable { editingProfile = true }.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = androidx.compose.ui.graphics.Color(0xFFE8EEFF)) { Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF3157D5), modifier = Modifier.padding(12.dp).size(24.dp)) }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text("Edit professional profile", style = MaterialTheme.typography.titleMedium); Text("Name, bio, services and skills", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B)) }
-                    Icon(Icons.Filled.ChevronRight, contentDescription = "Open profile settings")
+            ElevatedCard(
+                Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFE8EEFF)
+                    ) {
+                        Icon(
+                            Icons.Filled.Security,
+                            contentDescription = null,
+                            tint = androidx.compose.ui.graphics.Color(0xFF3157D5),
+                            modifier = Modifier.padding(12.dp).size(26.dp)
+                        )
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Account security", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                        Text("Verified email, mobile number and password changes", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                        Text(p.email, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5))
+                    }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = "Open account security", tint = androidx.compose.ui.graphics.Color(0xFF3157D5))
+                }
+                Button(
+                    onClick = { security = true },
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp).height(50.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Filled.Security, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Open Security Center")
                 }
             }
-            Text("SECURITY", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color(0xFF536783))
-            ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
-                Row(Modifier.fillMaxWidth().clickable { security = true }.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = androidx.compose.ui.graphics.Color(0xFFE2F6F1)) { Icon(Icons.Filled.Security, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF168675), modifier = Modifier.padding(12.dp).size(24.dp)) }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text("Account security", style = MaterialTheme.typography.titleMedium); Text("Change mobile, email and password with verification", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B)) }
-                    Icon(Icons.Filled.ChevronRight, contentDescription = "Open account security")
-                }
-            }
-            Text("Signed in as " + p.email, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
         }
-        OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth().height(50.dp)) { Text("Back to profile") }
+
+        OutlinedButton(
+            onClick = back,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+        ) { Text("Back to profile") }
     }
 }
 
