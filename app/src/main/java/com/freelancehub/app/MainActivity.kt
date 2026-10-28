@@ -2230,6 +2230,7 @@ fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehu
             auth = auth,
             account = account,
             currentEmail = current.email,
+            initialPhone = current.mobileNumber,
             done = { security = false; reloadProfile() },
             back = { security = false; reloadProfile() }
         )
@@ -2724,6 +2725,263 @@ fun RemoteAccountSecurityScreen(
     done: () -> Unit,
     back: () -> Unit
 ) {
+    val securityCountries=listOf(
+        "Afghanistan" to "+93",
+        "Albania" to "+355",
+        "Algeria" to "+213",
+        "American Samoa" to "+1",
+        "Andorra" to "+376",
+        "Angola" to "+244",
+        "Anguilla" to "+1",
+        "Antigua and Barbuda" to "+1",
+        "Argentina" to "+54",
+        "Armenia" to "+374",
+        "Aruba" to "+297",
+        "Australia" to "+61",
+        "Austria" to "+43",
+        "Azerbaijan" to "+994",
+        "Bahamas" to "+1",
+        "Bahrain" to "+973",
+        "Bangladesh" to "+880",
+        "Barbados" to "+1",
+        "Belarus" to "+375",
+        "Belgium" to "+32",
+        "Belize" to "+501",
+        "Benin" to "+229",
+        "Bermuda" to "+1",
+        "Bhutan" to "+975",
+        "Bolivia" to "+591",
+        "Bonaire, Sint Eustatius and Saba" to "+599",
+        "Bosnia and Herzegovina" to "+387",
+        "Botswana" to "+267",
+        "Brazil" to "+55",
+        "British Indian Ocean Territory" to "+246",
+        "British Virgin Islands" to "+1",
+        "Brunei" to "+673",
+        "Bulgaria" to "+359",
+        "Burkina Faso" to "+226",
+        "Burundi" to "+257",
+        "Cambodia" to "+855",
+        "Cameroon" to "+237",
+        "Canada" to "+1",
+        "Cape Verde" to "+238",
+        "Cayman Islands" to "+1",
+        "Central African Republic" to "+236",
+        "Chad" to "+235",
+        "Chile" to "+56",
+        "China" to "+86",
+        "Christmas Island" to "+61",
+        "Cocos (Keeling) Islands" to "+61",
+        "Colombia" to "+57",
+        "Comoros" to "+269",
+        "Congo" to "+242",
+        "Cook Islands" to "+682",
+        "Costa Rica" to "+506",
+        "Côte d’Ivoire" to "+225",
+        "Croatia" to "+385",
+        "Cuba" to "+53",
+        "Curaçao" to "+599",
+        "Cyprus" to "+357",
+        "Czechia" to "+420",
+        "Democratic Republic of the Congo" to "+243",
+        "Denmark" to "+45",
+        "Djibouti" to "+253",
+        "Dominica" to "+1",
+        "Dominican Republic" to "+1",
+        "Ecuador" to "+593",
+        "Egypt" to "+20",
+        "El Salvador" to "+503",
+        "Equatorial Guinea" to "+240",
+        "Eritrea" to "+291",
+        "Estonia" to "+372",
+        "Eswatini" to "+268",
+        "Ethiopia" to "+251",
+        "Falkland Islands" to "+500",
+        "Faroe Islands" to "+298",
+        "Fiji" to "+679",
+        "Finland" to "+358",
+        "France" to "+33",
+        "French Guiana" to "+594",
+        "French Polynesia" to "+689",
+        "French Southern Territories" to "+262",
+        "Gabon" to "+241",
+        "Gambia" to "+220",
+        "Georgia" to "+995",
+        "Germany" to "+49",
+        "Ghana" to "+233",
+        "Gibraltar" to "+350",
+        "Greece" to "+30",
+        "Greenland" to "+299",
+        "Grenada" to "+1",
+        "Guadeloupe" to "+590",
+        "Guam" to "+1",
+        "Guatemala" to "+502",
+        "Guernsey" to "+44",
+        "Guinea" to "+224",
+        "Guinea-Bissau" to "+245",
+        "Guyana" to "+592",
+        "Haiti" to "+509",
+        "Honduras" to "+504",
+        "Hong Kong" to "+852",
+        "Hungary" to "+36",
+        "Iceland" to "+354",
+        "India" to "+91",
+        "Indonesia" to "+62",
+        "Iran" to "+98",
+        "Iraq" to "+964",
+        "Ireland" to "+353",
+        "Isle of Man" to "+44",
+        "Israel" to "+972",
+        "Italy" to "+39",
+        "Jamaica" to "+1",
+        "Japan" to "+81",
+        "Jersey" to "+44",
+        "Jordan" to "+962",
+        "Kazakhstan" to "+7",
+        "Kenya" to "+254",
+        "Kiribati" to "+686",
+        "Kosovo" to "+383",
+        "Kuwait" to "+965",
+        "Kyrgyzstan" to "+996",
+        "Laos" to "+856",
+        "Latvia" to "+371",
+        "Lebanon" to "+961",
+        "Lesotho" to "+266",
+        "Liberia" to "+231",
+        "Libya" to "+218",
+        "Liechtenstein" to "+423",
+        "Lithuania" to "+370",
+        "Luxembourg" to "+352",
+        "Macao" to "+853",
+        "Madagascar" to "+261",
+        "Malawi" to "+265",
+        "Malaysia" to "+60",
+        "Maldives" to "+960",
+        "Mali" to "+223",
+        "Malta" to "+356",
+        "Marshall Islands" to "+692",
+        "Martinique" to "+596",
+        "Mauritania" to "+222",
+        "Mauritius" to "+230",
+        "Mayotte" to "+262",
+        "Mexico" to "+52",
+        "Micronesia" to "+691",
+        "Moldova" to "+373",
+        "Monaco" to "+377",
+        "Mongolia" to "+976",
+        "Montenegro" to "+382",
+        "Montserrat" to "+1",
+        "Morocco" to "+212",
+        "Mozambique" to "+258",
+        "Myanmar" to "+95",
+        "Namibia" to "+264",
+        "Nauru" to "+674",
+        "Nepal" to "+977",
+        "Netherlands" to "+31",
+        "New Caledonia" to "+687",
+        "New Zealand" to "+64",
+        "Nicaragua" to "+505",
+        "Niger" to "+227",
+        "Nigeria" to "+234",
+        "Niue" to "+683",
+        "Norfolk Island" to "+672",
+        "North Korea" to "+850",
+        "North Macedonia" to "+389",
+        "Northern Mariana Islands" to "+1",
+        "Norway" to "+47",
+        "Oman" to "+968",
+        "Pakistan" to "+92",
+        "Palau" to "+680",
+        "Palestine" to "+970",
+        "Panama" to "+507",
+        "Papua New Guinea" to "+675",
+        "Paraguay" to "+595",
+        "Peru" to "+51",
+        "Philippines" to "+63",
+        "Pitcairn Islands" to "+64",
+        "Poland" to "+48",
+        "Portugal" to "+351",
+        "Puerto Rico" to "+1",
+        "Qatar" to "+974",
+        "Réunion" to "+262",
+        "Romania" to "+40",
+        "Russia" to "+7",
+        "Rwanda" to "+250",
+        "Saint Barthélemy" to "+590",
+        "Saint Helena, Ascension and Tristan da Cunha" to "+290",
+        "Saint Kitts and Nevis" to "+1",
+        "Saint Lucia" to "+1",
+        "Saint Martin" to "+590",
+        "Saint Pierre and Miquelon" to "+508",
+        "Saint Vincent and the Grenadines" to "+1",
+        "Samoa" to "+685",
+        "San Marino" to "+378",
+        "São Tomé and Príncipe" to "+239",
+        "Saudi Arabia" to "+966",
+        "Senegal" to "+221",
+        "Serbia" to "+381",
+        "Seychelles" to "+248",
+        "Sierra Leone" to "+232",
+        "Singapore" to "+65",
+        "Sint Maarten" to "+1",
+        "Slovakia" to "+421",
+        "Slovenia" to "+386",
+        "Solomon Islands" to "+677",
+        "Somalia" to "+252",
+        "South Africa" to "+27",
+        "South Korea" to "+82",
+        "South Sudan" to "+211",
+        "Spain" to "+34",
+        "Sri Lanka" to "+94",
+        "Sudan" to "+249",
+        "Suriname" to "+597",
+        "Svalbard and Jan Mayen" to "+47",
+        "Sweden" to "+46",
+        "Switzerland" to "+41",
+        "Syria" to "+963",
+        "Taiwan" to "+886",
+        "Tajikistan" to "+992",
+        "Tanzania" to "+255",
+        "Thailand" to "+66",
+        "Timor-Leste" to "+670",
+        "Togo" to "+228",
+        "Tokelau" to "+690",
+        "Tonga" to "+676",
+        "Trinidad and Tobago" to "+1",
+        "Tunisia" to "+216",
+        "Türkiye" to "+90",
+        "Turkmenistan" to "+993",
+        "Turks and Caicos Islands" to "+1",
+        "Tuvalu" to "+688",
+        "Uganda" to "+256",
+        "Ukraine" to "+380",
+        "United Arab Emirates" to "+971",
+        "United Kingdom" to "+44",
+        "United States" to "+1",
+        "United States Virgin Islands" to "+1",
+        "Uruguay" to "+598",
+        "Uzbekistan" to "+998",
+        "Vanuatu" to "+678",
+        "Vatican City" to "+39",
+        "Venezuela" to "+58",
+        "Vietnam" to "+84",
+        "Wallis and Futuna" to "+681",
+        "Western Sahara" to "+212",
+        "Yemen" to "+967",
+        "Zambia" to "+260",
+        "Zimbabwe" to "+263"
+    )
+
+    val initialCountry = securityCountries.filter { initialPhone.startsWith(it.second) }.maxByOrNull { it.second.length }
+    var countryCode by remember(initialPhone) { mutableStateOf(initialCountry?.second ?: "+971") }
+    var phoneDigits by remember(initialPhone) {
+        mutableStateOf(
+            if (initialCountry != null) initialPhone.removePrefix(initialCountry.second).filter(Char::isDigit)
+            else initialPhone.removePrefix("+971").filter(Char::isDigit)
+        )
+    }
+    var showCountryPicker by remember { mutableStateOf(false) }
+    var countrySearch by remember { mutableStateOf("") }
     var method by remember { mutableStateOf(if (initialPhone.isBlank()) "email" else "phone") }
     var target by remember { mutableStateOf(initialPhone) }
     var otp by remember { mutableStateOf("") }
@@ -2741,6 +2999,53 @@ fun RemoteAccountSecurityScreen(
     val scope = rememberCoroutineScope()
     val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
     val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
+    val phoneTarget = countryCode + phoneDigits.filter(Char::isDigit)
+    if (showCountryPicker) {
+        val filteredCountries = securityCountries.filter {
+            it.first.contains(countrySearch, true) || it.second.contains(countrySearch)
+        }
+        AlertDialog(
+            onDismissRequest = { showCountryPicker = false; countrySearch = "" },
+            title = { Text("Choose country code", color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = countrySearch,
+                        onValueChange = { countrySearch = it },
+                        label = { Text("Search country or dial code") },
+                        placeholder = { Text("e.g. United Arab Emirates or +971") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    LazyColumn(Modifier.heightIn(max = 340.dp)) {
+                        items(filteredCountries) { country ->
+                            TextButton(
+                                onClick = {
+                                    countryCode = country.second
+                                    target = country.second + phoneDigits.filter(Char::isDigit)
+                                    showCountryPicker = false
+                                    countrySearch = ""
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(country.first, color = navy)
+                                    Text(country.second, color = blue, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                    if (filteredCountries.isEmpty()) Text("No matching country found.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCountryPicker = false; countrySearch = "" }) { Text("Done") }
+            },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+            containerColor = androidx.compose.ui.graphics.Color.White
+        )
+    }
     Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF4F7FC)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Surface(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), color = navy) {
             Column(Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(navy, blue))).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2758,10 +3063,27 @@ fun RemoteAccountSecurityScreen(
                     FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") })
                 }
                 if (method != "password") {
-                Text(if (method == "email") "Current email: $currentEmail" else "Enter the new mobile number in international format, for example +9715XXXXXXXX.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
+                Text(if (method == "email") "Current email: $currentEmail" else "Select a country code, then enter your mobile number.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
                 if (!verifying) {
-                    OutlinedTextField(value = target, onValueChange = { target = it.trimStart() }, label = { Text(if (method == "email") "New email address" else "New phone number (+country code)") }, leadingIcon = { Icon(if (method == "email") Icons.Filled.Email else Icons.Filled.Phone, contentDescription = null) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Button(enabled = !busy && target.isNotBlank() && (method != "email" || target.contains("@")), onClick = {
+                    if (method == "email") {
+                        OutlinedTextField(value = target, onValueChange = { target = it.trimStart() }, label = { Text("New email address") }, leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            OutlinedButton(onClick = { showCountryPicker = true }, modifier = Modifier.weight(0.85f).height(56.dp)) {
+                                Text(countryCode, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
+                            OutlinedTextField(
+                                value = phoneDigits,
+                                onValueChange = { phoneDigits = it.filter(Char::isDigit).take(14); target = countryCode + phoneDigits },
+                                label = { Text("Mobile number") },
+                                leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone),
+                                singleLine = true,
+                                modifier = Modifier.weight(1.65f)
+                            )
+                        }
+                    }
+                    Button(enabled = !busy && if (method == "email") target.isNotBlank() && target.contains("@") else phoneDigits.filter(Char::isDigit).length in 7..14, onClick = {
                         busy = true; error = ""; message = ""
                         val completion: (Result<Unit>) -> Unit = { result ->
                             scope.launch(Dispatchers.Main) {
@@ -2776,7 +3098,10 @@ fun RemoteAccountSecurityScreen(
                             scope.launch(Dispatchers.IO) {
                                 val check = runCatching { account.ensureMobileChangeAllowed() }
                                 withContext(Dispatchers.Main) {
-                                    check.onSuccess { auth.requestPhoneChange(target, completion) }
+                                    check.onSuccess {
+                                            target = phoneTarget
+                                            auth.requestPhoneChange(phoneTarget, completion)
+                                        }
                                         .onFailure { e -> busy = false; error = e.message ?: "Mobile number change is not currently allowed." }
                                 }
                             }
