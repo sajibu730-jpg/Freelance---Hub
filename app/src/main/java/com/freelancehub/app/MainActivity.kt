@@ -1982,9 +1982,7 @@ fun RemoteNotificationsScreen() {
             Text(if(p.capabilities.isBlank())"Capabilities: not added" else "Capabilities: ${p.capabilities}")
             Text(if(p.skills.isBlank())"Skills: not added" else "Skills: ${p.skills}")
             Spacer(Modifier.height(20.dp))
-            Button(onClick={editing=true},modifier=Modifier.fillMaxWidth()){Text("Edit profile")}
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick={security=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Filled.Lock,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Account security")}
+            OutlinedButton(onClick={edit()},modifier=Modifier.fillMaxWidth().height(52.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){Icon(Icons.Filled.Settings,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Settings")}
             
         }
     }
@@ -2339,33 +2337,7 @@ fun RemoteNotificationsScreen() {
                     OutlinedTextField(name,{name=it},label={Text("Full name")},leadingIcon={Icon(Icons.Filled.Person,contentDescription=null)},singleLine=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
                     OutlinedTextField(profile.email,{},label={Text("Account email")},leadingIcon={Icon(Icons.Filled.Email,contentDescription=null)},singleLine=true,readOnly=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
                     Text("To change your email, use Account security settings.",style=MaterialTheme.typography.bodySmall,color=muted)
-                    Text("Mobile number",style=MaterialTheme.typography.labelLarge,color=navy,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
-                        OutlinedButton(
-                            onClick={showCountryPicker=true},
-                            modifier=Modifier.widthIn(min=106.dp),
-                            shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                            contentPadding=PaddingValues(horizontal=10.dp,vertical=17.dp),
-                            colors=ButtonDefaults.outlinedButtonColors(contentColor=navy)
-                        ){
-                            Column(horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(2.dp)){
-                                Text("CODE",style=MaterialTheme.typography.labelSmall,color=muted)
-                                Text(countryCode,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=blue)
-                            }
-                            Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose country code",tint=blue)
-                        }
-                        OutlinedTextField(
-                            value=mobileNumber,
-                            onValueChange={mobileNumber=it.filter{ch->ch.isDigit()||ch==' '||ch=='-'}.take(18)},
-                            label={Text("Mobile number")},
-                            placeholder={Text("Enter phone number")},
-                            leadingIcon={Icon(Icons.Filled.Phone,contentDescription=null,tint=blue)},
-                            singleLine=true,
-                            shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                            modifier=Modifier.weight(1f)
-                        )
-                    }
-                    Text("Tap the country code to search worldwide calling codes.",style=MaterialTheme.typography.bodySmall,color=muted)
+                    Text("Mobile number changes are managed in Account Security.",style=MaterialTheme.typography.bodySmall,color=muted)
                 }
             }
         }
@@ -2382,13 +2354,11 @@ fun RemoteNotificationsScreen() {
         }
         item{
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-            Button(enabled=valid&&!busy&&mobileNumber.isNotBlank(),onClick={
+            Button(enabled=valid&&!busy,onClick={
                 busy=true;error=""
                 scope.launch(Dispatchers.IO){
-                    val proposedPhone=(countryCode+mobileNumber.filterNot{it.isWhitespace()||it=='-'}).trim()
-                    val phoneChanged=proposedPhone != profile.mobileNumber.trim()
                     runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),null))}
-                        .onSuccess{withContext(Dispatchers.Main){if(phoneChanged)openSecurity(proposedPhone) else done()}}
+                        .onSuccess{withContext(Dispatchers.Main){done()}}
                         .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Profile update failed."}}
                 }
             },modifier=Modifier.fillMaxWidth().height(54.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){
