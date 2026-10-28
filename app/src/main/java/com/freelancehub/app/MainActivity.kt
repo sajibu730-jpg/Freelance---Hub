@@ -1985,38 +1985,95 @@ fun RemoteNotificationsScreen() {
     var bio by remember{mutableStateOf(profile.bio)}
     var capabilities by remember{mutableStateOf(profile.capabilities)}
     var skills by remember{mutableStateOf(profile.skills)}
-    var mobileNumber by remember{mutableStateOf(profile.mobileNumber)}
+    var countryCode by remember{mutableStateOf("+971")}
+    var mobileNumber by remember{mutableStateOf(profile.mobileNumber.removePrefix("+971").trim())}
+    var showCountryPicker by remember{mutableStateOf(false)}
+    var countrySearch by remember{mutableStateOf("")}
     var error by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
+    val navy=androidx.compose.ui.graphics.Color(0xFF102A56)
+    val blue=androidx.compose.ui.graphics.Color(0xFF3157D5)
+    val muted=androidx.compose.ui.graphics.Color(0xFF65748B)
+    val countries=listOf("United Arab Emirates" to "+971","Bangladesh" to "+880","India" to "+91","Pakistan" to "+92","Saudi Arabia" to "+966","United States" to "+1","United Kingdom" to "+44","Nepal" to "+977","Philippines" to "+63","Egypt" to "+20","Canada" to "+1","Australia" to "+61","Qatar" to "+974","Oman" to "+968","Kuwait" to "+965","Sri Lanka" to "+94")
     val valid=Validation.text(name,2,120)&&Validation.text(bio,0,500)&&Validation.text(capabilities,0,2000)&&Validation.text(skills,0,1000)
-    LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
+    if(showCountryPicker){
+        AlertDialog(
+            onDismissRequest={showCountryPicker=false;countrySearch=""},
+            title={Text("Choose country code",fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=navy)},
+            text={
+                Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    OutlinedTextField(countrySearch,{countrySearch=it},label={Text("Search country")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                    LazyColumn(Modifier.heightIn(max=320.dp)){
+                        items(countries.filter{it.first.contains(countrySearch,true)||it.second.contains(countrySearch)}){
+                            Row(Modifier.fillMaxWidth().clickable{countryCode=it.second;showCountryPicker=false;countrySearch=""}.padding(vertical=12.dp,horizontal=6.dp),horizontalArrangement=Arrangement.SpaceBetween){
+                                Text(it.first);Text(it.second,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,color=blue)
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            },
+            confirmButton={TextButton(onClick={showCountryPicker=false;countrySearch=""}){Text("Close")}}
+        )
+    }
+    LazyColumn(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF4F7FC)).padding(horizontal=18.dp),
+        contentPadding=PaddingValues(top=18.dp,bottom=28.dp),
+        verticalArrangement=Arrangement.spacedBy(14.dp)
+    ){
         item{
-            Text("Edit profile",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
-            OutlinedTextField(name,{name=it},label={Text("Name")},modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(profile.email,{},label={Text("Email (account identity)")},modifier=Modifier.fillMaxWidth(),readOnly=true)
-            OutlinedTextField(
-    mobileNumber,
-    { mobileNumber = it },
-    label = { Text("Mobile number") },
-    modifier = Modifier.fillMaxWidth()
-)
-            OutlinedTextField(bio,{bio=it},label={Text("Bio")},minLines=3,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(capabilities,{capabilities=it},label={Text("What work can you do?")},minLines=3,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(skills,{skills=it},label={Text("Skills")},modifier=Modifier.fillMaxWidth())
-            Text("Account type: ${profile.role.name.lowercase().replaceFirstChar{it.uppercase()}} (cannot be changed after account creation)",style=MaterialTheme.typography.bodySmall)
+            Surface(Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),color=navy){
+                Column(Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(navy,blue))).padding(22.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
+                    Text("ACCOUNT SETTINGS",color=androidx.compose.ui.graphics.Color(0xFFCEDBFF),style=MaterialTheme.typography.labelMedium)
+                    Text("Edit your profile",color=androidx.compose.ui.graphics.Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("Keep your professional information accurate and up to date.",color=androidx.compose.ui.graphics.Color.White.copy(alpha=0.86f),style=MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        item{
+            ElevatedCard(Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=androidx.compose.ui.graphics.Color.White)){
+                Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    Text("Personal information",style=MaterialTheme.typography.titleMedium,color=navy,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                    OutlinedTextField(name,{name=it},label={Text("Full name")},leadingIcon={Icon(Icons.Filled.Person,contentDescription=null)},singleLine=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
+                    OutlinedTextField(profile.email,{},label={Text("Account email")},leadingIcon={Icon(Icons.Filled.Email,contentDescription=null)},singleLine=true,readOnly=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
+                    Text("To change your email, use Account security settings.",style=MaterialTheme.typography.bodySmall,color=muted)
+                    Text("Mobile number",style=MaterialTheme.typography.labelLarge,color=navy)
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                        OutlinedButton(onClick={showCountryPicker=true},modifier=Modifier.widthIn(min=104.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),contentPadding=PaddingValues(horizontal=12.dp,vertical=16.dp)){
+                            Text(countryCode,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold);Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose country code")
+                        }
+                        OutlinedTextField(mobileNumber,{mobileNumber=it.filter{ch->ch.isDigit()||ch==' '||ch=='-'}.take(18)},label={Text("Phone number")},leadingIcon={Icon(Icons.Filled.Phone,contentDescription=null)},singleLine=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.weight(1f))
+                    }
+                    Text("Choose a country code, then enter your number without the country prefix.",style=MaterialTheme.typography.bodySmall,color=muted)
+                }
+            }
+        }
+        item{
+            ElevatedCard(Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp),colors=CardDefaults.elevatedCardColors(containerColor=androidx.compose.ui.graphics.Color.White)){
+                Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    Text("Professional profile",style=MaterialTheme.typography.titleMedium,color=navy,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                    OutlinedTextField(bio,{bio=it},label={Text("Professional bio")},placeholder={Text("Introduce yourself and your experience")},minLines=3,maxLines=5,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
+                    OutlinedTextField(capabilities,{capabilities=it},label={Text("Services you provide")},placeholder={Text("Describe the work you can deliver")},minLines=3,maxLines=5,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
+                    OutlinedTextField(skills,{skills=it},label={Text("Skills and tools")},placeholder={Text("Separate items with commas")},minLines=2,maxLines=4,shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth())
+                    Text("Account type: ${profile.role.name.lowercase().replaceFirstChar{it.uppercase()}}",style=MaterialTheme.typography.bodySmall,color=muted)
+                }
+            }
+        }
+        item{
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(12.dp))
-            Button(enabled=valid&&!busy,onClick={
+            Button(enabled=valid&&!busy&&mobileNumber.isNotBlank(),onClick={
                 busy=true;error=""
                 scope.launch(Dispatchers.IO){
-                    
-runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),mobileNumber.trim().takeIf { it != profile.mobileNumber.trim() }))}
+                    runCatching{account.updateProfile(RemoteProfileUpdate(name.trim(),bio.trim(),capabilities.trim(),skills.trim(),(countryCode+mobileNumber.filterNot{it.isWhitespace()||it=='-'}).takeIf{it != profile.mobileNumber.trim()}))}
                         .onSuccess{withContext(Dispatchers.Main){done()}}
                         .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Profile update failed."}}
                 }
-            },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Saving…" else "Save profile")}
-            TextButton(onClick=cancel){Text("Cancel")}
+            },modifier=Modifier.fillMaxWidth().height(54.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){
+                if(busy)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=androidx.compose.ui.graphics.Color.White) else Icon(Icons.Filled.CheckCircle,contentDescription=null)
+                Spacer(Modifier.width(8.dp));Text(if(busy)"Saving changes…" else "Save profile",fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)
+            }
+            OutlinedButton(onClick=cancel,modifier=Modifier.fillMaxWidth().height(50.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp)){Text("Cancel")}
         }
     }
 }
