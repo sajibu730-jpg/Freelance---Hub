@@ -233,7 +233,7 @@ class AuthService(context: Context) {
     fun requestPhoneChange(newPhone: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
-                require(newPhone.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                require(newPhone.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid phone number with country code, such as +9715XXXXXXXX."
                 }
                 val access = accessTokenForApiBlocking()
