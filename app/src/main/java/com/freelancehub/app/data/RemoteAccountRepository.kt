@@ -93,7 +93,7 @@ class RemoteAccountRepository(
         )
         val phone = authUser.optString("phone")
         val confirmedAt = authUser.optString("phone_confirmed_at")
-        require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$""")) && confirmedAt.isNotBlank()) {
+        require(phone.matches(Regex("""^\+[1-9][0-9]{7,14}$""")) && confirmedAt.isNotBlank()) {
             "Verify the new mobile number before saving it to your profile."
         }
         val userId = authUser.optString("id")
