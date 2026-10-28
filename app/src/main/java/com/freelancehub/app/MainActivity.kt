@@ -1993,8 +1993,25 @@ fun RemoteNotificationsScreen() {
     var bio by remember{mutableStateOf(profile.bio)}
     var capabilities by remember{mutableStateOf(profile.capabilities)}
     var skills by remember{mutableStateOf(profile.skills)}
-    var countryCode by remember{mutableStateOf("+971")}
-    var mobileNumber by remember{mutableStateOf(profile.mobileNumber.removePrefix("+971").trim())}
+    val countries=listOf(
+        "Afghanistan" to "+93","Albania" to "+355","Algeria" to "+213","Argentina" to "+54","Australia" to "+61","Austria" to "+43",
+        "Bahrain" to "+973","Bangladesh" to "+880","Belgium" to "+32","Bhutan" to "+975","Brazil" to "+55","Brunei" to "+673",
+        "Cambodia" to "+855","Cameroon" to "+237","Canada" to "+1","Chile" to "+56","China" to "+86","Colombia" to "+57",
+        "Denmark" to "+45","Egypt" to "+20","Ethiopia" to "+251","Finland" to "+358","France" to "+33","Germany" to "+49",
+        "Ghana" to "+233","Greece" to "+30","Hong Kong" to "+852","India" to "+91","Indonesia" to "+62","Iran" to "+98",
+        "Iraq" to "+964","Ireland" to "+353","Israel" to "+972","Italy" to "+39","Japan" to "+81","Jordan" to "+962",
+        "Kenya" to "+254","Kuwait" to "+965","Lebanon" to "+961","Malaysia" to "+60","Maldives" to "+960","Mexico" to "+52",
+        "Morocco" to "+212","Myanmar" to "+95","Nepal" to "+977","Netherlands" to "+31","New Zealand" to "+64","Nigeria" to "+234",
+        "Norway" to "+47","Oman" to "+968","Pakistan" to "+92","Palestine" to "+970","Philippines" to "+63","Poland" to "+48",
+        "Portugal" to "+351","Qatar" to "+974","Romania" to "+40","Russia" to "+7","Saudi Arabia" to "+966","Singapore" to "+65",
+        "South Africa" to "+27","South Korea" to "+82","Spain" to "+34","Sri Lanka" to "+94","Sudan" to "+249","Sweden" to "+46",
+        "Switzerland" to "+41","Syria" to "+963","Taiwan" to "+886","Tanzania" to "+255","Thailand" to "+66","Tunisia" to "+216",
+        "Turkey" to "+90","Uganda" to "+256","Ukraine" to "+380","United Arab Emirates" to "+971","United Kingdom" to "+44",
+        "United States" to "+1","Uzbekistan" to "+998","Venezuela" to "+58","Vietnam" to "+84","Yemen" to "+967","Zimbabwe" to "+263"
+    )
+    val existingCountry= countries.filter{profile.mobileNumber.trim().startsWith(it.second)}.maxByOrNull{it.second.length}
+    var countryCode by remember(profile.mobileNumber){mutableStateOf(existingCountry?.second ?: "+971")}
+    var mobileNumber by remember(profile.mobileNumber){mutableStateOf(if(existingCountry!=null) profile.mobileNumber.trim().removePrefix(existingCountry.second).trim() else profile.mobileNumber.trim().removePrefix("+971").trim())}
     var showCountryPicker by remember{mutableStateOf(false)}
     var countrySearch by remember{mutableStateOf("")}
     var error by remember{mutableStateOf("")}
@@ -2003,7 +2020,6 @@ fun RemoteNotificationsScreen() {
     val navy=androidx.compose.ui.graphics.Color(0xFF102A56)
     val blue=androidx.compose.ui.graphics.Color(0xFF3157D5)
     val muted=androidx.compose.ui.graphics.Color(0xFF65748B)
-    val countries=listOf("United Arab Emirates" to "+971","Bangladesh" to "+880","India" to "+91","Pakistan" to "+92","Saudi Arabia" to "+966","United States" to "+1","United Kingdom" to "+44","Nepal" to "+977","Philippines" to "+63","Egypt" to "+20","Canada" to "+1","Australia" to "+61","Qatar" to "+974","Oman" to "+968","Kuwait" to "+965","Sri Lanka" to "+94")
     val valid=Validation.text(name,2,120)&&Validation.text(bio,0,500)&&Validation.text(capabilities,0,2000)&&Validation.text(skills,0,1000)
     if(showCountryPicker){
         AlertDialog(
