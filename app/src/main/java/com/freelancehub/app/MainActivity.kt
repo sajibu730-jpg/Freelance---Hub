@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -1946,28 +1947,41 @@ fun RemoteNotificationsScreen() {
         Button(onClick={if(reviewee.isNotBlank())onSubmit(Review(j.id,p.email,p.name,reviewee,revieweeName,rating,comment))},enabled=reviewee.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("Submit review")};Text("Reviews can be submitted once per participant per completed job.");TextButton(onClick=back){Text("Cancel")}}
 }
 
-@Composable fun RemoteProfileScreen(account:RemoteAccountRepository,auth:com.freelancehub.app.auth.AuthService,edit:()->Unit,logout:()->Unit){
+@Composable
+fun RemoteProfileScreen(
+    account: RemoteAccountRepository,
+    auth: com.freelancehub.app.auth.AuthService,
+    edit: () -> Unit,
+    logout: () -> Unit
+) {
     val context = LocalContext.current
-    var profile by remember{mutableStateOf<RemoteAccount?>(null)}
-    var loading by remember{mutableStateOf(true)}
-    var savingPhoto by remember{mutableStateOf(false)}
-    var error by remember{mutableStateOf("")}
-    var notice by remember{mutableStateOf("")}
-    val scope=rememberCoroutineScope()
-    fun load(){
-        loading=true
-        scope.launch(Dispatchers.IO){
-            val result=runCatching{account.currentUser()}
-            withContext(Dispatchers.Main){
-                result.onSuccess{profile=it}.onFailure{error=it.message?: "Unable to load profile."}
-                loading=false
+    var profile by remember { mutableStateOf<RemoteAccount?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var savingPhoto by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    var notice by remember { mutableStateOf("") }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var profileBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var coverBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun load() {
+        loading = true
+        scope.launch(Dispatchers.IO) {
+            val result = runCatching { account.currentUser() }
+            withContext(Dispatchers.Main) {
+                result.onSuccess { profile = it }
+                    .onFailure { error = it.message ?: "Unable to load profile." }
+                loading = false
             }
         }
     }
+
     fun uploadSelected(uri: Uri, isCover: Boolean) {
         if (savingPhoto) return
         savingPhoto = true
-        error = ""; notice = ""
+        error = ""
+        notice = ""
         scope.launch(Dispatchers.IO) {
             val result = runCatching {
                 val resolver = context.contentResolver
@@ -2005,60 +2019,183 @@ fun RemoteNotificationsScreen() {
             }
         }
     }
+
     val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) uploadSelected(uri, false)
     }
     val coverPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) uploadSelected(uri, true)
     }
-    LaunchedEffect(Unit){load()}
-    Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)){
-        Text("Profile",style=MaterialTheme.typography.headlineSmall,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
-        if(loading) CircularProgressIndicator()
-        if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
-        if(notice.isNotBlank()) Text(notice,color=androidx.compose.ui.graphics.Color(0xFF168675))
-        if(savingPhoto) Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){CircularProgressIndicator(modifier=Modifier.size(20.dp),strokeWidth=2.dp);Text("Saving photo securely…")}
-        profile?.let{p->
-            ElevatedCard(Modifier.fillMaxWidth(),colors=CardDefaults.elevatedCardColors(containerColor=androidx.compose.ui.graphics.Color.White)){
-                Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-                    Surface(Modifier.fillMaxWidth().height(132.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),color=androidx.compose.ui.graphics.Color(0xFFE7EDFA)){
-                        Box(contentAlignment=androidx.compose.ui.Alignment.Center){
-                            Column(horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(6.dp)){
-                                Icon(Icons.Filled.Image,contentDescription=null,tint=androidx.compose.ui.graphics.Color(0xFF3157D5),modifier=Modifier.size(32.dp))
-                                Text(if(p.coverPhotoUrl.isNullOrBlank()) "No cover photo yet" else "Cover photo added",style=MaterialTheme.typography.bodyMedium)
+
+    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(profile?.photoPath, profile?.coverPhotoUrl) {
+        val current = profile
+        profileBitmap = null
+        coverBitmap = null
+        if (current != null) {
+            withContext(Dispatchers.IO) {
+                val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                    runCatching { account.downloadProfilePhoto(path).let { bytes -> android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
+                }
+                val cover = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
+                    runCatching { java.net.URL(url).openConnection().apply {
+                        connectTimeout = 10000
+                        readTimeout = 10000
+                    }.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) } }.getOrNull()
+                }
+                withContext(Dispatchers.Main) {
+                    profileBitmap = photo
+                    coverBitmap = cover
+                }
+            }
+        }
+    }
+
+    Column(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC))
+            .verticalScroll(rememberScrollState())
+    ) {
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+        if (notice.isNotBlank()) Text(notice, color = androidx.compose.ui.graphics.Color(0xFF168675), modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        if (savingPhoto) Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            Text("Uploading and saving photo securely…")
+        }
+
+        profile?.let { p ->
+            Box(Modifier.fillMaxWidth()) {
+                Box(
+                    Modifier.fillMaxWidth().height(190.dp)
+                        .background(androidx.compose.ui.graphics.Color(0xFF3157D5))
+                ) {
+                    if (coverBitmap != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = coverBitmap!!.asImageBitmap(),
+                            contentDescription = "Cover photo",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Icon(Icons.Filled.Image, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f), modifier = Modifier.size(44.dp))
+                            if (p.coverPhotoUrl.isNullOrBlank()) Text("Add a cover photo", color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = 18.dp))
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.End) {
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Profile menu", tint = androidx.compose.ui.graphics.Color.White)
+                            }
+                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Account settings") },
+                                    leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                                    onClick = { menuExpanded = false; edit() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Refresh profile") },
+                                    leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                    onClick = { menuExpanded = false; load() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Sign out") },
+                                    leadingIcon = { Icon(Icons.Filled.Logout, contentDescription = null) },
+                                    onClick = { menuExpanded = false; logout() }
+                                )
                             }
                         }
                     }
-                    OutlinedButton(onClick={coverPhotoPicker.launch("image/*")},enabled=!savingPhoto,modifier=Modifier.fillMaxWidth().height(48.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)){
-                        Icon(Icons.Filled.PhotoCamera,contentDescription=null);Spacer(Modifier.width(8.dp));Text(if(p.coverPhotoUrl.isNullOrBlank())"Add cover photo" else "Change cover photo")
-                    }
-                    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){
-                        Surface(shape=androidx.compose.foundation.shape.CircleShape,color=androidx.compose.ui.graphics.Color(0xFFE7EDFA),modifier=Modifier.size(76.dp)){
-                            Box(contentAlignment=androidx.compose.ui.Alignment.Center){Icon(Icons.Filled.Person,contentDescription=null,tint=androidx.compose.ui.graphics.Color(0xFF3157D5),modifier=Modifier.size(38.dp))}
+                }
+
+                Column(Modifier.fillMaxWidth().padding(top = 142.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.size(104.dp),
+                                shadowElevation = 5.dp
+                            ) {
+                                Box(
+                                    Modifier.padding(4.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(androidx.compose.ui.graphics.Color(0xFFE7EDFA)),
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) {
+                                    if (profileBitmap != null) {
+                                        androidx.compose.foundation.Image(
+                                            bitmap = profileBitmap!!.asImageBitmap(),
+                                            contentDescription = "Profile photo",
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF3157D5), modifier = Modifier.size(48.dp))
+                                    }
+                                }
+                            }
+                            IconButton(
+                                onClick = { profilePhotoPicker.launch("image/*") },
+                                enabled = !savingPhoto,
+                                modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd)
+                                    .size(34.dp).background(androidx.compose.ui.graphics.Color(0xFF3157D5), androidx.compose.foundation.shape.CircleShape)
+                            ) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = "Change profile photo", tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(18.dp))
+                            }
                         }
-                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-                            Text(p.displayName.ifBlank{"Your profile"},style=MaterialTheme.typography.titleLarge,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
-                            Text(p.email,style=MaterialTheme.typography.bodySmall,color=androidx.compose.ui.graphics.Color(0xFF65748B))
-                            Text("Profile photo",style=MaterialTheme.typography.labelMedium)
+                        Column(Modifier.weight(1f).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(p.displayName.ifBlank { "Your profile" }, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                            Text(p.role.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
                         }
-                    }
-                    OutlinedButton(onClick={profilePhotoPicker.launch("image/*")},enabled=!savingPhoto,modifier=Modifier.fillMaxWidth().height(48.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)){
-                        Icon(Icons.Filled.PhotoCamera,contentDescription=null);Spacer(Modifier.width(8.dp));Text(if(p.photoPath.isNullOrBlank())"Add profile photo" else "Change profile photo")
                     }
                 }
             }
-            ElevatedCard(Modifier.fillMaxWidth(),colors=CardDefaults.elevatedCardColors(containerColor=androidx.compose.ui.graphics.Color.White)){
-                Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-                    Text("Public profile details",style=MaterialTheme.typography.titleMedium)
-                    Text("Account type: ${p.role.name.lowercase().replaceFirstChar{it.uppercase()}}")
-                    if(p.bio.isNotBlank()) Text(p.bio)
-                    Text(if(p.capabilities.isBlank())"Services: not added" else "Services: ${p.capabilities}")
-                    Text(if(p.skills.isBlank())"Skills: not added" else "Skills: ${p.skills}")
-                    Text("Personal and account details can be managed in Settings.",style=MaterialTheme.typography.bodySmall,color=androidx.compose.ui.graphics.Color(0xFF65748B))
+
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { coverPhotoPicker.launch("image/*") },
+                    enabled = !savingPhoto,
+                    modifier = Modifier.weight(1f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (p.coverPhotoUrl.isNullOrBlank()) "Add cover" else "Change cover")
+                }
+                OutlinedButton(
+                    onClick = { profilePhotoPicker.launch("image/*") },
+                    enabled = !savingPhoto,
+                    modifier = Modifier.weight(1f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Filled.PhotoCamera, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Profile photo")
                 }
             }
-            OutlinedButton(onClick={edit()},modifier=Modifier.fillMaxWidth().height(50.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)){
-                Icon(Icons.Filled.Settings,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Settings")
+
+            ElevatedCard(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                    if (p.bio.isNotBlank()) Text(p.bio)
+                    else Text("Add a short introduction to your professional profile.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                    if (p.capabilities.isNotBlank()) Text("Services: ${p.capabilities}")
+                    if (p.skills.isNotBlank()) Text("Skills: ${p.skills}")
+                }
             }
         }
     }
@@ -2615,10 +2752,12 @@ fun RemoteAccountSecurityScreen(
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Choose what to change", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") })
-                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile") })
+                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") })
+                    FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") })
                 }
+                if (method != "password") {
                 Text(if (method == "email") "Current email: $currentEmail" else "Enter the new mobile number in international format, for example +9715XXXXXXXX.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
                 if (!verifying) {
                     OutlinedTextField(value = target, onValueChange = { target = it.trimStart() }, label = { Text(if (method == "email") "New email address" else "New phone number (+country code)") }, leadingIcon = { Icon(if (method == "email") Icons.Filled.Email else Icons.Filled.Phone, contentDescription = null) }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -2670,10 +2809,11 @@ fun RemoteAccountSecurityScreen(
                     }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Verifying…" else "Verify and save") }
                     TextButton(onClick = { verifying = false; otp = ""; error = ""; message = "" }) { Text("Change contact") }
                 }
-                if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
-                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                }
             }
         }
+
+        if (method == "password") {
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Change password", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
@@ -2738,6 +2878,11 @@ fun RemoteAccountSecurityScreen(
                 }
             }
         }
+
+        }
+
+        if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Back to profile") }
     }
 }
