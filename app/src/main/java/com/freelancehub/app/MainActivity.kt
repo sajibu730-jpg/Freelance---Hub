@@ -3167,32 +3167,6 @@ fun RemoteAccountSecurityScreen(
                             }
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Requesting verification…" else "Next: send verification") }
-                } else {
-                    Text("Enter the verification code delivered to the new ${if (method == "email") "email address" else "mobile number"}.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
-                    OutlinedTextField(value = otp, onValueChange = { otp = it.filter(Char::isDigit).take(8) }, label = { Text("Verification code") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Button(enabled = !busy && otp.length >= 6, onClick = {
-                        busy = true; error = ""; message = ""
-                        auth.verifyAccountChange(if (method == "email") "email_change" else "phone_change", target, otp) { result ->
-                            scope.launch(Dispatchers.Main) {
-                                busy = false
-                                result.onSuccess {
-                                    if (method == "phone") {
-                                        scope.launch(Dispatchers.IO) {
-                                            val saved = runCatching { account.syncVerifiedPhoneToProfile() }
-                                            withContext(Dispatchers.Main) {
-                                                saved.onSuccess { message = "Mobile number verified and saved to your profile."; done() }
-                                                    .onFailure { e -> error = e.message ?: "The verified number could not be saved to the profile." }
-                                            }
-                                        }
-                                    } else {
-                                        message = "Email verification accepted. Refreshing account details…"
-                                        done()
-                                    }
-                                }.onFailure { e -> error = e.message ?: "Verification failed." }
-                            }
-                        }
-                    }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Verifying…" else "Verify and save") }
-                    TextButton(onClick = { verifying = false; otp = ""; error = ""; message = "" }) { Text("Change contact") }
                 }
                 }
             }
