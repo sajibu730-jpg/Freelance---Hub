@@ -302,17 +302,28 @@ val newProfile = newProfileJson.toString()
     .toByteArray(StandardCharsets.UTF_8)
 
 
-            client.readJsonResponse(
+            val insertedBytes = client.readJsonResponse(
                 client.openJsonPost(
                     "/rest/v1/profiles",
                     newProfile,
                     token,
-                    SecureApiClient.newIdempotencyKey()
+                    SecureApiClient.newIdempotencyKey(),
+                    preferRepresentation = true
                 )
             )
+            require(JSONArray(String(insertedBytes, StandardCharsets.UTF_8)).length() > 0) {
+                "Profile creation was not confirmed by the server"
+            }
         }
 
-        return currentUser()
+        val saved = currentUser()
+        require(saved.displayName == input.displayName.trim() &&
+            saved.bio == input.bio.trim() &&
+            saved.capabilities == input.capabilities.trim() &&
+            saved.skills == input.skills.trim()) {
+            "The server response did not confirm all profile changes. Please retry."
+        }
+        return saved
     }
 }
 
