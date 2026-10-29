@@ -227,11 +227,8 @@ class AuthService(context: Context) {
                 }
                 request(
                     method = "POST",
-                    path = "/auth/v1/recover",
-                    body = JSONObject()
-                        .put("email", target)
-                        .put("redirect_to", "freelancehub://auth/reset")
-                        .toString()
+                    path = "/auth/v1/recover?redirect_to=freelancehub%3A%2F%2Fauth%2Freset",
+                    body = JSONObject().put("email", target).toString()
                 )
                 Unit
             })
