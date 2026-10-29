@@ -707,6 +707,7 @@ TextButton(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun MainShell(repo:AppRepository, auth: com.freelancehub.app.auth.AuthService, logout:()->Unit){
     val context = LocalContext.current
     val density = androidx.compose.ui.platform.LocalDensity.current
