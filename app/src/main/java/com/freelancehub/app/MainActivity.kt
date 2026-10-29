@@ -3055,11 +3055,71 @@ fun RemoteAccountSecurityScreen(
     var showCurrentPassword by remember { mutableStateOf(false) }
     var showNewPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
+    var resendSeconds by remember { mutableIntStateOf(0) }
+    LaunchedEffect(verifying, method, resendSeconds) {
+        if (verifying && method != "password" && resendSeconds > 0) {
+            delay(1000)
+            resendSeconds -= 1
+        }
+    }
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
     val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
     val phoneTarget = countryCode + phoneDigits.filter(Char::isDigit)
+    if (verifying && method != "password") {
+        AccountChangeVerificationScreen(
+            method = method, target = target, otp = otp,
+            onOtpChange = { otp = it.filter(Char::isDigit).take(8) },
+            busy = busy, error = error, message = message, resendSeconds = resendSeconds,
+            onBack = { verifying = false; otp = ""; error = ""; message = "" },
+            onResend = {
+                if (!busy && resendSeconds == 0) {
+                    busy = true; error = ""; message = ""; resendSeconds = 30
+                    val completion: (Result<Unit>) -> Unit = { result ->
+                        scope.launch(Dispatchers.Main) {
+                            busy = false
+                            result.onSuccess { message = "A new verification code was requested. Check your inbox or SMS." }
+                                .onFailure { e -> error = e.message ?: "Could not resend verification code." }
+                        }
+                    }
+                    if (method == "email") auth.requestEmailChange(target, completion)
+                    else scope.launch(Dispatchers.IO) {
+                        val check = runCatching { account.ensureMobileChangeAllowed() }
+                        withContext(Dispatchers.Main) {
+                            check.onSuccess { auth.requestPhoneChange(target, completion) }
+                                .onFailure { e -> busy = false; error = e.message ?: "Mobile number change is not currently allowed." }
+                        }
+                    }
+                }
+            },
+            onVerify = {
+                if (!busy && otp.length >= 6) {
+                    busy = true; error = ""; message = ""
+                    auth.verifyAccountChange(if (method == "email") "email_change" else "phone_change", target, otp) { result ->
+                        scope.launch(Dispatchers.Main) {
+                            busy = false
+                            result.onSuccess {
+                                if (method == "phone") {
+                                    scope.launch(Dispatchers.IO) {
+                                        val saved = runCatching { account.syncVerifiedPhoneToProfile() }
+                                        withContext(Dispatchers.Main) {
+                                            saved.onSuccess { message = "Mobile number verified and saved to your profile."; done() }
+                                                .onFailure { e -> error = e.message ?: "The verified number could not be saved to the profile." }
+                                        }
+                                    }
+                                } else {
+                                    message = "Email verification accepted. Refreshing account details…"
+                                    done()
+                                }
+                            }.onFailure { e -> error = e.message ?: "Verification failed." }
+                        }
+                    }
+                }
+            }
+        )
+        return
+    }
     if (showCountryPicker) {
         val filteredCountries = securityCountries.filter {
             it.first.contains(countrySearch, true) || it.second.contains(countrySearch)
@@ -3243,6 +3303,39 @@ fun RemoteAccountSecurityScreen(
         if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Back to profile") }
+    }
+}
+
+@Composable
+private fun AccountChangeVerificationScreen(
+    method: String, target: String, otp: String, onOtpChange: (String) -> Unit,
+    busy: Boolean, error: String, message: String, resendSeconds: Int,
+    onBack: () -> Unit, onResend: () -> Unit, onVerify: () -> Unit
+) {
+    val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
+    val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
+    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC)).padding(20.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        ElevatedCard(Modifier.fillMaxWidth().widthIn(max = 440.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)) {
+            Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Box(Modifier.fillMaxWidth().height(8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(navy, blue))))
+                Icon(if (method == "email") Icons.Filled.MarkEmailRead else Icons.Filled.Sms, contentDescription = null, tint = blue, modifier = Modifier.size(42.dp))
+                Text("Verify your ${if (method == "email") "new email" else "new mobile number"}", style = MaterialTheme.typography.headlineSmall, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text("Enter the code sent to this new contact. Your account changes only after the code is accepted.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                Surface(color = androidx.compose.ui.graphics.Color(0xFFF0F4FF), shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(if (method == "email") Icons.Filled.Email else Icons.Filled.Phone, contentDescription = null, tint = blue)
+                        Text(target, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    }
+                }
+                OutlinedTextField(value = otp, onValueChange = onOtpChange, label = { Text("Verification code") }, placeholder = { Text("Enter 6–8 digit code") }, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                Button(onClick = onVerify, enabled = !busy && otp.length >= 6, modifier = Modifier.fillMaxWidth().height(50.dp)) { Text(if (busy) "Verifying…" else "Verify and save") }
+                OutlinedButton(onClick = onResend, enabled = !busy && resendSeconds == 0, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text(if (resendSeconds > 0) "Resend code in ${resendSeconds}s" else "Resend code") }
+                Text(if (resendSeconds > 0) "You can request another code when the timer reaches zero." else "Didn't receive a code? You can request another one now.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
+                if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
+                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back and edit contact") }
+            }
+        }
     }
 }
 
