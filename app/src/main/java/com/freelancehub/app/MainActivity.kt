@@ -3052,7 +3052,6 @@ fun RemoteAccountSecurityScreen(
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var showCurrentPassword by remember { mutableStateOf(false) }
     var showNewPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
     var resendSeconds by remember { mutableIntStateOf(0) }
@@ -3249,15 +3248,6 @@ fun RemoteAccountSecurityScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Change password", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 Text("We will email a verification code to your account email. Your new password is saved only after the code is accepted.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
-                OutlinedTextField(
-                    value = currentPassword, onValueChange = { currentPassword = it },
-                    label = { Text("Current password") }, singleLine = true,
-                    visualTransformation = if (showCurrentPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        IconButton(onClick = { showCurrentPassword = !showCurrentPassword }) { Icon(if (showCurrentPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = if (showCurrentPassword) "Hide password" else "Show password") }
-                        IconButton(onClick = { clipboard.setText(AnnotatedString(currentPassword)) }, enabled = currentPassword.isNotEmpty()) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy current password") }
-                    } }, modifier = Modifier.fillMaxWidth()
-                )
                 OutlinedTextField(
                     value = newPassword, onValueChange = { newPassword = it },
                     label = { Text("New password (at least 8 characters)") }, singleLine = true,
