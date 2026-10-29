@@ -3240,7 +3240,7 @@ fun RemoteAccountSecurityScreen(
                         ) { signInResult ->
                             scope.launch(Dispatchers.Main) {
                                 signInResult.onSuccess {
-                                    auth.updatePassword(newPassword) { updateResult ->
+                                    auth.updatePassword(currentPassword, newPassword) { updateResult ->
                                         scope.launch(Dispatchers.Main) {
                                             busy = false
                                             updateResult.onSuccess {
