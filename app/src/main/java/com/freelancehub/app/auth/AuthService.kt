@@ -296,6 +296,20 @@ class AuthService(context: Context) {
                     else put("phone", target.trim())
                 }
                 request("POST", "/auth/v1/verify", payload.toString())
+
+                if (type == "email_change") {
+                    val access = accessTokenForApiBlocking()
+                        ?: error("Verification was accepted, but your session expired. Sign in again and check your email settings.")
+                    val savedUser = request(
+                        method = "GET",
+                        path = "/auth/v1/user",
+                        accessToken = access
+                    )
+                    val savedEmail = savedUser.optString("email").trim()
+                    require(savedEmail.equals(target.trim(), ignoreCase = true)) {
+                        "The code was accepted, but Supabase has not confirmed the new email as the active account email yet. Check both confirmation emails if prompted, then refresh Account Security."
+                    }
+                }
                 Unit
             })
         }
