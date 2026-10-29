@@ -247,7 +247,7 @@ class AuthService(context: Context) {
     ) {
         executor.execute {
             callback(runCatching {
-                require(email.trim().matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                require(email.trim().matches(Regex("""^[^\s@]+@[^\\s@]+\.[^\\s@]+$"""))) {
                     "Enter the email address for your account."
                 }
                 require(otp.trim().matches(Regex("^[0-9]{6,8}$"))) {
