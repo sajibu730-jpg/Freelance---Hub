@@ -79,7 +79,7 @@ private fun RecoveryPasswordScreen(accessToken: String, auth: AuthService, onFin
                                 busy = true
                                 message = ""
                                 auth.updateRecoveryPassword(accessToken, password) { result ->
-                                    runOnUiThread {
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
                                         busy = false
                                         result.onSuccess {
                                             success = true
