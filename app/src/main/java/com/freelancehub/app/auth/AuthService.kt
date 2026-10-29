@@ -228,7 +228,27 @@ class AuthService(context: Context) {
                 request(
                     method = "POST",
                     path = "/auth/v1/recover",
-                    body = JSONObject().put("email", target).toString()
+                    body = JSONObject()
+                        .put("email", target)
+                        .put("redirect_to", "freelancehub://auth/reset")
+                        .toString()
+                )
+                Unit
+            })
+        }
+    }
+
+    /** Updates a password using the short-lived token returned by a verified recovery link. */
+    fun updateRecoveryPassword(accessToken: String, newPassword: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(accessToken.isNotBlank()) { "The recovery link is missing its access token. Request a new reset email." }
+                require(newPassword.length >= 8) { "Use at least 8 characters for your new password." }
+                request(
+                    method = "PUT",
+                    path = "/auth/v1/user",
+                    body = JSONObject().put("password", newPassword).toString(),
+                    accessToken = accessToken
                 )
                 Unit
             })
