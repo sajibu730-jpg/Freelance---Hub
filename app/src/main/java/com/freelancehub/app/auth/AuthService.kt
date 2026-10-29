@@ -235,6 +235,49 @@ class AuthService(context: Context) {
         }
     }
 
+    /**
+     * Verifies the recovery OTP and changes the password using the short-lived
+     * recovery session returned by Supabase. The password is never sent before OTP verification.
+     */
+    fun verifyPasswordChangeOtp(
+        email: String,
+        otp: String,
+        newPassword: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(email.trim().matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
+                    "Enter the email address for your account."
+                }
+                require(otp.trim().matches(Regex("^[0-9]{6,8}$"))) {
+                    "Enter the verification code from your email."
+                }
+                require(newPassword.length >= 8) { "Use at least 8 characters for your password." }
+                val verified = request(
+                    method = "POST",
+                    path = "/auth/v1/verify",
+                    body = JSONObject()
+                        .put("type", "recovery")
+                        .put("email", email.trim())
+                        .put("token", otp.trim())
+                        .toString()
+                )
+                val recoveryAccessToken = verified.optString("access_token")
+                require(recoveryAccessToken.isNotBlank()) {
+                    "The code was not accepted as a password recovery code. Request a new code and try again."
+                }
+                request(
+                    method = "PUT",
+                    path = "/auth/v1/user",
+                    body = JSONObject().put("password", newPassword).toString(),
+                    accessToken = recoveryAccessToken
+                )
+                Unit
+            })
+        }
+    }
+
     fun requestEmailChange(newEmail: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
@@ -464,6 +507,15 @@ class AuthService(context: Context) {
                         message.contains("email_exists", ignoreCase = true))
                 ) {
                     error("This email address is already registered to another account. Use an email address that is not linked to an existing account.")
+                }
+
+                if (status == 429 || message.contains("rate limit", ignoreCase = true)) {
+                    if (path == "/auth/v1/user" && method == "PUT" &&
+                        (response.contains("email", ignoreCase = true) ||
+                            response.contains("over_email_send_rate_limit", ignoreCase = true))) {
+                        error("Supabase has temporarily limited verification emails. No new code was sent. Wait for the email limit to reset before requesting another code; repeated requests will not fix this.")
+                    }
+                    error("Supabase temporarily limited this request (HTTP 429). Wait before trying again; do not repeatedly resend the request.")
                 }
 
                 error("Supabase HTTP $status: $message")
