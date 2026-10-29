@@ -305,16 +305,20 @@ class AuthService(context: Context) {
      * Password updates are deliberately separate from contact-change verification.
      * The caller must only expose this after its required verification step.
      */
-    fun updatePassword(newPassword: String, callback: (Result<Unit>) -> Unit) {
+    fun updatePassword(currentPassword: String, newPassword: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
+                require(currentPassword.isNotBlank()) { "Enter your current password to verify this change." }
                 require(newPassword.length >= 8) { "Use at least 8 characters for your password." }
                 val access = accessTokenForApiBlocking()
                     ?: error("Please sign in again before changing your password.")
                 request(
                     method = "PUT",
                     path = "/auth/v1/user",
-                    body = JSONObject().put("password", newPassword).toString(),
+                    body = JSONObject()
+                        .put("current_password", currentPassword)
+                        .put("password", newPassword)
+                        .toString(),
                     accessToken = access
                 )
                 Unit
