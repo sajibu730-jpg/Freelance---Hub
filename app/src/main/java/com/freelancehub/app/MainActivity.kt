@@ -3273,7 +3273,7 @@ fun RemoteAccountSecurityScreen(
 }
 
 @Composable fun LegacyProfileScreen(repo:AppRepository,edit:()->Unit,logout:()->Unit){
-    val p=repo.profile();Column(Modifier.fillMaxSize().padding(20.dp)){Text("Profile",style=MaterialTheme.typography.headlineSmall);Text(p.name);Text(p.email);Text("Legacy local profile view disabled for active production flow.");Button(onClick=edit){Text("Open profile")};OutlinedButton(onClick=logout){Text("Sign out")}}
+    val p=repo.profile();Column(Modifier.fillMaxSize().padding(20.dp)){Text("Profile",style=MaterialTheme.typography.headlineSmall);Text(p.name);Text(p.email);Text("Legacy local profile view disabled for active production flow.");Button(onClick=edit){Text("Open profile")}}
 }
 
 @Composable fun LegacyProfileEditor(repo:AppRepository,done:()->Unit){ Text("Legacy profile editor is retained only for historical compatibility.") }
