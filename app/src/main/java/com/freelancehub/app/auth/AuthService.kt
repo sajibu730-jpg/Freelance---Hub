@@ -466,6 +466,15 @@ class AuthService(context: Context) {
                     error("This email address is already registered to another account. Use an email address that is not linked to an existing account.")
                 }
 
+                if (status == 429 || message.contains("rate limit", ignoreCase = true)) {
+                    if (path == "/auth/v1/user" && method == "PUT" &&
+                        (response.contains("email", ignoreCase = true) ||
+                            response.contains("over_email_send_rate_limit", ignoreCase = true))) {
+                        error("Supabase has temporarily limited verification emails. No new code was sent. Wait for the email limit to reset before requesting another code; repeated requests will not fix this.")
+                    }
+                    error("Supabase temporarily limited this request (HTTP 429). Wait before trying again; do not repeatedly resend the request.")
+                }
+
                 error("Supabase HTTP $status: $message")
             }
 
