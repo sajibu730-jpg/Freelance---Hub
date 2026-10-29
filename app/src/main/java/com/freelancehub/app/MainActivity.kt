@@ -3057,7 +3057,7 @@ fun RemoteAccountSecurityScreen(
     var showConfirmPassword by remember { mutableStateOf(false) }
     var resendSeconds by remember { mutableIntStateOf(0) }
     LaunchedEffect(verifying, method, resendSeconds) {
-        if (verifying && method != "password" && resendSeconds > 0) {
+        if (verifying && resendSeconds > 0) {
             delay(1000)
             resendSeconds -= 1
         }
@@ -3067,7 +3067,7 @@ fun RemoteAccountSecurityScreen(
     val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
     val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
     val phoneTarget = countryCode + phoneDigits.filter(Char::isDigit)
-    if (verifying && method != "password") {
+    if (verifying) {
         AccountChangeVerificationScreen(
             method = method, target = target, otp = otp,
             onOtpChange = { otp = it.filter(Char::isDigit).take(8) },
@@ -3083,24 +3083,31 @@ fun RemoteAccountSecurityScreen(
                                 .onFailure { e -> error = e.message ?: "Could not resend verification code." }
                         }
                     }
-                    if (method == "email") auth.requestEmailChange(target, completion)
-                    else scope.launch(Dispatchers.IO) {
-                        val check = runCatching { account.ensureMobileChangeAllowed() }
-                        withContext(Dispatchers.Main) {
-                            check.onSuccess { auth.requestPhoneChange(target, completion) }
-                                .onFailure { e -> busy = false; error = e.message ?: "Mobile number change is not currently allowed." }
+                    when (method) {
+                        "email" -> auth.requestEmailChange(target, completion)
+                        "phone" -> scope.launch(Dispatchers.IO) {
+                            val check = runCatching { account.ensureMobileChangeAllowed() }
+                            withContext(Dispatchers.Main) {
+                                check.onSuccess { auth.requestPhoneChange(target, completion) }
+                                    .onFailure { e -> busy = false; error = e.message ?: "Mobile number change is not currently allowed." }
+                            }
                         }
+                        else -> auth.requestPasswordReset(currentEmail, completion)
                     }
                 }
             },
             onVerify = {
                 if (!busy && otp.length >= 6) {
                     busy = true; error = ""; message = ""
-                    auth.verifyAccountChange(if (method == "email") "email_change" else "phone_change", target, otp) { result ->
+                    val completion: (Result<Unit>) -> Unit = { result ->
                         scope.launch(Dispatchers.Main) {
                             busy = false
                             result.onSuccess {
-                                if (method == "phone") {
+                                if (method == "password") {
+                                    message = "Password updated successfully. Please keep it private."
+                                    currentPassword = ""; newPassword = ""; confirmPassword = ""
+                                    otp = ""; verifying = false
+                                } else if (method == "phone") {
                                     scope.launch(Dispatchers.IO) {
                                         val saved = runCatching { account.syncVerifiedPhoneToProfile() }
                                         withContext(Dispatchers.Main) {
@@ -3114,6 +3121,11 @@ fun RemoteAccountSecurityScreen(
                                 }
                             }.onFailure { e -> error = e.message ?: "Verification failed." }
                         }
+                    }
+                    if (method == "password") {
+                        auth.verifyPasswordChangeOtp(currentEmail, otp, newPassword, completion)
+                    } else {
+                        auth.verifyAccountChange(if (method == "email") "email_change" else "phone_change", target, otp, completion)
                     }
                 }
             }
@@ -3236,7 +3248,7 @@ fun RemoteAccountSecurityScreen(
         ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Change password", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Text("Confirm your current password first. Your new password is saved only after current-password sign-in succeeds.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                Text("We will email a verification code to your account email. Your new password is saved only after the code is accepted.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
                 OutlinedTextField(
                     value = currentPassword, onValueChange = { currentPassword = it },
                     label = { Text("Current password") }, singleLine = true,
@@ -3265,33 +3277,24 @@ fun RemoteAccountSecurityScreen(
                     } }, modifier = Modifier.fillMaxWidth()
                 )
                 Button(
-                    enabled = !busy && currentPassword.isNotBlank() && newPassword.length >= 8 && newPassword == confirmPassword,
+                    enabled = !busy && currentEmail.isNotBlank() && newPassword.length >= 8 && newPassword == confirmPassword,
                     onClick = {
                         busy = true; error = ""; message = ""
-                        auth.authenticate(
-                            signup = false, name = "", email = currentEmail,
-                            password = currentPassword,
-                            role = com.freelancehub.app.data.UserRole.FREELANCER
-                        ) { signInResult ->
+                        auth.requestPasswordReset(currentEmail) { result ->
                             scope.launch(Dispatchers.Main) {
-                                signInResult.onSuccess {
-                                    auth.updatePassword(currentPassword, newPassword) { updateResult ->
-                                        scope.launch(Dispatchers.Main) {
-                                            busy = false
-                                            updateResult.onSuccess {
-                                                message = "Password updated successfully. Please keep it private."
-                                                currentPassword = ""; newPassword = ""; confirmPassword = ""
-                                            }.onFailure { e -> error = e.message ?: "Password update failed." }
-                                        }
-                                    }
-                                }.onFailure { e ->
-                                    busy = false
-                                    error = e.message ?: "Current password verification failed."
-                                }
+                                busy = false
+                                result.onSuccess {
+                                    method = "password"
+                                    target = "••••••••"
+                                    otp = ""
+                                    verifying = true
+                                    resendSeconds = 30
+                                    message = "A password verification code was requested. Check your account email."
+                                }.onFailure { e -> error = e.message ?: "Could not request a password verification code." }
                             }
                         }
                     }, modifier = Modifier.fillMaxWidth()
-                ) { Text(if (busy) "Verifying and updating…" else "Verify current password and update") }
+                ) { Text(if (busy) "Sending code…" else "Send verification code") }
                 if (newPassword.isNotEmpty() && confirmPassword.isNotEmpty() && newPassword != confirmPassword) {
                     Text("Passwords do not match.", color = MaterialTheme.colorScheme.error)
                 }
@@ -3318,12 +3321,12 @@ private fun AccountChangeVerificationScreen(
         ElevatedCard(Modifier.fillMaxWidth().widthIn(max = 440.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)) {
             Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(Modifier.fillMaxWidth().height(8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(navy, blue))))
-                Icon(if (method == "email") Icons.Filled.MarkEmailRead else Icons.Filled.Sms, contentDescription = null, tint = blue, modifier = Modifier.size(42.dp))
-                Text("Verify your ${if (method == "email") "new email" else "new mobile number"}", style = MaterialTheme.typography.headlineSmall, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Text("Enter the code sent to this new contact. Your account changes only after the code is accepted.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                Icon(if (method == "password") Icons.Filled.Lock else if (method == "email") Icons.Filled.MarkEmailRead else Icons.Filled.Sms, contentDescription = null, tint = blue, modifier = Modifier.size(42.dp))
+                Text(if (method == "password") "Verify password change" else "Verify your ${if (method == "email") "new email" else "new mobile number"}", style = MaterialTheme.typography.headlineSmall, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text(if (method == "password") "Enter the code sent to your account email. Your new password stays masked and is saved only after verification." else "Enter the code sent to this new contact. Your account changes only after the code is accepted.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
                 Surface(color = androidx.compose.ui.graphics.Color(0xFFF0F4FF), shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(14.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(if (method == "email") Icons.Filled.Email else Icons.Filled.Phone, contentDescription = null, tint = blue)
+                        Icon(if (method == "password") Icons.Filled.Lock else if (method == "email") Icons.Filled.Email else Icons.Filled.Phone, contentDescription = null, tint = blue)
                         Text(target, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     }
                 }
