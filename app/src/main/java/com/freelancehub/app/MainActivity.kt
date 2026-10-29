@@ -3148,7 +3148,7 @@ fun RemoteAccountSecurityScreen(
                         val completion: (Result<Unit>) -> Unit = { result ->
                             scope.launch(Dispatchers.Main) {
                                 busy = false
-                                result.onSuccess { verifying = true; message = "Verification requested. Check the new contact for the code sent by Supabase." }
+                                result.onSuccess { verifying = true; resendSeconds = 30; message = "Verification requested. Check the new contact for the code sent by Supabase." }
                                     .onFailure { e -> error = e.message ?: "Could not request verification." }
                             }
                         }
