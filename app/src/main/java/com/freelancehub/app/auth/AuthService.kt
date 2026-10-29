@@ -438,6 +438,15 @@ class AuthService(context: Context) {
                     )
                 }.getOrDefault("Request failed")
 
+                if (
+                    path == "/auth/v1/user" &&
+                    method == "PUT" &&
+                    (message.contains("already been registered", ignoreCase = true) ||
+                        message.contains("email_exists", ignoreCase = true))
+                ) {
+                    error("This email address is already registered to another account. Use an email address that is not linked to an existing account.")
+                }
+
                 error("Supabase HTTP $status: $message")
             }
 
