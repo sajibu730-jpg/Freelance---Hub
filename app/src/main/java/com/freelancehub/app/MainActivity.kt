@@ -709,6 +709,8 @@ TextButton(
 
 @Composable fun MainShell(repo:AppRepository, auth: com.freelancehub.app.auth.AuthService, logout:()->Unit){
     val context = LocalContext.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val keyboardVisible = WindowInsets.isImeVisible || WindowInsets.ime.getBottom(density) > 0
     val backend = remember { RuntimeBackendConfig.current() }
 
     val remoteMarketplace = remember {
@@ -779,7 +781,7 @@ if (showExitDialog) {
 }
 
 Scaffold(bottomBar={
-    if (!WindowInsets.isImeVisible) NavigationBar(
+    if (!keyboardVisible) NavigationBar(
     containerColor = androidx.compose.ui.graphics.Color.White,
     contentColor = androidx.compose.ui.graphics.Color(0xFF243B64),
     tonalElevation = 8.dp
