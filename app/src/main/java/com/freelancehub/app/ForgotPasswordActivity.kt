@@ -375,7 +375,7 @@ private fun ForgotPasswordScreen(
                             value = password,
                             onValueChange = { password = it; error = "" },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("New password (optional)") },
+                            label = { Text("New password") },
                             singleLine = true,
                             enabled = !busy,
                             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -403,9 +403,7 @@ private fun ForgotPasswordScreen(
                         )
                         Button(
                             onClick = {
-                                if (password.isBlank()) {
-                                    onOpenApp()
-                                } else if (password.length < 8) {
+                                if (password.length < 8) {
                                     error = "Use at least 8 characters for your new password."
                                 } else if (password != confirmPassword) {
                                     error = "The passwords do not match."
@@ -427,13 +425,8 @@ private fun ForgotPasswordScreen(
                             contentPadding = PaddingValues(vertical = 14.dp)
                         ) {
                             if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            else Text(if (password.isBlank()) "Continue to Freelance Hub" else "Update password & continue")
+                            else Text("Update password & continue")
                         }
-                        TextButton(
-                            onClick = onOpenApp,
-                            enabled = !busy,
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        ) { Text("Skip password and continue") }
                     }
 
                     if (info.isNotBlank()) {
