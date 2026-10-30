@@ -267,7 +267,7 @@ private fun ForgotPasswordScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().bringIntoViewRequester(nextBringIntoView),
                             enabled = !busy,
                             shape = RoundedCornerShape(14.dp),
                             contentPadding = PaddingValues(vertical = 14.dp)
@@ -341,7 +341,7 @@ private fun ForgotPasswordScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().bringIntoViewRequester(nextBringIntoView),
                             enabled = !busy,
                             shape = RoundedCornerShape(14.dp),
                             contentPadding = PaddingValues(vertical = 14.dp)
