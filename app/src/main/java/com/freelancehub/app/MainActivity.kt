@@ -3108,6 +3108,69 @@ fun RemoteAccountSecurityScreen(
             containerColor = androidx.compose.ui.graphics.Color.White
         )
     }
+    if (verifying) {
+        RemoteAccountVerificationScreen(
+            method = method,
+            currentEmail = currentEmail,
+            target = target,
+            currentEmailOtp = currentEmailOtp,
+            onCurrentEmailOtpChange = { currentEmailOtp = it },
+            newEmailOtp = newEmailOtp,
+            onNewEmailOtpChange = { newEmailOtp = it },
+            otp = otp,
+            onOtpChange = { otp = it },
+            busy = busy,
+            error = error,
+            message = message,
+            onVerify = {
+                busy = true
+                error = ""
+                message = ""
+                val completion: (Result<Unit>) -> Unit = { result ->
+                    scope.launch(Dispatchers.Main) {
+                        busy = false
+                        result.onSuccess {
+                            if (method == "phone") {
+                                scope.launch(Dispatchers.IO) {
+                                    val saved = runCatching { account.syncVerifiedPhoneToProfile() }
+                                    withContext(Dispatchers.Main) {
+                                        saved.onSuccess {
+                                            message = "Mobile number verified and saved to your profile."
+                                            done()
+                                        }.onFailure { e ->
+                                            verifying = false
+                                            error = e.message ?: "The verified number could not be saved to the profile."
+                                        }
+                                    }
+                                }
+                            } else {
+                                message = "Both email confirmations were accepted. Refreshing account details…"
+                                done()
+                            }
+                        }.onFailure { e ->
+                            error = e.message ?: "Verification failed."
+                        }
+                    }
+                }
+                if (method == "email") {
+                    auth.verifyEmailChange(currentEmail, target, currentEmailOtp, newEmailOtp, completion)
+                } else {
+                    auth.verifyAccountChange("phone_change", target, otp, completion)
+                }
+            },
+            onChangeContact = {
+                verifying = false
+                otp = ""
+                currentEmailOtp = ""
+                newEmailOtp = ""
+                error = ""
+                message = ""
+            },
+            back = back
+        )
+        return
+    }
+
     Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF4F7FC)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Surface(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), color = navy) {
             Column(Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(navy, blue))).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3339,6 +3402,118 @@ fun RemoteAccountSecurityScreen(
         if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Back to profile") }
+    }
+}
+
+@Composable
+private fun RemoteAccountVerificationScreen(
+    method: String,
+    currentEmail: String,
+    target: String,
+    currentEmailOtp: String,
+    onCurrentEmailOtpChange: (String) -> Unit,
+    newEmailOtp: String,
+    onNewEmailOtpChange: (String) -> Unit,
+    otp: String,
+    onOtpChange: (String) -> Unit,
+    busy: Boolean,
+    error: String,
+    message: String,
+    onVerify: () -> Unit,
+    onChangeContact: () -> Unit,
+    back: () -> Unit
+) {
+    val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
+    val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
+    Column(
+        Modifier.fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color(0xFFF4F7FC))
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Surface(
+            Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+            color = navy
+        ) {
+            Column(
+                Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(navy, blue)))
+                    .padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("SECURITY VERIFICATION", color = androidx.compose.ui.graphics.Color(0xFFCEDBFF), style = MaterialTheme.typography.labelMedium)
+                Text(
+                    if (method == "email") "Confirm both email addresses" else "Verify your new mobile number",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+                Text(
+                    if (method == "email") "Current email: $currentEmail\nNew email: $target"
+                    else "New mobile number: $target",
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f)
+                )
+            }
+        }
+        ElevatedCard(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+        ) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (method == "email") {
+                    Text(
+                        "Supabase sends one code to your current email and another to your new email. Enter both codes to finish the change.",
+                        color = androidx.compose.ui.graphics.Color(0xFF65748B),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = currentEmailOtp,
+                        onValueChange = { onCurrentEmailOtpChange(it.filter(Char::isDigit).take(8)) },
+                        label = { Text("Code sent to current email") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = newEmailOtp,
+                        onValueChange = { onNewEmailOtpChange(it.filter(Char::isDigit).take(8)) },
+                        label = { Text("Code sent to new email") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Text(
+                        "Enter the verification code sent to your new mobile number.",
+                        color = androidx.compose.ui.graphics.Color(0xFF65748B),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = otp,
+                        onValueChange = { onOtpChange(it.filter(Char::isDigit).take(8)) },
+                        label = { Text("SMS verification code") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
+                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                Button(
+                    enabled = !busy && (if (method == "email") currentEmailOtp.length >= 6 && newEmailOtp.length >= 6 else otp.length >= 6),
+                    onClick = onVerify,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                ) {
+                    if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("Verify and save")
+                }
+                TextButton(onClick = onChangeContact, modifier = Modifier.fillMaxWidth()) {
+                    Text("Change contact details")
+                }
+            }
+        }
+        OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth().height(50.dp)) {
+            Text("Back to Account Security")
+        }
     }
 }
 
