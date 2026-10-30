@@ -514,8 +514,9 @@ Surface(
                             onClick = {
                                 error = ""
                                 resetMessage = ""
-                                recoveryEmail = email
-                                showRecoveryOptions = true
+                                screenContext.startActivity(
+                                    Intent(screenContext, ForgotPasswordActivity::class.java)
+                                )
                             }
                         ) {
                             Text("Forgot password?")
