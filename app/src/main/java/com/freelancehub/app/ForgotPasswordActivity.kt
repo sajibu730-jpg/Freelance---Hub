@@ -130,7 +130,7 @@ private fun ForgotPasswordScreen(
                     Text(
                         when (step) {
                             1 -> "Enter the email address or mobile number already registered to your account. We will send a one-time code."
-                            2 -> "Enter the verification code sent to your registered contact. Successful verification signs you in securely."
+                            2 -> "Enter the 8-digit verification code sent to your registered contact."
                             else -> "Changing your password is optional. You can set a new password now or skip and continue to your account."
                         },
                         color = Color(0xFF53627A),
@@ -190,7 +190,7 @@ private fun ForgotPasswordScreen(
                         )
                         Text(
                             if (isPhone) "Include the country code, for example +971."
-                            else "Use the email address currently linked to your Freelance Hub account.",
+                            else "Use the email address currently linked to your Freelance Hub account. We will send an 8-digit code.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF69778D)
                         )
@@ -217,7 +217,7 @@ private fun ForgotPasswordScreen(
                                             busy = false
                                             result.onSuccess {
                                                 step = 2
-                                                info = "A verification code has been requested. Check your inbox or SMS messages."
+                                                info = if (isPhone) "An 8-digit verification code has been requested by SMS." else "An 8-digit verification code has been requested by email. Check your inbox and spam folder."
                                             }.onFailure {
                                                 error = it.message ?: "Could not send the verification code."
                                             }
@@ -243,16 +243,16 @@ private fun ForgotPasswordScreen(
                             value = otp,
                             onValueChange = { value -> otp = value.filter(Char::isDigit).take(8); error = "" },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Verification code") },
-                            placeholder = { Text("Enter the code") },
+                            label = { Text("8-digit verification code") },
+                            placeholder = { Text("Enter 8 digits") },
                             singleLine = true,
                             enabled = !busy,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                         Button(
                             onClick = {
-                                if (!otp.matches(Regex("^[0-9]{6,8}$"))) {
-                                    error = "Enter the verification code sent to your contact."
+                                if (!otp.matches(Regex("^[0-9]{8}$"))) {
+                                    error = "Enter the 8-digit verification code sent to your contact."
                                 } else {
                                     busy = true
                                     error = ""
