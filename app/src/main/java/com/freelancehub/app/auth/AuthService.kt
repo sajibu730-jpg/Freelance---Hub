@@ -235,6 +235,99 @@ class AuthService(context: Context) {
         }
     }
 
+
+    /**
+     * Sends a one-time recovery code to the registered email or phone.
+     * Phone delivery requires Supabase Phone Auth and a configured SMS provider.
+     */
+    fun requestRecoveryCode(identifier: String, isPhone: Boolean, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Account recovery is currently unavailable. Please try again later." }
+                val target = identifier.trim()
+                if (isPhone) {
+                    require(target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
+                        "Enter the mobile number with its country code, for example +9715XXXXXXXX."
+                    }
+                    request(
+                        method = "POST",
+                        path = "/auth/v1/otp",
+                        body = JSONObject()
+                            .put("phone", target)
+                            .put("create_user", false)
+                            .toString()
+                    )
+                } else {
+                    require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
+                        "Enter the email address registered to your account."
+                    }
+                    request(
+                        method = "POST",
+                        path = "/auth/v1/recover",
+                        body = JSONObject().put("email", target).toString()
+                    )
+                }
+                Unit
+            })
+        }
+    }
+
+    /** Verifies the recovery OTP and stores the authenticated session on this device. */
+    fun verifyRecoveryCode(
+        identifier: String,
+        otp: String,
+        isPhone: Boolean,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(otp.trim().matches(Regex("^[0-9]{6,8}$"))) {
+                    "Enter the 6–8 digit code sent to your registered contact."
+                }
+                val target = identifier.trim()
+                val payload = JSONObject().apply {
+                    put("type", if (isPhone) "sms" else "recovery")
+                    put("token", otp.trim())
+                    if (isPhone) put("phone", target) else put("email", target)
+                }
+                val response = request("POST", "/auth/v1/verify", payload.toString())
+                val access = response.optString("access_token")
+                val refresh = response.optString("refresh_token")
+                val user = response.optJSONObject("user")
+                    ?: error("Verification succeeded without an account session. Request a new code.")
+                require(access.isNotBlank() && refresh.isNotBlank()) {
+                    "Supabase did not return a valid login session. Please request a new code."
+                }
+                val session = makeSession(
+                    access = access,
+                    refresh = refresh,
+                    user = user,
+                    defaultRole = UserRole.FREELANCER
+                )
+                tokenStore.saveSession(session.accessToken, session.refreshToken)
+                Unit
+            })
+        }
+    }
+
+    /** Optional password change after successful recovery-code verification. */
+    fun updateVerifiedRecoveryPassword(newPassword: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(newPassword.length >= 8) { "Use at least 8 characters for your new password." }
+                val access = accessTokenForApiBlocking()
+                    ?: error("Your verified recovery session has expired. Request a new code.")
+                request(
+                    method = "PUT",
+                    path = "/auth/v1/user",
+                    body = JSONObject().put("password", newPassword).toString(),
+                    accessToken = access
+                )
+                Unit
+            })
+        }
+    }
+
     /** Updates a password using the short-lived token returned by a verified recovery link. */
     fun updateRecoveryPassword(accessToken: String, newPassword: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
