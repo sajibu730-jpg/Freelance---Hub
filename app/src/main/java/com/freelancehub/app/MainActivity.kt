@@ -3051,13 +3051,6 @@ fun RemoteAccountSecurityScreen(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
-    var currentPassword by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var showCurrentPassword by remember { mutableStateOf(false) }
-    var showNewPassword by remember { mutableStateOf(false) }
-    var showConfirmPassword by remember { mutableStateOf(false) }
-    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
     val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
@@ -3167,6 +3160,19 @@ fun RemoteAccountSecurityScreen(
                 message = ""
             },
             back = back
+        )
+        return
+    }
+
+    if (method == "password") {
+        RemotePasswordChangeScreen(
+            auth = auth,
+            currentEmail = currentEmail,
+            back = {
+                method = if (initialPhone.isBlank()) "email" else "phone"
+                error = ""
+                message = ""
+            }
         )
         return
     }
@@ -3331,74 +3337,6 @@ fun RemoteAccountSecurityScreen(
             }
         }
 
-        if (method == "password") {
-        ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Change password", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                Text("Confirm your current password first. Your new password is saved only after current-password sign-in succeeds.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
-                OutlinedTextField(
-                    value = currentPassword, onValueChange = { currentPassword = it },
-                    label = { Text("Current password") }, singleLine = true,
-                    visualTransformation = if (showCurrentPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        IconButton(onClick = { showCurrentPassword = !showCurrentPassword }) { Icon(if (showCurrentPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = if (showCurrentPassword) "Hide password" else "Show password") }
-                        IconButton(onClick = { clipboard.setText(AnnotatedString(currentPassword)) }, enabled = currentPassword.isNotEmpty()) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy current password") }
-                    } }, modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = newPassword, onValueChange = { newPassword = it },
-                    label = { Text("New password (at least 8 characters)") }, singleLine = true,
-                    visualTransformation = if (showNewPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        IconButton(onClick = { showNewPassword = !showNewPassword }) { Icon(if (showNewPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = if (showNewPassword) "Hide password" else "Show password") }
-                        IconButton(onClick = { clipboard.setText(AnnotatedString(newPassword)) }, enabled = newPassword.isNotEmpty()) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy new password") }
-                    } }, modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = confirmPassword, onValueChange = { confirmPassword = it },
-                    label = { Text("Confirm new password") }, singleLine = true,
-                    visualTransformation = if (showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) { Icon(if (showConfirmPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = if (showConfirmPassword) "Hide password" else "Show password") }
-                        IconButton(onClick = { clipboard.setText(AnnotatedString(confirmPassword)) }, enabled = confirmPassword.isNotEmpty()) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy confirmed password") }
-                    } }, modifier = Modifier.fillMaxWidth()
-                )
-                Button(
-                    enabled = !busy && currentPassword.isNotBlank() && newPassword.length >= 8 && newPassword == confirmPassword,
-                    onClick = {
-                        busy = true; error = ""; message = ""
-                        auth.authenticate(
-                            signup = false, name = "", email = currentEmail,
-                            password = currentPassword,
-                            role = com.freelancehub.app.data.UserRole.FREELANCER
-                        ) { signInResult ->
-                            scope.launch(Dispatchers.Main) {
-                                signInResult.onSuccess {
-                                    auth.updatePassword(currentPassword, newPassword) { updateResult ->
-                                        scope.launch(Dispatchers.Main) {
-                                            busy = false
-                                            updateResult.onSuccess {
-                                                message = "Password updated successfully. Please keep it private."
-                                                currentPassword = ""; newPassword = ""; confirmPassword = ""
-                                            }.onFailure { e -> error = e.message ?: "Password update failed." }
-                                        }
-                                    }
-                                }.onFailure { e ->
-                                    busy = false
-                                    error = e.message ?: "Current password verification failed."
-                                }
-                            }
-                        }
-                    }, modifier = Modifier.fillMaxWidth()
-                ) { Text(if (busy) "Verifying and updating…" else "Verify current password and update") }
-                if (newPassword.isNotEmpty() && confirmPassword.isNotEmpty() && newPassword != confirmPassword) {
-                    Text("Passwords do not match.", color = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-
-        }
-
         if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Back to profile") }
@@ -3508,6 +3446,134 @@ private fun RemoteAccountVerificationScreen(
                 }
                 TextButton(onClick = onChangeContact, modifier = Modifier.fillMaxWidth()) {
                     Text("Change contact details")
+                }
+            }
+        }
+        OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth().height(50.dp)) {
+            Text("Back to Account Security")
+        }
+    }
+}
+
+@Composable
+private fun RemotePasswordChangeScreen(
+    auth: com.freelancehub.app.auth.AuthService,
+    currentEmail: String,
+    back: () -> Unit
+) {
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showCurrentPassword by remember { mutableStateOf(false) }
+    var showNewPassword by remember { mutableStateOf(false) }
+    var showConfirmPassword by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
+    val blue = androidx.compose.ui.graphics.Color(0xFF3157D5)
+
+    Column(
+        Modifier.fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color(0xFFF4F7FC))
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Surface(
+            Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+            color = navy
+        ) {
+            Column(
+                Modifier.background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(navy, blue)))
+                    .padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("PASSWORD SECURITY", color = androidx.compose.ui.graphics.Color(0xFFCEDBFF), style = MaterialTheme.typography.labelMedium)
+                Text("Change your password", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text("Confirm your current password before saving a new one.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.88f))
+            }
+        }
+        ElevatedCard(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = currentPassword, onValueChange = { currentPassword = it },
+                    label = { Text("Current password") }, singleLine = true,
+                    visualTransformation = if (showCurrentPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        IconButton(onClick = { showCurrentPassword = !showCurrentPassword }) { Icon(if (showCurrentPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = if (showCurrentPassword) "Hide password" else "Show password") }
+                        IconButton(onClick = { clipboard.setText(AnnotatedString(currentPassword)) }, enabled = currentPassword.isNotEmpty()) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy current password") }
+                    } }, modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = newPassword, onValueChange = { newPassword = it },
+                    label = { Text("New password (at least 8 characters)") }, singleLine = true,
+                    visualTransformation = if (showNewPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        IconButton(onClick = { showNewPassword = !showNewPassword }) { Icon(if (showNewPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = if (showNewPassword) "Hide password" else "Show password") }
+                        IconButton(onClick = { clipboard.setText(AnnotatedString(newPassword)) }, enabled = newPassword.isNotEmpty()) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy new password") }
+                    } }, modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = confirmPassword, onValueChange = { confirmPassword = it },
+                    label = { Text("Confirm new password") }, singleLine = true,
+                    visualTransformation = if (showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) { Icon(if (showConfirmPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = if (showConfirmPassword) "Hide password" else "Show password") }
+                        IconButton(onClick = { clipboard.setText(AnnotatedString(confirmPassword)) }, enabled = confirmPassword.isNotEmpty()) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy confirmed password") }
+                    } }, modifier = Modifier.fillMaxWidth()
+                )
+                if (newPassword.isNotEmpty() && confirmPassword.isNotEmpty() && newPassword != confirmPassword) {
+                    Text("Passwords do not match.", color = MaterialTheme.colorScheme.error)
+                }
+                if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
+                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                Button(
+                    enabled = !busy && currentPassword.isNotBlank() && newPassword.length >= 8 && newPassword == confirmPassword,
+                    onClick = {
+                        busy = true
+                        error = ""
+                        message = ""
+                        auth.authenticate(
+                            signup = false,
+                            name = "",
+                            email = currentEmail,
+                            password = currentPassword,
+                            role = com.freelancehub.app.data.UserRole.FREELANCER
+                        ) { signInResult ->
+                            scope.launch(Dispatchers.Main) {
+                                signInResult.onSuccess {
+                                    auth.updatePassword(currentPassword, newPassword) { updateResult ->
+                                        scope.launch(Dispatchers.Main) {
+                                            busy = false
+                                            updateResult.onSuccess {
+                                                message = "Password updated successfully. Please keep it private."
+                                                currentPassword = ""
+                                                newPassword = ""
+                                                confirmPassword = ""
+                                            }.onFailure { e ->
+                                                error = e.message ?: "Password update failed."
+                                            }
+                                        }
+                                    }
+                                }.onFailure { e ->
+                                    busy = false
+                                    error = e.message ?: "Current password verification failed."
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                ) {
+                    if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("Verify current password and update")
                 }
             }
         }
