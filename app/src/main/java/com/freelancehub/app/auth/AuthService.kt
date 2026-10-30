@@ -292,6 +292,68 @@ class AuthService(context: Context) {
      * Verifies the OTP delivered by Supabase for a supported account change.
      * The exact type and contact must match the pending change and Auth settings.
      */
+    /**
+     * Verifies both confirmation codes when Supabase Secure Email Change is enabled.
+     * One code is sent to the current email and another to the requested new email.
+     */
+    fun verifyEmailChange(
+        currentEmail: String,
+        newEmail: String,
+        currentEmailOtp: String,
+        newEmailOtp: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(currentEmail.trim().contains("@") && newEmail.trim().contains("@")) {
+                    "A valid current and new email address are required."
+                }
+                require(currentEmailOtp.trim().matches(Regex("^[0-9]{6,8}$")) &&
+                    newEmailOtp.trim().matches(Regex("^[0-9]{6,8}$"))) {
+                    "Enter both verification codes from your email messages."
+                }
+
+                val currentVerification = request(
+                    "POST",
+                    "/auth/v1/verify",
+                    JSONObject()
+                        .put("type", "email_change")
+                        .put("email", currentEmail.trim())
+                        .put("token", currentEmailOtp.trim())
+                        .toString()
+                )
+                persistVerifiedSession(currentVerification)
+
+                val newVerification = request(
+                    "POST",
+                    "/auth/v1/verify",
+                    JSONObject()
+                        .put("type", "email_change")
+                        .put("email", newEmail.trim())
+                        .put("token", newEmailOtp.trim())
+                        .toString()
+                )
+                persistVerifiedSession(newVerification)
+
+                val access = accessTokenForApiBlocking()
+                    ?: error("Email verification was accepted, but your session expired. Sign in again and check Account Security.")
+                val savedUser = request(
+                    method = "GET",
+                    path = "/auth/v1/user",
+                    accessToken = access
+                )
+                require(savedUser.optString("email").trim().equals(newEmail.trim(), ignoreCase = true)) {
+                    "Both email confirmations must be completed before the new address becomes active. Check both inboxes and enter each code."
+                }
+                Unit
+            })
+        }
+    }
+
+    /**
+     * Verifies the OTP delivered by Supabase for a supported account change.
+     * The exact type and contact must match the pending change and Auth settings.
+     */
     fun verifyAccountChange(
         type: String,
         target: String,
@@ -312,7 +374,8 @@ class AuthService(context: Context) {
                     if (type == "email_change") put("email", target.trim())
                     else put("phone", target.trim())
                 }
-                request("POST", "/auth/v1/verify", payload.toString())
+                val verification = request("POST", "/auth/v1/verify", payload.toString())
+                persistVerifiedSession(verification)
 
                 val access = accessTokenForApiBlocking()
                     ?: error("Verification was accepted, but your session expired. Sign in again and check Account Security.")
@@ -322,9 +385,8 @@ class AuthService(context: Context) {
                     accessToken = access
                 )
                 if (type == "email_change") {
-                    val savedEmail = savedUser.optString("email").trim()
-                    require(savedEmail.equals(target.trim(), ignoreCase = true)) {
-                        "The code was accepted, but Supabase has not confirmed the new email as the active account email yet. Check both confirmation emails if prompted, then refresh Account Security."
+                    require(savedUser.optString("email").trim().equals(target.trim(), ignoreCase = true)) {
+                        "The code was accepted, but the new email is not active yet. Complete both email confirmations if Secure Email Change is enabled."
                     }
                 } else {
                     val savedPhone = savedUser.optString("phone").trim()
@@ -334,6 +396,21 @@ class AuthService(context: Context) {
                 }
                 Unit
             })
+        }
+    }
+
+    private fun persistVerifiedSession(response: JSONObject) {
+        val access = response.optString("access_token")
+        val refresh = response.optString("refresh_token")
+        val user = response.optJSONObject("user")
+        if (access.isNotBlank() && refresh.isNotBlank() && user != null) {
+            val session = makeSession(
+                access = access,
+                refresh = refresh,
+                user = user,
+                defaultRole = UserRole.FREELANCER
+            )
+            tokenStore.saveSession(session.accessToken, session.refreshToken)
         }
     }
 
