@@ -538,8 +538,8 @@ class AuthService(context: Context) {
         user: JSONObject,
         defaultRole: UserRole
     ): AuthSession {
-        val email = user.optString("email")
-        require(email.isNotBlank()) { "Supabase user email is missing." }
+        val email = user.optString("email").ifBlank { user.optString("phone") }
+        require(email.isNotBlank()) { "Supabase user contact information is missing." }
 
         val metadata = user.optJSONObject("user_metadata")
         val name = metadata?.optString("display_name")
