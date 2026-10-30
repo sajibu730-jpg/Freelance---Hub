@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -48,6 +49,7 @@ class ForgotPasswordActivity : ComponentActivity() {
 
 private enum class RecoveryMethod { EMAIL, PHONE }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ForgotPasswordScreen(
     auth: AuthService,
