@@ -3045,6 +3045,8 @@ fun RemoteAccountSecurityScreen(
     var method by remember { mutableStateOf(if (initialPhone.isBlank()) "email" else "phone") }
     var target by remember { mutableStateOf(initialPhone) }
     var otp by remember { mutableStateOf("") }
+    var currentEmailOtp by remember { mutableStateOf("") }
+    var newEmailOtp by remember { mutableStateOf("") }
     var verifying by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
@@ -3118,9 +3120,9 @@ fun RemoteAccountSecurityScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Choose what to change", style = MaterialTheme.typography.titleMedium, color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") }, modifier = Modifier.fillMaxWidth())
-                    FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
-                    FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
+                    FilterChip(selected = method == "phone", onClick = { method = "phone"; target = ""; otp = ""; currentEmailOtp = ""; newEmailOtp = ""; verifying = false; error = ""; message = "" }, label = { Text("Mobile Number") }, modifier = Modifier.fillMaxWidth())
+                    FilterChip(selected = method == "email", onClick = { method = "email"; target = ""; otp = ""; currentEmailOtp = ""; newEmailOtp = ""; verifying = false; error = ""; message = "" }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
+                    FilterChip(selected = method == "password", onClick = { method = "password"; target = ""; otp = ""; currentEmailOtp = ""; newEmailOtp = ""; verifying = false; error = ""; message = "" }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
                 }
                 if (method != "password") {
                 Text(if (method == "email") "Current email: $currentEmail" else "Select a country code, then enter your mobile number.", color = androidx.compose.ui.graphics.Color(0xFF65748B), style = MaterialTheme.typography.bodySmall)
@@ -3168,31 +3170,99 @@ fun RemoteAccountSecurityScreen(
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Requesting verification…" else "Next: send verification") }
                 } else {
-                    Text("Enter the verification code delivered to the new ${if (method == "email") "email address" else "mobile number"}.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
-                    OutlinedTextField(value = otp, onValueChange = { otp = it.filter(Char::isDigit).take(8) }, label = { Text("Verification code") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Button(enabled = !busy && otp.length >= 6, onClick = {
-                        busy = true; error = ""; message = ""
-                        auth.verifyAccountChange(if (method == "email") "email_change" else "phone_change", target, otp) { result ->
-                            scope.launch(Dispatchers.Main) {
-                                busy = false
-                                result.onSuccess {
-                                    if (method == "phone") {
-                                        scope.launch(Dispatchers.IO) {
-                                            val saved = runCatching { account.syncVerifiedPhoneToProfile() }
-                                            withContext(Dispatchers.Main) {
-                                                saved.onSuccess { message = "Mobile number verified and saved to your profile."; done() }
-                                                    .onFailure { e -> error = e.message ?: "The verified number could not be saved to the profile." }
+                    if (method == "email") {
+                        Text(
+                            "For account protection, Supabase sends one code to your current email and another to your new email.",
+                            color = androidx.compose.ui.graphics.Color(0xFF65748B)
+                        )
+                        OutlinedTextField(
+                            value = currentEmailOtp,
+                            onValueChange = { currentEmailOtp = it.filter(Char::isDigit).take(8) },
+                            label = { Text("Code sent to current email") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = newEmailOtp,
+                            onValueChange = { newEmailOtp = it.filter(Char::isDigit).take(8) },
+                            label = { Text("Code sent to new email") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(
+                            "Enter the verification code delivered to the new mobile number.",
+                            color = androidx.compose.ui.graphics.Color(0xFF65748B)
+                        )
+                        OutlinedTextField(
+                            value = otp,
+                            onValueChange = { otp = it.filter(Char::isDigit).take(8) },
+                            label = { Text("Verification code") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Button(
+                        enabled = !busy && (if (method == "email") {
+                            currentEmailOtp.length >= 6 && newEmailOtp.length >= 6
+                        } else {
+                            otp.length >= 6
+                        }),
+                        onClick = {
+                            busy = true
+                            error = ""
+                            message = ""
+                            val completion: (Result<Unit>) -> Unit = { result ->
+                                scope.launch(Dispatchers.Main) {
+                                    busy = false
+                                    result.onSuccess {
+                                        if (method == "phone") {
+                                            scope.launch(Dispatchers.IO) {
+                                                val saved = runCatching { account.syncVerifiedPhoneToProfile() }
+                                                withContext(Dispatchers.Main) {
+                                                    saved.onSuccess {
+                                                        message = "Mobile number verified and saved to your profile."
+                                                        done()
+                                                    }.onFailure { e ->
+                                                        error = e.message ?: "The verified number could not be saved to the profile."
+                                                    }
+                                                }
                                             }
+                                        } else {
+                                            message = "Both email confirmations were accepted. Refreshing account details…"
+                                            done()
                                         }
-                                    } else {
-                                        message = "Email verification accepted. Refreshing account details…"
-                                        done()
+                                    }.onFailure { e ->
+                                        error = e.message ?: "Verification failed."
                                     }
-                                }.onFailure { e -> error = e.message ?: "Verification failed." }
+                                }
                             }
+                            if (method == "email") {
+                                auth.verifyEmailChange(
+                                    currentEmail,
+                                    target,
+                                    currentEmailOtp,
+                                    newEmailOtp,
+                                    completion
+                                )
+                            } else {
+                                auth.verifyAccountChange("phone_change", target, otp, completion)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (busy) "Verifying…" else "Verify and save")
+                    }
+                    TextButton(
+                        onClick = {
+                            verifying = false
+                            otp = ""
+                            currentEmailOtp = ""
+                            newEmailOtp = ""
+                            error = ""
+                            message = ""
                         }
-                    }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Verifying…" else "Verify and save") }
-                    TextButton(onClick = { verifying = false; otp = ""; error = ""; message = "" }) { Text("Change contact") }
+                    ) { Text("Change contact") }
                 }
                 }
             }
