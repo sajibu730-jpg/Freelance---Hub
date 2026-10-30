@@ -274,7 +274,7 @@ private fun ForgotPasswordScreen(
                         }
                         Button(
                             onClick = {
-                                val target = identifier.trim()
+                                val target = if (isPhone) phoneTarget else identifier.trim()
                                 val valid = if (isPhone) {
                                     target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))
                                 } else {
