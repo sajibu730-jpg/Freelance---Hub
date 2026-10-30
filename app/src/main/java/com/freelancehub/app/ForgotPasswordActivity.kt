@@ -6,12 +6,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -66,6 +69,19 @@ private fun ForgotPasswordScreen(
     val navy = Color(0xFF102B57)
     val blue = Color(0xFF315FCB)
     val isPhone = method == RecoveryMethod.PHONE
+    val scrollState = rememberScrollState()
+    val nextBringIntoView = remember { BringIntoViewRequester() }
+    val density = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+
+    LaunchedEffect(imeBottom) {
+        if (imeBottom > 0) {
+            nextBringIntoView.bringIntoView()
+        } else {
+            // Restore the form to its normal position after the keyboard is dismissed.
+            scrollState.animateScrollTo(0)
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize().imePadding(),
@@ -75,7 +91,7 @@ private fun ForgotPasswordScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(Color(0xFFE5EEFF), Color(0xFFF8FAFF))))
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .navigationBarsPadding()
                 .padding(horizontal = 18.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -207,7 +223,7 @@ private fun ForgotPasswordScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().bringIntoViewRequester(nextBringIntoView),
                             enabled = !busy,
                             shape = RoundedCornerShape(14.dp),
                             contentPadding = PaddingValues(vertical = 14.dp)
