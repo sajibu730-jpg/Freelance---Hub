@@ -6,6 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -59,6 +62,11 @@ private fun ForgotPasswordScreen(
     var step by remember { mutableIntStateOf(1) }
     var method by remember { mutableStateOf(RecoveryMethod.EMAIL) }
     var identifier by remember { mutableStateOf("") }
+    var countryCode by remember { mutableStateOf("+971") }
+    var phoneDigits by remember { mutableStateOf("") }
+    var showCountryPicker by remember { mutableStateOf(false) }
+    var countrySearch by remember { mutableStateOf("") }
+    val phoneTarget = countryCode + phoneDigits.filter(Char::isDigit)
     var otp by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -148,6 +156,48 @@ private fun ForgotPasswordScreen(
                         }
                     }
 
+                    if (showCountryPicker) {
+                        val filteredCountries = CountryCallingCodes.all.filter {
+                            it.first.contains(countrySearch, ignoreCase = true) || it.second.contains(countrySearch)
+                        }
+                        AlertDialog(
+                            onDismissRequest = { showCountryPicker = false; countrySearch = "" },
+                            title = { Text("Choose country code", color = navy) },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = countrySearch,
+                                        onValueChange = { countrySearch = it },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = { Text("Search country or code") },
+                                        placeholder = { Text("Country name or +971") },
+                                        singleLine = true
+                                    )
+                                    LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                                        items(filteredCountries) { country ->
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().clickable {
+                                                    countryCode = country.second
+                                                    showCountryPicker = false
+                                                    countrySearch = ""
+                                                    error = ""
+                                                }.padding(vertical = 10.dp, horizontal = 6.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(country.first, color = navy)
+                                                Text(country.second, color = blue)
+                                            }
+                                        }
+                                    }
+                                    if (filteredCountries.isEmpty()) Text("No matching country found.")
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showCountryPicker = false; countrySearch = "" }) { Text("Done") }
+                            }
+                        )
+                    }
+
                     if (step == 1) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -176,24 +226,52 @@ private fun ForgotPasswordScreen(
                                 ) { Text("Mobile") }
                             }
                         }
-                        OutlinedTextField(
-                            value = identifier,
-                            onValueChange = { identifier = it; error = "" },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(if (isPhone) "Registered mobile number" else "Registered email address") },
-                            placeholder = { Text(if (isPhone) "+9715XXXXXXXX" else "name@example.com") },
-                            singleLine = true,
-                            enabled = !busy,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = if (isPhone) KeyboardType.Phone else KeyboardType.Email
+                        if (isPhone) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(
+                                    onClick = { showCountryPicker = true },
+                                    enabled = !busy,
+                                    modifier = Modifier.weight(0.38f).height(56.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp)
+                                ) { Text(countryCode, color = navy) }
+                                OutlinedTextField(
+                                    value = phoneDigits,
+                                    onValueChange = { phoneDigits = it.filter(Char::isDigit).take(14); error = "" },
+                                    modifier = Modifier.weight(0.62f),
+                                    label = { Text("Mobile number") },
+                                    placeholder = { Text("Enter phone number") },
+                                    singleLine = true,
+                                    enabled = !busy,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                                )
+                            }
+                            Text(
+                                "Choose your country code, then enter the mobile number without the country code.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF69778D)
                             )
-                        )
-                        Text(
-                            if (isPhone) "Include the country code, for example +971."
-                            else "Use the email address currently linked to your Freelance Hub account. We will send an 8-digit code.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF69778D)
-                        )
+                        } else {
+                            OutlinedTextField(
+                                value = identifier,
+                                onValueChange = { identifier = it; error = "" },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Registered email address") },
+                                placeholder = { Text("Enter your email address") },
+                                singleLine = true,
+                                enabled = !busy,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                            )
+                            Text(
+                                "Use the email address currently linked to your Freelance Hub account. We will send an 8-digit code.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF69778D)
+                            )
+                        }
                         Button(
                             onClick = {
                                 val target = identifier.trim()
@@ -204,7 +282,7 @@ private fun ForgotPasswordScreen(
                                 }
                                 if (!valid) {
                                     error = if (isPhone) {
-                                        "Enter a valid mobile number with country code, for example +9715XXXXXXXX."
+                                        "Enter a valid mobile number for the selected country code."
                                     } else {
                                         "Enter a valid registered email address."
                                     }
@@ -235,7 +313,7 @@ private fun ForgotPasswordScreen(
                         }
                     } else if (step == 2) {
                         Text(
-                            if (isPhone) "Code destination: " + identifier else "Code destination: " + identifier,
+                            if (isPhone) "Code destination: " + phoneTarget else "Code destination: " + identifier,
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF53627A)
                         )
@@ -256,7 +334,7 @@ private fun ForgotPasswordScreen(
                                 } else {
                                     busy = true
                                     error = ""
-                                    auth.verifyRecoveryCode(identifier.trim(), otp.trim(), isPhone) { result ->
+                                    auth.verifyRecoveryCode(if (isPhone) phoneTarget else identifier.trim(), otp.trim(), isPhone) { result ->
                                         android.os.Handler(android.os.Looper.getMainLooper()).post {
                                             busy = false
                                             result.onSuccess {
@@ -281,7 +359,7 @@ private fun ForgotPasswordScreen(
                             onClick = {
                                 busy = true
                                 error = ""
-                                auth.requestRecoveryCode(identifier.trim(), isPhone) { result ->
+                                auth.requestRecoveryCode(if (isPhone) phoneTarget else identifier.trim(), isPhone) { result ->
                                     android.os.Handler(android.os.Looper.getMainLooper()).post {
                                         busy = false
                                         result.onSuccess { info = "A new code has been requested. Use the newest code." }
