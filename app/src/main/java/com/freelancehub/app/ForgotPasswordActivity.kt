@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,7 +70,7 @@ private fun ForgotPasswordFlow(
     val blue = Color(0xFF315FCB)
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().imePadding().navigationBarsPadding(),
         color = Color(0xFFF1F5FD)
     ) {
         Column(
@@ -76,7 +78,7 @@ private fun ForgotPasswordFlow(
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(Color(0xFFE5EEFF), Color(0xFFF8FAFF))))
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp, vertical = 18.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -95,13 +97,13 @@ private fun ForgotPasswordFlow(
             }
             Spacer(Modifier.height(18.dp))
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth().widthIn(max = 460.dp),
+                shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(22.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
@@ -186,7 +188,8 @@ private fun ForgotPasswordFlow(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !busy,
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(14.dp),
+                                contentPadding = PaddingValues(vertical = 14.dp)
                             ) {
                                 if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                                 else Text("Next")
@@ -227,7 +230,8 @@ private fun ForgotPasswordFlow(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !busy && code.length in 6..8,
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(14.dp),
+                                contentPadding = PaddingValues(vertical = 14.dp)
                             ) {
                                 if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                                 else Text("Next")
