@@ -131,17 +131,32 @@ private fun ForgotPasswordScreen(
                     }
 
                     if (step == 1) {
-                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                            SegmentedButton(
-                                selected = method == RecoveryMethod.EMAIL,
-                                onClick = { method = RecoveryMethod.EMAIL; identifier = ""; error = "" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                            ) { Text("Email") }
-                            SegmentedButton(
-                                selected = method == RecoveryMethod.PHONE,
-                                onClick = { method = RecoveryMethod.PHONE; identifier = ""; error = "" },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                            ) { Text("Mobile") }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (method == RecoveryMethod.EMAIL) {
+                                Button(
+                                    onClick = { method = RecoveryMethod.EMAIL; identifier = ""; error = "" },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Email") }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { method = RecoveryMethod.EMAIL; identifier = ""; error = "" },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Email") }
+                            }
+                            if (method == RecoveryMethod.PHONE) {
+                                Button(
+                                    onClick = { method = RecoveryMethod.PHONE; identifier = ""; error = "" },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Mobile") }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { method = RecoveryMethod.PHONE; identifier = ""; error = "" },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Mobile") }
+                            }
                         }
                         OutlinedTextField(
                             value = identifier,
