@@ -122,6 +122,10 @@ var openingSignup by remember { mutableStateOf(false) }
 var passwordVisible by remember { mutableStateOf(false) }
 var resetBusy by remember { mutableStateOf(false) }
 var resetMessage by remember { mutableStateOf("") }
+var showRecoveryOptions by remember { mutableStateOf(false) }
+var showEmailRecovery by remember { mutableStateOf(false) }
+var showMobileRecoveryInfo by remember { mutableStateOf(false) }
+var recoveryEmail by remember { mutableStateOf("") }
 val screenContext = LocalContext.current
 val resetAuthService = remember(screenContext) { AuthService(screenContext) }
 val scope = rememberCoroutineScope()
@@ -508,36 +512,123 @@ Surface(
                         TextButton(
                             enabled = !resetBusy,
                             onClick = {
-                                if (email.trim().isBlank()) {
-                                    error = "Enter your account email first, then tap Forgot password."
-                                    resetMessage = ""
-                                } else {
+                                error = ""
+                                resetMessage = ""
+                                recoveryEmail = email
+                                showRecoveryOptions = true
+                            }
+                        ) {
+                            Text("Forgot password?")
+                        }
+                    }
+                }
+
+                if (showRecoveryOptions) {
+                    AlertDialog(
+                        onDismissRequest = { showRecoveryOptions = false },
+                        title = { Text("Recover your account") },
+                        text = {
+                            Text("Choose the contact method linked to your Freelance Hub account.")
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showRecoveryOptions = false
+                                    showEmailRecovery = true
+                                }
+                            ) { Text("Email") }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showRecoveryOptions = false
+                                    showMobileRecoveryInfo = true
+                                }
+                            ) { Text("Mobile number") }
+                        }
+                    )
+                }
+
+                if (showEmailRecovery) {
+                    AlertDialog(
+                        onDismissRequest = { if (!resetBusy) showEmailRecovery = false },
+                        title = { Text("Reset using email") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Enter the email address registered to your account. We will send a secure recovery link.")
+                                OutlinedTextField(
+                                    value = recoveryEmail,
+                                    onValueChange = { recoveryEmail = it },
+                                    label = { Text("Account email") },
+                                    singleLine = true,
+                                    enabled = !resetBusy,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                enabled = !resetBusy,
+                                onClick = {
                                     resetBusy = true
                                     error = ""
                                     resetMessage = ""
-                                    resetAuthService.requestPasswordReset(email) { result ->
+                                    resetAuthService.requestPasswordReset(recoveryEmail) { result ->
                                         android.os.Handler(android.os.Looper.getMainLooper()).post {
                                             resetBusy = false
+                                            showEmailRecovery = false
                                             result.onSuccess {
-                                                resetMessage = "If an account exists for this email, a password recovery message has been sent. Check your inbox and spam folder."
+                                                resetMessage = "If an account exists for this email, a recovery message has been requested. Check your inbox and spam folder."
                                             }.onFailure { failure ->
                                                 error = failure.message ?: "Could not request password recovery. Please try again."
                                             }
                                         }
                                     }
                                 }
+                            ) {
+                                if (resetBusy) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("Send recovery email")
+                                }
                             }
-                        ) {
-                            if (resetBusy) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(Modifier.width(8.dp))
-                            }
-                            Text("Forgot password?")
+                        },
+                        dismissButton = {
+                            TextButton(
+                                enabled = !resetBusy,
+                                onClick = { showEmailRecovery = false }
+                            ) { Text("Cancel") }
                         }
-                    }
+                    )
+                }
+
+                if (showMobileRecoveryInfo) {
+                    AlertDialog(
+                        onDismissRequest = { showMobileRecoveryInfo = false },
+                        title = { Text("Mobile recovery is not configured") },
+                        text = {
+                            Text(
+                                "This Supabase project has Phone Authentication disabled and no SMS provider configured. Real mobile OTP delivery cannot work yet. Supabase also requires an SMS provider to enable hosted phone OTP, even when using test numbers. To keep the project free, use Email recovery for now; we will not pretend that a test code was sent to your phone."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showMobileRecoveryInfo = false
+                                    recoveryEmail = email
+                                    showEmailRecovery = true
+                                }
+                            ) { Text("Use email instead") }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = { showMobileRecoveryInfo = false }
+                            ) { Text("Close") }
+                        }
+                    )
                 }
 
                 if (resetMessage.isNotBlank()) {
