@@ -367,7 +367,7 @@ class AuthService(context: Context) {
     ) {
         executor.execute {
             callback(runCatching {
-                require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
+                require(otp.trim().matches(Regex("^[0-9]{6,8}$"))) {
                     "Enter the 8-digit code sent to your registered contact."
                 }
                 val target = identifier.trim()
