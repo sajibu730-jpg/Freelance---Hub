@@ -237,6 +237,92 @@ class AuthService(context: Context) {
 
 
     /**
+     * Starts Supabase SMS OTP authentication for phone-based sign-in or sign-up.
+     * Existing accounts are required for sign-in; sign-up creates the account only
+     * after the user submits a valid SMS code.
+     */
+    fun requestPhoneAuthCode(
+        phone: String,
+        signup: Boolean,
+        name: String,
+        role: UserRole,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Phone verification is unavailable because the backend is not configured." }
+                val target = phone.trim()
+                require(target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
+                    "Enter a valid mobile number with its country code, such as +9715XXXXXXXX."
+                }
+                if (signup) {
+                    require(name.trim().length in 2..80) { "Enter your full name before requesting the code." }
+                }
+                val payload = JSONObject().apply {
+                    put("phone", target)
+                    put("create_user", signup)
+                    if (signup) {
+                        put("data", JSONObject().apply {
+                            put("display_name", name.trim())
+                            put("role", role.name)
+                        })
+                    }
+                }
+                request("POST", "/auth/v1/otp", payload.toString())
+                Unit
+            })
+        }
+    }
+
+    /**
+     * Confirms the SMS OTP and persists the Supabase session returned by GoTrue.
+     * The same method completes phone sign-up and phone sign-in.
+     */
+    fun verifyPhoneAuthCode(
+        phone: String,
+        otp: String,
+        callback: (Result<AuthSession>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Phone verification is unavailable because the backend is not configured." }
+                val target = phone.trim()
+                require(target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
+                    "Enter a valid mobile number with its country code."
+                }
+                val code = otp.trim()
+                require(code.matches(Regex("""^[0-9]{6,8}$"""))) {
+                    "Enter the verification code sent by SMS."
+                }
+                val response = request(
+                    "POST",
+                    "/auth/v1/verify",
+                    JSONObject()
+                        .put("type", "sms")
+                        .put("phone", target)
+                        .put("token", code)
+                        .toString()
+                )
+                val access = response.optString("access_token")
+                val refresh = response.optString("refresh_token")
+                val user = response.optJSONObject("user")
+                    ?: error("The code was accepted without an account session. Request a new code.")
+                require(access.isNotBlank() && refresh.isNotBlank()) {
+                    "Supabase did not return a valid session. Please request a new code."
+                }
+                val session = makeSession(
+                    access = access,
+                    refresh = refresh,
+                    user = user,
+                    defaultRole = UserRole.FREELANCER
+                )
+                tokenStore.saveSession(session.accessToken, session.refreshToken)
+                session
+            })
+        }
+    }
+
+    /**
      * Sends a one-time recovery code to the registered email or phone.
      * Phone delivery requires Supabase Phone Auth and a configured SMS provider.
      */
@@ -281,7 +367,7 @@ class AuthService(context: Context) {
     ) {
         executor.execute {
             callback(runCatching {
-                require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
+                require(otp.trim().matches(Regex("^[0-9]{6,8}$"))) {
                     "Enter the 8-digit code sent to your registered contact."
                 }
                 val target = identifier.trim()

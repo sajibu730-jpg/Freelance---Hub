@@ -79,17 +79,40 @@ class MainActivity:ComponentActivity(){
             CircularProgressIndicator()
         }
     } else if(!loggedIn){
-        LoginScreen(authConfigured=auth.isConfigured()){email,name,password,role,isSignup,setError->
-            auth.authenticate(isSignup,name,email,password,role){result->
-                android.os.Handler(android.os.Looper.getMainLooper()).post{
-                    result.onSuccess { session ->
-                        val old=repo.profile(); repo.initializeAccountRole(session.role)
-                        repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
-                        repo.cacheAuthenticatedProfile(session.name, session.email, session.role); loggedIn=true
-                    }.onFailure { setError(it.message ?: "Authentication failed.") }
+        LoginScreen(
+            authConfigured = auth.isConfigured(),
+            onLogin = { email,name,password,role,isSignup,setError ->
+                auth.authenticate(isSignup,name,email,password,role){result->
+                    android.os.Handler(android.os.Looper.getMainLooper()).post{
+                        result.onSuccess { session ->
+                            val old=repo.profile(); repo.initializeAccountRole(session.role)
+                            repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
+                            repo.cacheAuthenticatedProfile(session.name, session.email, session.role); loggedIn=true
+                        }.onFailure { setError(it.message ?: "Authentication failed.") }
+                    }
+                }
+            },
+            onRequestPhoneCode = { phone,name,role,isSignup,setError ->
+                auth.requestPhoneAuthCode(phone,isSignup,name,role) { result ->
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        result.onSuccess { setError("") }
+                            .onFailure { setError(it.message ?: "Could not send SMS code.") }
+                    }
+                }
+            },
+            onVerifyPhoneCode = { phone,otp,setError ->
+                auth.verifyPhoneAuthCode(phone,otp) { result ->
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        result.onSuccess { session ->
+                            val old=repo.profile(); repo.initializeAccountRole(session.role)
+                            repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
+                            repo.cacheAuthenticatedProfile(session.name, session.email, session.role); loggedIn=true
+                            setError("")
+                        }.onFailure { setError(it.message ?: "Phone verification failed.") }
+                    }
                 }
             }
-        }
+        )
     } else MainShell(repo, auth){
         auth.logout { android.os.Handler(android.os.Looper.getMainLooper()).post {
             repo.clearSession()
@@ -103,18 +126,23 @@ class MainActivity:ComponentActivity(){
 fun LoginScreen(
     authConfigured: Boolean,
     onLogin: (
-        String,
-        String,
-        String,
-        UserRole,
-        Boolean,
-        (String) -> Unit
-    ) -> Unit
+        String, String, String, UserRole, Boolean, (String) -> Unit
+    ) -> Unit,
+    onRequestPhoneCode: (String, String, UserRole, Boolean, (String) -> Unit) -> Unit,
+    onVerifyPhoneCode: (String, String, (String) -> Unit) -> Unit
 ) {
     var signup by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    var phoneMode by remember { mutableStateOf(false) }
+    var phoneCountryCode by remember { mutableStateOf("+971") }
+    var phoneDigits by remember { mutableStateOf("") }
+    var phoneOtp by remember { mutableStateOf("") }
+    var phoneCodeSent by remember { mutableStateOf(false) }
+    var showPhoneCountryPicker by remember { mutableStateOf(false) }
+    var phoneCountrySearch by remember { mutableStateOf("") }
+    val phoneTarget = phoneCountryCode + phoneDigits.filter(Char::isDigit)
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -150,10 +178,15 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
     val keyboardOpen = WindowInsets.isImeVisible
 
-    val valid = authConfigured &&
+    val valid = authConfigured && if (phoneMode) {
+        phoneTarget.matches(Regex("""^\+[1-9][0-9]{7,14}$""")) &&
+            (!signup || Validation.text(name, 2, 80)) &&
+            (!phoneCodeSent || phoneOtp.matches(Regex("""^[0-9]{6,8}$""")))
+    } else {
         Validation.email(email) &&
-        Validation.password(pass) &&
-        (!signup || Validation.text(name, 2, 80))
+            Validation.password(pass) &&
+            (!signup || Validation.text(name, 2, 80))
+    }
 
     Column(
         modifier = Modifier
@@ -434,6 +467,108 @@ Surface(
                     Spacer(Modifier.height(12.dp))
                 }
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = !phoneMode,
+                        onClick = { phoneMode = false; phoneCodeSent = false; phoneOtp = ""; error = "" },
+                        label = { Text("Email & password") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = phoneMode,
+                        onClick = { phoneMode = true; phoneCodeSent = false; phoneOtp = ""; error = "" },
+                        label = { Text("Phone OTP") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                if (phoneMode) {
+                    OutlinedButton(
+                        onClick = { showPhoneCountryPicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy
+                    ) { Text("Country code: $phoneCountryCode  •  Choose country") }
+                    OutlinedTextField(
+                        value = phoneDigits,
+                        onValueChange = { phoneDigits = it.filter(Char::isDigit).take(14); phoneCodeSent = false; phoneOtp = ""; error = "" },
+                        label = { Text("Mobile number") },
+                        placeholder = { Text("Enter number without country code") },
+                        singleLine = true,
+                        enabled = !busy && !phoneCodeSent,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone)
+                    )
+                    if (phoneCodeSent) {
+                        OutlinedTextField(
+                            value = phoneOtp,
+                            onValueChange = { phoneOtp = it.filter(Char::isDigit).take(8); error = "" },
+                            label = { Text("SMS verification code") },
+                            placeholder = { Text("Enter the code you received") },
+                            singleLine = true,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                        )
+                        TextButton(
+                            enabled = !busy,
+                            onClick = {
+                                busy = true
+                                error = ""
+                                onRequestPhoneCode(phoneTarget, name.trim(), role, signup) { message ->
+                                    busy = false
+                                    if (message.isBlank()) error = "A new SMS code has been requested."
+                                    else error = message
+                                }
+                            }
+                        ) { Text("Resend code") }
+                    }
+                    if (showPhoneCountryPicker) {
+                        val filtered = CountryCallingCodes.all.filter {
+                            it.first.contains(phoneCountrySearch, ignoreCase = true) || it.second.contains(phoneCountrySearch)
+                        }
+                        AlertDialog(
+                            onDismissRequest = { showPhoneCountryPicker = false; phoneCountrySearch = "" },
+                            title = { Text("Choose country code") },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = phoneCountrySearch,
+                                        onValueChange = { phoneCountrySearch = it },
+                                        label = { Text("Search country or code") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    LazyColumn(Modifier.heightIn(max = 340.dp)) {
+                                        items(filtered) { country ->
+                                            Row(
+                                                Modifier.fillMaxWidth().clickable {
+                                                    phoneCountryCode = country.second
+                                                    showPhoneCountryPicker = false
+                                                    phoneCountrySearch = ""
+                                                }.padding(vertical = 10.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(country.first)
+                                                Text(country.second, color = blue)
+                                            }
+                                        }
+                                    }
+                                    if (filtered.isEmpty()) Text("No matching country found.")
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showPhoneCountryPicker = false; phoneCountrySearch = "" }) { Text("Done") }
+                            }
+                        )
+                    }
+                }
+
+                if (!phoneMode) {
                 // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
@@ -502,9 +637,10 @@ Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
 
+                }
                 Spacer(Modifier.height(6.dp))
 
-                if (!signup) {
+                if (!signup && !phoneMode) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -660,15 +796,32 @@ Surface(
                             busy = true
                             error = ""
 
-                            onLogin(
-                                email.trim(),
-                                name.trim(),
-                                pass,
-                                role,
-                                signup
-                            ) { message ->
-                                busy = false
-                                error = message
+                            if (phoneMode) {
+                                if (phoneCodeSent) {
+                                    onVerifyPhoneCode(phoneTarget, phoneOtp) { message ->
+                                        busy = false
+                                        error = message
+                                    }
+                                } else {
+                                    onRequestPhoneCode(phoneTarget, name.trim(), role, signup) { message ->
+                                        busy = false
+                                        if (message.isBlank()) {
+                                            phoneCodeSent = true
+                                            error = "A verification code has been sent by SMS."
+                                        } else error = message
+                                    }
+                                }
+                            } else {
+                                onLogin(
+                                    email.trim(),
+                                    name.trim(),
+                                    pass,
+                                    role,
+                                    signup
+                                ) { message ->
+                                    busy = false
+                                    error = message
+                                }
                             }
                         }
                     },
@@ -689,7 +842,7 @@ Surface(
                         )
                     } else {
                         Text(
-                            text = if (signup) "Create account" else "Sign In",
+                            text = if (phoneMode) { if (phoneCodeSent) "Verify code & continue" else "Send SMS code" } else if (signup) "Create account" else "Sign In",
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
