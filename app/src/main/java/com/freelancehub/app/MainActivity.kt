@@ -179,7 +179,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     val keyboardOpen = WindowInsets.isImeVisible
 
     val valid = authConfigured && if (phoneMode) {
-        phoneTarget.matches(Regex("""^\\+[1-9][0-9]{7,14}$""")) &&
+        phoneTarget.matches(Regex("""^\+[1-9][0-9]{7,14}$""")) &&
             (!signup || Validation.text(name, 2, 80)) &&
             (!phoneCodeSent || phoneOtp.matches(Regex("""^[0-9]{6,8}$""")))
     } else {
