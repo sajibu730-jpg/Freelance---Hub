@@ -249,14 +249,7 @@ class AuthService(context: Context) {
                     require(target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                         "Enter the mobile number with its country code, for example +9715XXXXXXXX."
                     }
-                    request(
-                        method = "POST",
-                        path = "/auth/v1/otp",
-                        body = JSONObject()
-                            .put("phone", target)
-                            .put("create_user", false)
-                            .toString()
-                    )
+                    mobileRecoveryRequest("send", target)
                 } else {
                     require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                         "Enter the email address registered to your account."
@@ -281,16 +274,36 @@ class AuthService(context: Context) {
     ) {
         executor.execute {
             callback(runCatching {
-                require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
-                    "Enter the 8-digit code sent to your registered contact."
+                val expectedLength = if (isPhone) 6 else 8
+                require(otp.trim().matches(Regex("^[0-9]{$expectedLength}$"))) {
+                    "Enter the $expectedLength-digit code sent to your registered contact."
                 }
                 val target = identifier.trim()
-                val payload = JSONObject().apply {
-                    put("type", if (isPhone) "sms" else "recovery")
-                    put("token", otp.trim())
-                    if (isPhone) put("phone", target) else put("email", target)
+                val response = if (isPhone) {
+                    val verified = mobileRecoveryRequest("verify", target, otp.trim())
+                    val tokenHash = verified.optString("token_hash")
+                    require(tokenHash.isNotBlank()) {
+                        "The mobile number was verified, but a secure recovery session was not returned. Please request a new code."
+                    }
+                    request(
+                        "POST",
+                        "/auth/v1/verify",
+                        JSONObject()
+                            .put("token_hash", tokenHash)
+                            .put("type", "recovery")
+                            .toString()
+                    )
+                } else {
+                    request(
+                        "POST",
+                        "/auth/v1/verify",
+                        JSONObject()
+                            .put("type", "recovery")
+                            .put("token", otp.trim())
+                            .put("email", target)
+                            .toString()
+                    )
                 }
-                val response = request("POST", "/auth/v1/verify", payload.toString())
                 val access = response.optString("access_token")
                 val refresh = response.optString("refresh_token")
                 val user = response.optJSONObject("user")
@@ -529,6 +542,62 @@ class AuthService(context: Context) {
                 )
                 Unit
             })
+        }
+    }
+
+    private fun mobileRecoveryRequest(
+        action: String,
+        phone: String,
+        code: String? = null
+    ): JSONObject {
+        require(isConfigured()) { "Account recovery is unavailable because the backend is not configured." }
+        require(action == "send" || action == "verify") { "Invalid mobile recovery action." }
+
+        val payload = JSONObject()
+            .put("action", action)
+            .put("phone", phone)
+        if (!code.isNullOrBlank()) payload.put("code", code)
+
+        val connection = URL(config.baseUrl.trim().trimEnd('/') + "/functions/v1/mobile-recovery")
+            .openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 25000
+            connection.instanceFollowRedirects = false
+            connection.useCaches = false
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("apikey", config.anonKey)
+            connection.setRequestProperty("Authorization", "Bearer " + config.anonKey)
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            connection.doOutput = true
+            connection.outputStream.use {
+                it.write(payload.toString().toByteArray(StandardCharsets.UTF_8))
+            }
+
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val responseText = stream?.use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    require(total <= 1024 * 1024) { "Recovery response is too large." }
+                    output.write(buffer, 0, count)
+                }
+                String(output.toByteArray(), StandardCharsets.UTF_8)
+            }.orEmpty()
+
+            val response = if (responseText.isBlank()) JSONObject() else JSONObject(responseText)
+            if (status !in 200..299) {
+                error(response.optString("error", "Mobile recovery request failed."))
+            }
+            return response
+        } finally {
+            connection.disconnect()
         }
     }
 
