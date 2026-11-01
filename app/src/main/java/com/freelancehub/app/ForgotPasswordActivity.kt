@@ -66,7 +66,14 @@ private fun ForgotPasswordScreen(
     var phoneDigits by remember { mutableStateOf("") }
     var showCountryPicker by remember { mutableStateOf(false) }
     var countrySearch by remember { mutableStateOf("") }
-    val phoneTarget = countryCode + phoneDigits.filter(Char::isDigit)
+    val enteredPhoneDigits = phoneDigits.filter(Char::isDigit)
+    // UAE local numbers are often entered as 056…; E.164 must be +97156…
+    val normalizedPhoneDigits = if (countryCode == "+971" && enteredPhoneDigits.startsWith("0")) {
+        enteredPhoneDigits.drop(1)
+    } else {
+        enteredPhoneDigits
+    }
+    val phoneTarget = countryCode + normalizedPhoneDigits
     var otp by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -138,7 +145,7 @@ private fun ForgotPasswordScreen(
                     Text(
                         when (step) {
                             1 -> "Enter the email address or mobile number already registered to your account. We will send a one-time code."
-                            2 -> "Enter the 8-digit verification code sent to your registered contact."
+                            2 -> if (isPhone) "Enter the 6-digit SMS code sent to your registered mobile number." else "Enter the 8-digit email code sent to your registered email address."
                             else -> "Changing your password is optional. You can set a new password now or skip and continue to your account."
                         },
                         color = Color(0xFF53627A),
@@ -251,7 +258,11 @@ private fun ForgotPasswordScreen(
                                 )
                             }
                             Text(
-                                "Choose your country code, then enter the mobile number without the country code.",
+                                if (countryCode == "+971") {
+                                    "Enter your UAE mobile number. You may type 056…; the app will convert it to +97156… automatically."
+                                } else {
+                                    "Choose your country code, then enter the mobile number without the country code."
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF69778D)
                             )
@@ -295,7 +306,7 @@ private fun ForgotPasswordScreen(
                                             busy = false
                                             result.onSuccess {
                                                 step = 2
-                                                info = if (isPhone) "An 8-digit verification code has been requested by SMS." else "An 8-digit verification code has been requested by email. Check your inbox and spam folder."
+                                                info = if (isPhone) "A 6-digit verification code has been requested by SMS." else "An 8-digit verification code has been requested by email. Check your inbox and spam folder."
                                             }.onFailure {
                                                 error = it.message ?: "Could not send the verification code."
                                             }
@@ -319,18 +330,19 @@ private fun ForgotPasswordScreen(
                         )
                         OutlinedTextField(
                             value = otp,
-                            onValueChange = { value -> otp = value.filter(Char::isDigit).take(8); error = "" },
+                            onValueChange = { value -> otp = value.filter(Char::isDigit).take(if (isPhone) 6 else 8); error = "" },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("8-digit verification code") },
-                            placeholder = { Text("Enter 8 digits") },
+                            label = { Text(if (isPhone) "6-digit SMS code" else "8-digit email code") },
+                            placeholder = { Text(if (isPhone) "Enter 6 digits" else "Enter 8 digits") },
                             singleLine = true,
                             enabled = !busy,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                         Button(
                             onClick = {
-                                if (!otp.matches(Regex("^[0-9]{8}$"))) {
-                                    error = "Enter the 8-digit verification code sent to your contact."
+                                val expectedLength = if (isPhone) 6 else 8
+                                if (!otp.matches(Regex("^[0-9]{$expectedLength}$"))) {
+                                    error = "Enter the $expectedLength-digit verification code sent to your contact."
                                 } else {
                                     busy = true
                                     error = ""
