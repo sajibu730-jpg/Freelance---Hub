@@ -252,7 +252,7 @@ class AuthService(context: Context) {
             callback(runCatching {
                 require(isConfigured()) { "Phone verification is unavailable because the backend is not configured." }
                 val target = phone.trim()
-                require(target.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                require(target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid mobile number with its country code, such as +9715XXXXXXXX."
                 }
                 if (signup) {
@@ -287,7 +287,7 @@ class AuthService(context: Context) {
             callback(runCatching {
                 require(isConfigured()) { "Phone verification is unavailable because the backend is not configured." }
                 val target = phone.trim()
-                require(target.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                require(target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid mobile number with its country code."
                 }
                 val code = otp.trim()
