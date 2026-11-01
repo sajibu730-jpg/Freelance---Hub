@@ -138,7 +138,7 @@ private fun ForgotPasswordScreen(
                     Text(
                         when (step) {
                             1 -> "Enter the email address or mobile number already registered to your account. We will send a one-time code."
-                            2 -> "Enter the 8-digit verification code sent to your registered contact."
+                            2 -> if (isPhone) "Enter the SMS verification code sent to your registered mobile number." else "Enter the 8-digit verification code sent to your registered email."
                             else -> "Changing your password is optional. You can set a new password now or skip and continue to your account."
                         },
                         color = Color(0xFF53627A),
@@ -295,7 +295,7 @@ private fun ForgotPasswordScreen(
                                             busy = false
                                             result.onSuccess {
                                                 step = 2
-                                                info = if (isPhone) "An 8-digit verification code has been requested by SMS." else "An 8-digit verification code has been requested by email. Check your inbox and spam folder."
+                                                info = if (isPhone) "A verification code has been requested by SMS." else "An 8-digit verification code has been requested by email. Check your inbox and spam folder."
                                             }.onFailure {
                                                 error = it.message ?: "Could not send the verification code."
                                             }
@@ -321,16 +321,16 @@ private fun ForgotPasswordScreen(
                             value = otp,
                             onValueChange = { value -> otp = value.filter(Char::isDigit).take(8); error = "" },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("8-digit verification code") },
-                            placeholder = { Text("Enter 8 digits") },
+                            label = { Text(if (isPhone) "SMS verification code" else "8-digit email verification code") },
+                            placeholder = { Text(if (isPhone) "Enter the SMS code" else "Enter 8 digits") },
                             singleLine = true,
                             enabled = !busy,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                         Button(
                             onClick = {
-                                if (!otp.matches(Regex("^[0-9]{8}$"))) {
-                                    error = "Enter the 8-digit verification code sent to your contact."
+                                if (!(if (isPhone) otp.matches(Regex("^[0-9]{6,8}$")) else otp.matches(Regex("^[0-9]{8}$")))) {
+                                    error = if (isPhone) "Enter the SMS verification code sent to your mobile number." else "Enter the 8-digit verification code sent to your email."
                                 } else {
                                     busy = true
                                     error = ""
