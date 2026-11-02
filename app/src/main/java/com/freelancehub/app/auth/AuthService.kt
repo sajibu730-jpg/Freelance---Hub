@@ -95,6 +95,24 @@ class AuthService(context: Context) {
         }
     }
 
+    /** Requests a fresh email signup code without creating another account. */
+    fun resendSignupEmailOtp(email: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                val target = email.trim()
+                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
+                    "Enter the email address used to create your account."
+                }
+                request(
+                    "POST",
+                    "/auth/v1/resend",
+                    JSONObject().put("type", "signup").put("email", target).toString()
+                )
+                Unit
+            })
+        }
+    }
+
     /** Verifies the email OTP issued after a new account is created. */
     fun verifySignupEmailOtp(
         email: String,
@@ -104,7 +122,7 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 val target = email.trim()
-                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\\.[^\s@]+$"""))) {
+                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                     "Enter the email address used to create your account."
                 }
                 require(otp.trim().matches(Regex("""^\d{8}$"""))) {
