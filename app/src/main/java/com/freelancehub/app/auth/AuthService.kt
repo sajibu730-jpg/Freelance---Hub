@@ -104,10 +104,10 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 val target = email.trim()
-                require(target.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\\.[^\s@]+$"""))) {
                     "Enter the email address used to create your account."
                 }
-                require(otp.trim().matches(Regex("""^\\d{8}$"""))) {
+                require(otp.trim().matches(Regex("""^\d{8}$"""))) {
                     "Enter the 8-digit code sent to your email."
                 }
                 val response = request(
@@ -142,10 +142,10 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 val target = phone.trim()
-                require(target.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                require(target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid mobile number with country code."
                 }
-                require(otp.trim().matches(Regex("""^\\d{8}$"""))) {
+                require(otp.trim().matches(Regex("""^\d{8}$"""))) {
                     "Enter the 8-digit code sent to your mobile number."
                 }
                 val response = request(
