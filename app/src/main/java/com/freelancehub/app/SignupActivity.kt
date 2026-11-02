@@ -111,10 +111,10 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
         if (uri != null) {
             runCatching {
                 val input = context.contentResolver.openInputStream(uri)
-                    ?: error("Could not open the selected photo.")
+                    ?: throw IllegalStateException("Could not open the selected photo.")
                 val original = input.use { it.readBytes() }
                 val decoded = BitmapFactory.decodeByteArray(original, 0, original.size)
-                    ?: error("Choose a valid image file.")
+                    ?: throw IllegalStateException("Choose a valid image file.")
                 val maxSide = 1280
                 val scale = minOf(1f, maxSide.toFloat() / maxOf(decoded.width, decoded.height))
                 val resized = if (scale < 1f) {
@@ -233,7 +233,7 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
                                 mobileNumber = fullPhone,
                                 gender = gender,
                                 birthday = birthday,
-                                photoBytes = photoBytes ?: error("Select a profile photo before continuing."),
+                                photoBytes = photoBytes ?: throw IllegalStateException("Select a profile photo before continuing."),
                                 photoContentType = "image/jpeg"
                             )
                         }
