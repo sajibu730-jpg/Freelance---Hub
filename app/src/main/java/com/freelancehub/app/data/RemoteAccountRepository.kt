@@ -323,7 +323,7 @@ val newProfile = newProfileJson.toString()
             .toString()
             .toByteArray(StandardCharsets.UTF_8)
         client.readJsonResponse(
-            client.openJsonPatch(
+            client.openJsonPut(
                 "/auth/v1/user",
                 authMetadata,
                 token,
