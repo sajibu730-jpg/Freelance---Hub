@@ -545,6 +545,35 @@ class AuthService(context: Context) {
         }
     }
 
+    /** Reads the server-controlled mobile recovery feature flag. Fails closed. */
+    fun isMobileRecoveryEnabled(callback: (Result<Boolean>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Backend is not configured." }
+                val url = URL(
+                    config.baseUrl.trim().trimEnd('/') +
+                        "/rest/v1/app_feature_flags?key=eq.mobile_recovery_enabled&select=enabled"
+                )
+                val connection = url.openConnection() as HttpURLConnection
+                try {
+                    connection.requestMethod = "GET"
+                    connection.connectTimeout = 8000
+                    connection.readTimeout = 10000
+                    connection.setRequestProperty("Accept", "application/json")
+                    connection.setRequestProperty("apikey", config.anonKey)
+                    connection.setRequestProperty("Authorization", "Bearer " + config.anonKey)
+                    val status = connection.responseCode
+                    if (status !in 200..299) error("Feature settings could not be loaded.")
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    val rows = org.json.JSONArray(response)
+                    rows.length() > 0 && rows.optJSONObject(0)?.optBoolean("enabled", false) == true
+                } finally {
+                    connection.disconnect()
+                }
+            })
+        }
+    }
+
     private fun mobileRecoveryRequest(
         action: String,
         phone: String,
