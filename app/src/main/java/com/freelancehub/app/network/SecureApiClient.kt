@@ -27,6 +27,30 @@ class SecureApiClient(private val config: BackendConfig) {
     }
 
     
+fun openJsonPut(
+    path: String,
+    body: ByteArray,
+    accessToken: String? = null,
+    idempotencyKey: String? = null
+): HttpURLConnection {
+    require(ApiRequestSecurityRules.canSendBody(body)) {
+        "Request body is too large"
+    }
+    idempotencyKey?.let {
+        require(ApiRequestSecurityRules.canUseIdempotencyKey(it)) {
+            "Idempotency key is invalid"
+        }
+    }
+    return open("PUT", path, accessToken, body).also { connection ->
+        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        idempotencyKey?.let {
+            connection.setRequestProperty(SecurityHeaders.IDEMPOTENCY_KEY, it)
+        }
+        connection.doOutput = true
+        connection.outputStream.use { it.write(body) }
+    }
+}
+
 fun openJsonPatch(
     path: String,
     body: ByteArray,
