@@ -82,6 +82,16 @@ private fun ForgotPasswordScreen(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var info by remember { mutableStateOf("") }
+    var mobileRecoveryEnabled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(auth) {
+        auth.isMobileRecoveryEnabled { result ->
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                mobileRecoveryEnabled = result.getOrDefault(false)
+                if (!mobileRecoveryEnabled) method = RecoveryMethod.EMAIL
+            }
+        }
+    }
 
     val navy = Color(0xFF102B57)
     val blue = Color(0xFF315FCB)
@@ -221,16 +231,18 @@ private fun ForgotPasswordScreen(
                                     modifier = Modifier.weight(1f)
                                 ) { Text("Email") }
                             }
-                            if (method == RecoveryMethod.PHONE) {
-                                Button(
-                                    onClick = { method = RecoveryMethod.PHONE; identifier = ""; error = "" },
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("Mobile") }
-                            } else {
-                                OutlinedButton(
-                                    onClick = { method = RecoveryMethod.PHONE; identifier = ""; error = "" },
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("Mobile") }
+                            if (mobileRecoveryEnabled) {
+                                if (method == RecoveryMethod.PHONE) {
+                                    Button(
+                                        onClick = { method = RecoveryMethod.PHONE; identifier = ""; error = "" },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("Mobile") }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { method = RecoveryMethod.PHONE; identifier = ""; error = "" },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("Mobile") }
+                                }
                             }
                         }
                         if (isPhone) {
