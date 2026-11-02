@@ -219,6 +219,98 @@ class RemoteAccountRepository(
         return currentUser()
     }
 
+    /**
+     * Creates the first server profile after both signup email and phone are verified.
+     * The authenticated user's RLS policy restricts the insert to their own UUID.
+     */
+    fun createSignupProfile(
+        displayName: String,
+        country: String,
+        mobileNumber: String,
+        gender: String,
+        birthday: String,
+        photoBytes: ByteArray,
+        photoContentType: String,
+        coverPhotoBytes: ByteArray,
+        coverPhotoContentType: String
+    ): RemoteAccount {
+        require(Validation.text(displayName, 2, 120)) { "Enter your full name." }
+        require(Validation.text(country, 2, 100)) { "Choose your country." }
+        require(mobileNumber.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) { "Enter a valid verified mobile number." }
+        require(gender in setOf("Male", "Female", "Prefer not to say")) { "Choose your gender." }
+        require(birthday.matches(Regex("""^\d{4}-\d{2}-\d{2}$"""))) { "Choose your date of birth." }
+        require(photoBytes.isNotEmpty() && photoBytes.size <= 5 * 1024 * 1024) { "Choose a profile photo up to 5 MB." }
+        require(coverPhotoBytes.isNotEmpty() && coverPhotoBytes.size <= 5 * 1024 * 1024) { "Choose a cover photo up to 5 MB." }
+
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Your verified signup session has expired. Please sign in again.")
+        val authUser = JSONObject(
+            String(client.readJsonResponse(client.openGet("/auth/v1/user", token)), StandardCharsets.UTF_8)
+        )
+        val userId = authUser.optString("id")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+            "Supabase Auth returned an invalid user id."
+        }
+        require(authUser.optString("email_confirmed_at").isNotBlank()) {
+            "Confirm your email before creating your profile."
+        }
+        require(authUser.optString("phone") == mobileNumber && authUser.optString("phone_confirmed_at").isNotBlank()) {
+            "Verify your mobile number before creating your profile."
+        }
+
+        val photoPath = client.uploadProfilePhoto(
+            userId, photoBytes, photoContentType, token
+        )
+        val coverPhotoUrl = client.uploadCoverPhoto(
+            userId, coverPhotoBytes, coverPhotoContentType, token
+        )
+        val payload = JSONObject()
+            .put("id", userId)
+            .put("display_name", displayName.trim())
+            .put("country", country.trim())
+            .put("mobile_number", mobileNumber)
+            .put("gender", gender)
+            .put("birthday", birthday)
+            .put("photo_url", photoPath)
+            .put("cover_photo_url", coverPhotoUrl)
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+
+        val existing = JSONArray(
+            String(
+                client.readJsonResponse(
+                    client.openGet("/rest/v1/profiles?id=eq.$userId&select=id", token)
+                ),
+                StandardCharsets.UTF_8
+            )
+        )
+        val saved = if (existing.length() > 0) {
+            client.readJsonResponse(
+                client.openJsonPatch(
+                    "/rest/v1/profiles?id=eq.$userId",
+                    payload,
+                    token,
+                    SecureApiClient.newIdempotencyKey(),
+                    preferRepresentation = true
+                )
+            )
+        } else {
+            client.readJsonResponse(
+                client.openJsonPost(
+                    "/rest/v1/profiles",
+                    payload,
+                    token,
+                    SecureApiClient.newIdempotencyKey(),
+                    preferRepresentation = true
+                )
+            )
+        }
+        require(JSONArray(String(saved, StandardCharsets.UTF_8)).length() > 0) {
+            "The profile was not confirmed as saved by Supabase. Please try again."
+        }
+        return currentUser()
+    }
+
     fun updateProfile(input: RemoteProfileUpdate): RemoteAccount {
         require(Validation.text(input.displayName, 2, 120))
         require(Validation.text(input.bio, 0, 500))
