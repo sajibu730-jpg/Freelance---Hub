@@ -3357,8 +3357,8 @@ fun RemoteAccountSecurityScreen(
                         )
                         OutlinedTextField(
                             value = otp,
-                            onValueChange = { otp = it.filter(Char::isDigit).take(8) },
-                            label = { Text("Verification code") },
+                            onValueChange = { otp = it.filter(Char::isDigit).take(6) },
+                            label = { Text("6-digit SMS code") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -3519,8 +3519,8 @@ private fun RemoteAccountVerificationScreen(
                     )
                     OutlinedTextField(
                         value = otp,
-                        onValueChange = { onOtpChange(it.filter(Char::isDigit).take(8)) },
-                        label = { Text("SMS verification code") },
+                        onValueChange = { onOtpChange(it.filter(Char::isDigit).take(6)) },
+                        label = { Text("6-digit SMS verification code") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
