@@ -207,7 +207,7 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
                 }.onFailure { failure ->
                     val text = failure.message.orEmpty()
                     if (text.contains("Account created. Check your email", ignoreCase = true)) {
-                        stage = 1
+                        stage = 3
                         message = "We sent an 8-digit verification code to $email."
                     } else {
                         error = text.ifBlank { "Could not create your account. Please try again." }
