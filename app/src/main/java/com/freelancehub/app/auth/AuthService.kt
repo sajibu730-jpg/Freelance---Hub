@@ -26,6 +26,7 @@ class AuthService(context: Context) {
         email: String,
         password: String,
         role: UserRole,
+        signupMetadata: Map<String, String> = emptyMap(),
         callback: (Result<AuthSession>) -> Unit
     ) {
         executor.execute {
@@ -45,6 +46,12 @@ class AuthService(context: Context) {
                             JSONObject().apply {
                                 put("display_name", name.trim())
                                 put("role", role.name)
+                                put("signup_pending", "true")
+                                signupMetadata.forEach { (key, value) ->
+                                    if (key in setOf("country", "mobile_number", "gender", "birthday")) {
+                                        put(key, value)
+                                    }
+                                }
                             }
                         )
                     }
@@ -85,6 +92,85 @@ class AuthService(context: Context) {
             }
 
             callback(result)
+        }
+    }
+
+    /** Verifies the email OTP issued after a new account is created. */
+    fun verifySignupEmailOtp(
+        email: String,
+        otp: String,
+        callback: (Result<AuthSession>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                val target = email.trim()
+                require(target.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                    "Enter the email address used to create your account."
+                }
+                require(otp.trim().matches(Regex("""^\\d{8}$"""))) {
+                    "Enter the 8-digit code sent to your email."
+                }
+                val response = request(
+                    "POST",
+                    "/auth/v1/verify",
+                    JSONObject()
+                        .put("type", "signup")
+                        .put("email", target)
+                        .put("token", otp.trim())
+                        .toString()
+                )
+                val access = response.optString("access_token")
+                val refresh = response.optString("refresh_token")
+                val user = response.optJSONObject("user")
+                    ?: error("Email verification did not return an account.")
+                require(access.isNotBlank() && refresh.isNotBlank()) {
+                    "Email was verified, but a secure session was not returned. Please sign in."
+                }
+                val session = makeSession(access, refresh, user, UserRole.FREELANCER)
+                tokenStore.saveSession(session.accessToken, session.refreshToken)
+                session
+            })
+        }
+    }
+
+    /** Verifies the current Twilio/Supabase phone-change OTP during signup. */
+    fun verifySignupPhoneOtp(
+        phone: String,
+        otp: String,
+        callback: (Result<AuthSession>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                val target = phone.trim()
+                require(target.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                    "Enter a valid mobile number with country code."
+                }
+                require(otp.trim().matches(Regex("""^\\d{8}$"""))) {
+                    "Enter the 8-digit code sent to your mobile number."
+                }
+                val response = request(
+                    "POST",
+                    "/auth/v1/verify",
+                    JSONObject()
+                        .put("type", "phone_change")
+                        .put("phone", target)
+                        .put("token", otp.trim())
+                        .toString()
+                )
+                val access = response.optString("access_token")
+                val refresh = response.optString("refresh_token")
+                val user = response.optJSONObject("user")
+                    ?: error("Mobile verification did not return an account session.")
+                require(access.isNotBlank() && refresh.isNotBlank()) {
+                    "Mobile was verified, but a secure session was not returned. Please sign in again."
+                }
+                require(user.optString("phone") == target && user.optString("phone_confirmed_at").isNotBlank()) {
+                    "Supabase has not confirmed this mobile number yet. Request a new code and try again."
+                }
+                val session = makeSession(access, refresh, user, UserRole.FREELANCER)
+                tokenStore.saveSession(session.accessToken, session.refreshToken)
+                session
+            })
         }
     }
 
