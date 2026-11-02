@@ -82,16 +82,8 @@ private fun ForgotPasswordScreen(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var info by remember { mutableStateOf("") }
-    var mobileRecoveryEnabled by remember { mutableStateOf(false) }
-
-    LaunchedEffect(auth) {
-        auth.isMobileRecoveryEnabled { result ->
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                mobileRecoveryEnabled = result.getOrDefault(false)
-                if (!mobileRecoveryEnabled) method = RecoveryMethod.EMAIL
-            }
-        }
-    }
+    // Mobile recovery remains hidden until the admin-controlled feature is released.
+    val mobileRecoveryEnabled = false
 
     val navy = Color(0xFF102B57)
     val blue = Color(0xFF315FCB)
