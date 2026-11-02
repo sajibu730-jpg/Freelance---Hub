@@ -316,6 +316,21 @@ val newProfile = newProfileJson.toString()
             }
         }
 
+        // Keep Supabase Auth user_metadata in sync with the canonical profile name.
+        // Login/session restoration reads display_name from Auth metadata.
+        val authMetadata = JSONObject()
+            .put("data", JSONObject().put("display_name", input.displayName.trim()))
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        client.readJsonResponse(
+            client.openJsonPatch(
+                "/auth/v1/user",
+                authMetadata,
+                token,
+                SecureApiClient.newIdempotencyKey()
+            )
+        )
+
         val saved = currentUser()
         require(saved.displayName == input.displayName.trim() &&
             saved.bio == input.bio.trim() &&
