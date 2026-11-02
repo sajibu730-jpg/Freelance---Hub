@@ -274,7 +274,7 @@ class AuthService(context: Context) {
     ) {
         executor.execute {
             callback(runCatching {
-                val expectedLength = if (isPhone) 6 else 8
+                val expectedLength = 8
                 require(otp.trim().matches(Regex("^[0-9]{$expectedLength}$"))) {
                     "Enter the $expectedLength-digit code sent to your registered contact."
                 }
