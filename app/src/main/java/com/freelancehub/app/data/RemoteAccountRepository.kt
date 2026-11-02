@@ -230,7 +230,9 @@ class RemoteAccountRepository(
         gender: String,
         birthday: String,
         photoBytes: ByteArray,
-        photoContentType: String
+        photoContentType: String,
+        coverPhotoBytes: ByteArray,
+        coverPhotoContentType: String
     ): RemoteAccount {
         require(Validation.text(displayName, 2, 120)) { "Enter your full name." }
         require(Validation.text(country, 2, 100)) { "Choose your country." }
@@ -238,6 +240,7 @@ class RemoteAccountRepository(
         require(gender in setOf("Male", "Female", "Prefer not to say")) { "Choose your gender." }
         require(birthday.matches(Regex("""^\d{4}-\d{2}-\d{2}$"""))) { "Choose your date of birth." }
         require(photoBytes.isNotEmpty() && photoBytes.size <= 5 * 1024 * 1024) { "Choose a profile photo up to 5 MB." }
+        require(coverPhotoBytes.isNotEmpty() && coverPhotoBytes.size <= 5 * 1024 * 1024) { "Choose a cover photo up to 5 MB." }
 
         val token = accessTokenProvider()
             ?: throw IllegalStateException("Your verified signup session has expired. Please sign in again.")
@@ -258,6 +261,9 @@ class RemoteAccountRepository(
         val photoPath = client.uploadProfilePhoto(
             userId, photoBytes, photoContentType, token
         )
+        val coverPhotoUrl = client.uploadCoverPhoto(
+            userId, coverPhotoBytes, coverPhotoContentType, token
+        )
         val payload = JSONObject()
             .put("id", userId)
             .put("display_name", displayName.trim())
@@ -266,6 +272,7 @@ class RemoteAccountRepository(
             .put("gender", gender)
             .put("birthday", birthday)
             .put("photo_url", photoPath)
+            .put("cover_photo_url", coverPhotoUrl)
             .toString()
             .toByteArray(StandardCharsets.UTF_8)
 
