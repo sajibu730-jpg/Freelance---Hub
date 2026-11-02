@@ -274,7 +274,7 @@ class AuthService(context: Context) {
     ) {
         executor.execute {
             callback(runCatching {
-                val expectedLength = 8
+                val expectedLength = if (isPhone) 6 else 8
                 require(otp.trim().matches(Regex("^[0-9]{$expectedLength}$"))) {
                     "Enter the $expectedLength-digit code sent to your registered contact."
                 }
@@ -471,7 +471,7 @@ class AuthService(context: Context) {
                 require(type == "email_change" || type == "phone_change") {
                     "Unsupported verification type."
                 }
-                require(otp.trim().matches(Regex("^[0-9]{6,8}$"))) {
+                require(otp.trim().matches(Regex("^[0-9]{6}$"))) {
                     "Enter the verification code from your message."
                 }
                 val payload = JSONObject().apply {
