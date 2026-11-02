@@ -721,15 +721,8 @@ TextButton(
             signup = false
             error = ""
             busy = false
-        } else if (!openingSignup) {
-            openingSignup = true
-            scope.launch {
-                delay(2200)
-                signup = true
-                error = ""
-                busy = false
-                openingSignup = false
-            }
+        } else {
+            screenContext.startActivity(Intent(screenContext, SignupActivity::class.java))
         }
     }
 ) {
