@@ -90,6 +90,8 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
     var acceptedRules by remember { mutableStateOf(false) }
     var photoBytes by remember { mutableStateOf<ByteArray?>(null) }
     var photoBitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    var coverPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var coverPhotoBitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     var emailOtp by remember { mutableStateOf("") }
     var phoneOtp by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -102,10 +104,11 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
     val fullPhone = dialCode + mobileLocal.filter(Char::isDigit).removePrefix("0")
     val emailValid = email.trim().matches(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
     val passwordValid = password.length >= 8 && password.any(Char::isLetter) && password.any(Char::isDigit)
-    val formValid = fullName.trim().length >= 2 && emailValid && passwordValid &&
-        password == confirmPassword && mobileLocal.filter(Char::isDigit).length >= 6 &&
-        gender.isNotBlank() && birthday.isNotBlank() && acceptedRules && photoBytes != null &&
-        fullPhone.matches(Regex("^\\+[1-9][0-9]{7,14}$")) && auth.isConfigured()
+    val personalValid = fullName.trim().length >= 2 && mobileLocal.filter(Char::isDigit).length >= 6 &&
+        gender.isNotBlank() && birthday.isNotBlank() &&
+        fullPhone.matches(Regex("^\\+[1-9][0-9]{7,14}$"))
+    val accountValid = emailValid && passwordValid && password == confirmPassword && acceptedRules
+    val formValid = personalValid && accountValid && photoBytes != null && coverPhotoBytes != null && auth.isConfigured()
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -135,6 +138,32 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
                 photoBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
                 error = ""
             }.onFailure { error = it.message ?: "Could not load this photo." }
+        }
+    }
+
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            runCatching {
+                val input = context.contentResolver.openInputStream(uri)
+                    ?: throw IllegalStateException("Could not open the selected cover photo.")
+                val original = input.use { it.readBytes() }
+                val decoded = BitmapFactory.decodeByteArray(original, 0, original.size)
+                    ?: throw IllegalStateException("Choose a valid cover image.")
+                val maxSide = 1920
+                val scale = minOf(1f, maxSide.toFloat() / maxOf(decoded.width, decoded.height))
+                val resized = if (scale < 1f) Bitmap.createScaledBitmap(decoded,
+                    (decoded.width * scale).toInt().coerceAtLeast(1),
+                    (decoded.height * scale).toInt().coerceAtLeast(1), true) else decoded
+                val output = ByteArrayOutputStream()
+                resized.compress(Bitmap.CompressFormat.JPEG, 86, output)
+                val bytes = output.toByteArray()
+                require(bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) {
+                    "The cover photo must be no larger than 5 MB."
+                }
+                coverPhotoBytes = bytes
+                coverPhotoBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                error = ""
+            }.onFailure { error = it.message ?: "Could not load this cover photo." }
         }
     }
 
@@ -199,7 +228,7 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
                         handler.post {
                             busy = false
                             phoneResult.onSuccess {
-                                stage = 2
+                                stage = 4
                                 message = "We sent an 8-digit verification code to your mobile number."
                             }.onFailure { failure ->
                                 error = failure.message ?: "Could not send the mobile verification code."
@@ -234,13 +263,15 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
                                 gender = gender,
                                 birthday = birthday,
                                 photoBytes = photoBytes ?: throw IllegalStateException("Select a profile photo before continuing."),
-                                photoContentType = "image/jpeg"
+                                photoContentType = "image/jpeg",
+                                coverPhotoBytes = coverPhotoBytes ?: throw IllegalStateException("Select a cover photo before continuing."),
+                                coverPhotoContentType = "image/jpeg"
                             )
                         }
                         handler.post {
                             busy = false
                             saved.onSuccess {
-                                stage = 3
+                                stage = 5
                                 message = "Your email, mobile number and profile have been verified and saved."
                                 onComplete()
                             }.onFailure { failure ->
@@ -340,9 +371,11 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
                 Text(
                     when (stage) {
-                        0 -> "PERSONAL DETAILS  •  STEP 1 OF 3"
-                        1 -> "EMAIL VERIFICATION  •  STEP 2 OF 3"
-                        2 -> "MOBILE VERIFICATION  •  STEP 3 OF 3"
+                        0 -> "PERSONAL INFORMATION  •  STEP 1 OF 3"
+                        1 -> "ACCOUNT DETAILS  •  STEP 2 OF 3"
+                        2 -> "PROFILE SETUP  •  STEP 3 OF 3"
+                        3 -> "EMAIL VERIFICATION"
+                        4 -> "MOBILE VERIFICATION"
                         else -> "ACCOUNT READY"
                     },
                     style = MaterialTheme.typography.labelMedium,
@@ -353,7 +386,7 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
                         Box(
                             Modifier.weight(1f).height(4.dp)
                                 .clip(CircleShape)
-                                .background(if (index <= stage) Color.White else Color(0x557FAFE8))
+                                .background(if (index <= stage.coerceAtMost(2)) Color.White else Color(0x557FAFE8))
                         )
                     }
                 }
@@ -369,217 +402,139 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (stage == 0) {
                     Text("Personal information", style = MaterialTheme.typography.titleLarge, color = navy)
-                    Text("Set up your global freelance profile.", color = ink)
-
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Surface(
-                                modifier = Modifier.size(104.dp).clickable { photoPicker.launch("image/*") },
-                                shape = CircleShape,
-                                color = Color(0xFFEAF1FF),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD1DDF4))
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (photoBitmap != null) {
-                                        Image(photoBitmap!!, null, Modifier.fillMaxSize().clip(CircleShape))
-                                    } else {
-                                        Icon(Icons.Filled.AddAPhoto, "Add profile photo", tint = blue, modifier = Modifier.size(34.dp))
-                                    }
-                                }
-                            }
-                            TextButton(onClick = { photoPicker.launch("image/*") }) {
-                                Text(if (photoBytes == null) "Add profile photo" else "Change photo")
-                            }
-                            Text("Clear photo • Good lighting • Up to 5 MB", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = fullName, onValueChange = { fullName = it },
+                    Text("Tell us a little about yourself to join our global community.", color = ink)
+                    OutlinedTextField(value = fullName, onValueChange = { fullName = it },
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
                         label = { Text("Full name") }, leadingIcon = { Icon(Icons.Filled.Person, null) },
-                        shape = RoundedCornerShape(14.dp)
-                    )
-
+                        shape = RoundedCornerShape(14.dp))
                     Text("I want to join as", color = navy, style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        FilterChip(
-                            selected = role == UserRole.FREELANCER,
-                            onClick = { role = UserRole.FREELANCER },
-                            label = { Text("Freelancer") },
-                            leadingIcon = { Icon(Icons.Filled.Work, null) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        FilterChip(
-                            selected = role == UserRole.CLIENT,
-                            onClick = { role = UserRole.CLIENT },
-                            label = { Text("Client") },
-                            leadingIcon = { Icon(Icons.Filled.Business, null) },
-                            modifier = Modifier.weight(1f)
-                        )
+                        FilterChip(selected = role == UserRole.FREELANCER, onClick = { role = UserRole.FREELANCER },
+                            label = { Text("Freelancer") }, leadingIcon = { Icon(Icons.Filled.Work, null) }, modifier = Modifier.weight(1f))
+                        FilterChip(selected = role == UserRole.CLIENT, onClick = { role = UserRole.CLIENT },
+                            label = { Text("Client") }, leadingIcon = { Icon(Icons.Filled.Business, null) }, modifier = Modifier.weight(1f))
                     }
-
-                    OutlinedButton(
-                        onClick = { showCountryPicker = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Filled.Public, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("$country  •  $dialCode")
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Filled.ExpandMore, null)
+                    OutlinedButton(onClick = { showCountryPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Filled.Public, null); Spacer(Modifier.width(8.dp)); Text("$country  •  $dialCode")
+                        Spacer(Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null)
                     }
-
-                    OutlinedTextField(
-                        value = mobileLocal,
-                        onValueChange = { mobileLocal = it.filter(Char::isDigit).take(15) },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("Mobile number") },
-                        leadingIcon = { Text(dialCode, color = blue) },
-                        placeholder = { Text("Enter number without country code") },
-                        shape = RoundedCornerShape(14.dp)
-                    )
-
-                    OutlinedButton(
-                        onClick = { showGenderPicker = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Filled.PersonOutline, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(gender.ifBlank { "Select gender" })
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Filled.ExpandMore, null)
+                    OutlinedTextField(value = mobileLocal, onValueChange = { mobileLocal = it.filter(Char::isDigit).take(15) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Mobile number") },
+                        leadingIcon = { Text(dialCode, color = blue) }, placeholder = { Text("Enter number without country code") },
+                        shape = RoundedCornerShape(14.dp))
+                    OutlinedButton(onClick = { showGenderPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Filled.PersonOutline, null); Spacer(Modifier.width(8.dp)); Text(gender.ifBlank { "Select gender" })
+                        Spacer(Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null)
                     }
-
-                    OutlinedButton(
-                        onClick = { chooseBirthday() },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Filled.CalendarMonth, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (birthday.isBlank()) "Date of birth" else birthday)
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Filled.ExpandMore, null)
+                    OutlinedButton(onClick = { chooseBirthday() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Filled.CalendarMonth, null); Spacer(Modifier.width(8.dp)); Text(if (birthday.isBlank()) "Date of birth" else birthday)
+                        Spacer(Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null)
                     }
-
-                    HorizontalDivider()
+                    Button(onClick = { stage = 1; error = "" }, enabled = personalValid,
+                        modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = blue)) { Text("Next: Account Details  →") }
+                } else if (stage == 1) {
                     Text("Account details", style = MaterialTheme.typography.titleLarge, color = navy)
-                    OutlinedTextField(
-                        value = email, onValueChange = { email = it.trim() },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("Email address") }, leadingIcon = { Icon(Icons.Filled.Email, null) },
-                        shape = RoundedCornerShape(14.dp)
-                    )
-                    OutlinedTextField(
-                        value = password, onValueChange = { password = it },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    Text("Secure your account and choose a strong password.", color = ink)
+                    OutlinedTextField(value = email, onValueChange = { email = it.trim() }, modifier = Modifier.fillMaxWidth(),
+                        singleLine = true, label = { Text("Email address") }, leadingIcon = { Icon(Icons.Filled.Email, null) }, shape = RoundedCornerShape(14.dp))
+                    OutlinedTextField(value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                         label = { Text("Password") }, leadingIcon = { Icon(Icons.Filled.Lock, null) },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                    Icon(if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, "Toggle password visibility")
-                                }
-                                TextButton(enabled = password.isNotEmpty(), onClick = {
-                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Password", password))
-                                }) { Text("Copy") }
-                            }
-                        },
-                        shape = RoundedCornerShape(14.dp)
-                    )
+                        trailingIcon = { Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) { Icon(if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, "Toggle password visibility") }
+                            TextButton(enabled = password.isNotEmpty(), onClick = {
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Password", password))
+                            }) { Text("Copy") }
+                        } }, shape = RoundedCornerShape(14.dp))
                     Text("At least 8 characters, including a letter and a number.", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    OutlinedTextField(
-                        value = confirmPassword, onValueChange = { confirmPassword = it },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    OutlinedTextField(value = confirmPassword, onValueChange = { confirmPassword = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                         label = { Text("Confirm password") }, leadingIcon = { Icon(Icons.Filled.Lock, null) },
                         visualTransformation = if (confirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { confirmVisible = !confirmVisible }) {
-                                Icon(if (confirmVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, "Toggle confirm password visibility")
-                            }
-                        },
-                        shape = RoundedCornerShape(14.dp)
-                    )
-
+                        trailingIcon = { IconButton(onClick = { confirmVisible = !confirmVisible }) { Icon(if (confirmVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, "Toggle confirm password visibility") } },
+                        shape = RoundedCornerShape(14.dp))
+                    if (confirmPassword.isNotEmpty() && password != confirmPassword) Text("Passwords do not match.", color = MaterialTheme.colorScheme.error)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = acceptedRules, onCheckedChange = { acceptedRules = it })
                         Text("I agree to the Rules & Guidelines and Privacy Policy.", style = MaterialTheme.typography.bodySmall)
                     }
-                    if (password.isNotEmpty() && confirmPassword.isNotEmpty() && password != confirmPassword) {
-                        Text("Passwords do not match.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    LaptopIllustration()
+                    Text("Work globally. Grow freely.", color = navy, style = MaterialTheme.typography.titleMedium)
+                    Text("Your skills. Our platform. A better future.", color = ink, style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(onClick = { stage = 0 }, modifier = Modifier.weight(1f)) { Text("Back") }
+                        Button(onClick = { stage = 2; error = "" }, enabled = accountValid && auth.isConfigured(), modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = blue)) { Text("Next: Profile Setup") }
                     }
-                    Button(
-                        onClick = { submitSignup() },
-                        enabled = formValid && !busy,
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
-                        shape = RoundedCornerShape(15.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = blue)
-                    ) {
-                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                        else Text("Continue to email verification")
+                } else if (stage == 2) {
+                    Text("Complete your profile", style = MaterialTheme.typography.titleLarge, color = navy)
+                    Text("Add a profile photo and a cover photo to make your profile stand out.", color = ink)
+                    Text("Profile photo", color = navy, style = MaterialTheme.typography.titleMedium)
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Surface(modifier = Modifier.size(124.dp).clickable { photoPicker.launch("image/*") }, shape = CircleShape,
+                            color = Color(0xFFEAF1FF), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD1DDF4))) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (photoBitmap != null) Image(photoBitmap!!, null, Modifier.fillMaxSize().clip(CircleShape))
+                                else Icon(Icons.Filled.AddAPhoto, "Add profile photo", tint = blue, modifier = Modifier.size(38.dp))
+                            }
+                        }
                     }
-                    TextButton(onClick = { (context as? ComponentActivity)?.finish() }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                        Text("Already have an account? Sign in")
+                    OutlinedButton(onClick = { photoPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (photoBytes == null) "Upload Profile Photo" else "Change Profile Photo")
                     }
-                } else if (stage == 1) {
+                    Text("Use a clear photo with good lighting and no filters. Maximum 5 MB.", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text("Cover photo", color = navy, style = MaterialTheme.typography.titleMedium)
+                    Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFE8F1FF)).clickable { coverPicker.launch("image/*") }, contentAlignment = Alignment.Center) {
+                        if (coverPhotoBitmap != null) Image(coverPhotoBitmap!!, null, Modifier.fillMaxSize())
+                        else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Filled.AddPhotoAlternate, null, tint = blue, modifier = Modifier.size(36.dp))
+                            Text("Add a cover photo", color = blue)
+                        }
+                    }
+                    OutlinedButton(onClick = { coverPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (coverPhotoBytes == null) "Upload Cover Photo" else "Change Cover Photo")
+                    }
+                    Text("Wide landscape images work best. Maximum 5 MB.", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(onClick = { stage = 1 }, modifier = Modifier.weight(1f)) { Text("Back") }
+                        Button(onClick = { submitSignup() }, enabled = formValid && !busy, modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = blue)) {
+                            if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                            else Text("Create Account")
+                        }
+                    }
+                } else if (stage == 3) {
                     Icon(Icons.Filled.MarkEmailRead, null, tint = blue, modifier = Modifier.size(42.dp))
                     Text("Verify your email", style = MaterialTheme.typography.titleLarge, color = navy)
                     Text("Enter the 8-digit code sent to $email.", color = ink)
-                    OutlinedTextField(
-                        value = emailOtp,
-                        onValueChange = { emailOtp = it.filter(Char::isDigit).take(8) },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("8-digit email code") },
-                        shape = RoundedCornerShape(14.dp)
-                    )
+                    OutlinedTextField(value = emailOtp, onValueChange = { emailOtp = it.filter(Char::isDigit).take(8) }, modifier = Modifier.fillMaxWidth(),
+                        singleLine = true, label = { Text("8-digit email code") }, shape = RoundedCornerShape(14.dp))
                     Button(onClick = { verifyEmail() }, enabled = emailOtp.length == 8 && !busy, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("Verify email")
+                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("Verify Email")
                     }
-                    TextButton(enabled = !busy, onClick = {
-                        busy = true
-                        auth.resendSignupEmailOtp(email) { result ->
-                            handler.post {
-                                busy = false
-                                result.onSuccess { message = "A new email code has been requested." }
-                                    .onFailure { error = it.message ?: "Could not resend email code." }
-                            }
-                        }
-                    }) { Text("Resend email code") }
-                } else if (stage == 2) {
+                    TextButton(enabled = !busy, onClick = { busy = true; auth.resendSignupEmailOtp(email) { result -> handler.post {
+                        busy = false; result.onSuccess { message = "A new email code has been requested." }.onFailure { error = it.message ?: "Could not resend email code." }
+                    } } }) { Text("Resend email code") }
+                } else if (stage == 4) {
                     Icon(Icons.Filled.Sms, null, tint = blue, modifier = Modifier.size(42.dp))
                     Text("Verify your mobile number", style = MaterialTheme.typography.titleLarge, color = navy)
                     Text("Enter the 8-digit SMS code sent to $fullPhone.", color = ink)
-                    OutlinedTextField(
-                        value = phoneOtp,
-                        onValueChange = { phoneOtp = it.filter(Char::isDigit).take(8) },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        label = { Text("8-digit SMS code") },
-                        shape = RoundedCornerShape(14.dp)
-                    )
+                    OutlinedTextField(value = phoneOtp, onValueChange = { phoneOtp = it.filter(Char::isDigit).take(8) }, modifier = Modifier.fillMaxWidth(),
+                        singleLine = true, label = { Text("8-digit SMS code") }, shape = RoundedCornerShape(14.dp))
                     Button(onClick = { verifyPhone() }, enabled = phoneOtp.length == 8 && !busy, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("Verify and create profile")
+                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("Verify Mobile")
                     }
-                    TextButton(enabled = !busy, onClick = {
-                        busy = true
-                        auth.requestPhoneChange(fullPhone) { result ->
-                            handler.post {
-                                busy = false
-                                result.onSuccess { message = "A new SMS code has been requested." }
-                                    .onFailure { error = it.message ?: "Could not resend SMS code." }
-                            }
-                        }
-                    }) { Text("Resend SMS code") }
+                    TextButton(enabled = !busy, onClick = { busy = true; auth.requestPhoneChange(fullPhone) { result -> handler.post {
+                        busy = false; result.onSuccess { message = "A new SMS code has been requested." }.onFailure { error = it.message ?: "Could not resend SMS code." }
+                    } } }) { Text("Resend SMS code") }
                 } else {
                     Icon(Icons.Filled.CheckCircle, null, tint = Color(0xFF15966E), modifier = Modifier.size(48.dp))
                     Text("Your account is ready", style = MaterialTheme.typography.titleLarge, color = navy)
                     Text(message, color = ink)
                 }
 
-                if (message.isNotBlank() && stage < 3) {
+                if (message.isNotBlank() && stage < 5) {
                     Text(message, color = Color(0xFF167B62), style = MaterialTheme.typography.bodySmall)
                 }
                 if (error.isNotBlank()) {
@@ -588,5 +543,28 @@ private fun SignupFlow(auth: AuthService, onComplete: () -> Unit) {
             }
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+
+@Composable
+private fun LaptopIllustration() {
+    val blue = Color(0xFF1769D2)
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Public, null, tint = Color(0xFF5B9CEB), modifier = Modifier.size(30.dp))
+                Icon(Icons.Filled.Work, null, tint = Color(0xFF5B9CEB), modifier = Modifier.size(26.dp))
+                Icon(Icons.Filled.Chat, null, tint = Color(0xFF5B9CEB), modifier = Modifier.size(28.dp))
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.width(176.dp).height(104.dp).clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFF071B43), Color(0xFF1769D2)))), contentAlignment = Alignment.Center) {
+                    Text("F", color = Color(0xFF39C8FF), style = MaterialTheme.typography.displayMedium)
+                }
+                Box(Modifier.width(204.dp).height(12.dp).clip(RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp))
+                    .background(Color(0xFF9EB8D9)))
+            }
+        }
     }
 }
