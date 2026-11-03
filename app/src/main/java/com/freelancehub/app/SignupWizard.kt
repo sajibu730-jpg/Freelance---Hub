@@ -104,10 +104,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                 Text("Your work. Your world. Your future.", color = Color(0xFF61728E))
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            repeat(5) { i -> Box(Modifier.weight(1f).height(5.dp).background(if (i <= step) blue else Color(0xFFDCE5F5), RoundedCornerShape(5.dp))) }
-        }
-        Text("STEP ${step + 1} OF 5", color = blue, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        SignupStageProgress(step)
         Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
                 when (step) {
@@ -346,7 +343,7 @@ private fun SignupCountryPicker(
                 it.second.contains(search, ignoreCase = true) ||
                     it.first.contains(search, ignoreCase = true) ||
                     "+${it.third}".contains(search.trim())
-            }.take(80).forEach { item ->
+            }.forEach { item ->
                 DropdownMenuItem(
                     text = { Text(if (showDialCode) "${item.second}  (+${item.third})" else item.second) },
                     onClick = {
