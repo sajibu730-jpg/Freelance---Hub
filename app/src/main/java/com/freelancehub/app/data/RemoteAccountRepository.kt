@@ -190,13 +190,14 @@ class RemoteAccountRepository(
             .toString()
             .toByteArray(StandardCharsets.UTF_8)
 
-        if (existing.length() > 0) {
+        val savedBytes = if (existing.length() > 0) {
             client.readJsonResponse(
                 client.openJsonPatch(
                     "/rest/v1/profiles?id=eq.$userId",
                     payload,
                     token,
-                    SecureApiClient.newIdempotencyKey()
+                    SecureApiClient.newIdempotencyKey(),
+                    preferRepresentation = true
                 )
             )
         } else {
@@ -211,9 +212,18 @@ class RemoteAccountRepository(
                     "/rest/v1/profiles",
                     newProfile,
                     token,
-                    SecureApiClient.newIdempotencyKey()
+                    SecureApiClient.newIdempotencyKey(),
+                    preferRepresentation = true
                 )
             )
+        }
+
+        val savedRows = JSONArray(String(savedBytes, StandardCharsets.UTF_8))
+        require(savedRows.length() == 1 &&
+            savedRows.optJSONObject(0)?.optString("id") == userId &&
+            savedRows.optJSONObject(0)?.optString("cover_photo_url") == photoUrl
+        ) {
+            "Cover photo was uploaded, but the server did not confirm saving it to your profile."
         }
 
         return currentUser()
