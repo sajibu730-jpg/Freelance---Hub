@@ -853,12 +853,6 @@ TextButton(
             birthday = ""
             signupSession = null
             role = UserRole.FREELANCER
-            mobileOtp = ""
-            mobile = ""
-            country = ""
-            gender = ""
-            birthday = ""
-            signupSession = null
             error = ""
             busy = false
         } else if (!openingSignup) {
