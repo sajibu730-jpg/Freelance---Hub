@@ -167,6 +167,24 @@ class AuthService(context: Context) {
         }
     }
 
+    /** Requests a fresh signup confirmation code for an account that is still awaiting email verification. */
+    fun resendSignupEmailOtp(email: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                val target = email.trim()
+                require(target.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                    "Enter a valid email address before requesting a new code."
+                }
+                request(
+                    "POST",
+                    "/auth/v1/resend",
+                    JSONObject().put("type", "signup").put("email", target).toString()
+                )
+                Unit
+            })
+        }
+    }
+
     /** Sends the 8-digit Twilio Verify SMS after the email has been confirmed. */
     fun sendSignupMobileOtp(phone: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
