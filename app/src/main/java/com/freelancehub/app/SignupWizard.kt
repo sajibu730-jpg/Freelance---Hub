@@ -409,7 +409,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         SignupCountryPicker(
                             label = "Country",
                             selectedRegion = countryIso,
-                            onSelected = { region, display -> countryIso = region; country = display }
+                            onSelected = { region, display -> countryIso = region; country = display; phoneRegion = region }
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
