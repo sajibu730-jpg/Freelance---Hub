@@ -444,7 +444,13 @@ FreelanceHubReferenceHeader()
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                    )
                 )
 
                 Spacer(Modifier.height(14.dp))
@@ -499,7 +505,13 @@ FreelanceHubReferenceHeader()
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                    )
                 )
 
                 Spacer(Modifier.height(6.dp))
