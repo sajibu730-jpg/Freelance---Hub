@@ -766,7 +766,8 @@ Surface(
                         1 -> emailOtp.length == 8
                         2 -> mobile.isNotBlank()
                         3 -> mobileOtp.length == 8
-                        4 -> country.isNotBlank() && gender.isNotBlank()
+                        4 -> country.isNotBlank() && gender.isNotBlank() &&
+                            runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
                         else -> false
                     }),
                     modifier = Modifier
