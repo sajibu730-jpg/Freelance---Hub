@@ -338,7 +338,7 @@ FreelanceHubReferenceHeader()
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        listOf("Personal Info", "Account Details", "Verification").forEachIndexed { index, title ->
+                        listOf("Personal Info", "Account Details", "Email OTP", "Mobile OTP", "Complete Profile").forEachIndexed { index, title ->
                             Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
                                 Surface(
                                     modifier = Modifier.size(28.dp),
@@ -452,6 +452,139 @@ FreelanceHubReferenceHeader()
                             modifier = Modifier.weight(1f)
                         )
                     }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    Text(
+                        text = "PROFILE DETAILS",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = androidx.compose.ui.graphics.Color(0xFF3157D5),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(58.dp),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color(0xFFDCEBFF)
+                            ) {
+                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(
+                                        Icons.Filled.AddAPhoto,
+                                        contentDescription = "Profile photo placeholder",
+                                        tint = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                                        modifier = Modifier.size(25.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "Profile photo",
+                                    color = navy,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                                Text(
+                                    "Add a clear, professional photo",
+                                    color = dark,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Icon(
+                                Icons.Filled.CloudUpload,
+                                contentDescription = null,
+                                tint = androidx.compose.ui.graphics.Color(0xFF1976E8)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        label = { Text("Country") },
+                        leadingIcon = { Icon(Icons.Filled.Public, contentDescription = null) },
+                        singleLine = true,
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                            focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                            unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                        )
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        label = { Text("Mobile number") },
+                        leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                            focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                            unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                        )
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        label = { Text("Gender") },
+                        leadingIcon = { Icon(Icons.Filled.PersonOutline, contentDescription = null) },
+                        singleLine = true,
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                            focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                            unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                        )
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        label = { Text("Birthday") },
+                        leadingIcon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) },
+                        singleLine = true,
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                            focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                            unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                        )
+                    )
 
                     Spacer(Modifier.height(14.dp))
                 } else {
