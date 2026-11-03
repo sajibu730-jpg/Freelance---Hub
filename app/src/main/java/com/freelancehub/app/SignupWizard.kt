@@ -36,6 +36,7 @@ import com.freelancehub.app.data.RuntimeBackendConfig
 import com.freelancehub.app.data.RemoteAccountRepository
 import com.freelancehub.app.network.SecureApiClient
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
@@ -48,7 +49,6 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
     var birthday by remember { mutableStateOf("") }
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
     var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
