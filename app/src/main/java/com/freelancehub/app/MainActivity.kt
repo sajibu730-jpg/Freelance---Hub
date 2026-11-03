@@ -323,7 +323,16 @@ Surface(
                 if (signup) {
                     TextButton(
                         onClick = {
+                            authService.discardPendingSignupSession()
                             signup = false
+                            signupStep = 0
+                            mobile = ""
+                            emailOtp = ""
+                            mobileOtp = ""
+                            country = ""
+                            gender = ""
+                            birthday = ""
+                            signupSession = null
                             error = ""
                             busy = false
                         }
@@ -826,6 +835,7 @@ TextButton(
     enabled = !openingSignup,
     onClick = {
         if (signup) {
+            authService.discardPendingSignupSession()
             signup = false
             signupStep = 0
             emailOtp = ""
