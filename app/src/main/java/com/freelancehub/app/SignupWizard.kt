@@ -94,7 +94,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     2 -> {
                         Text("Verify your email", color = navy, style = MaterialTheme.typography.headlineSmall)
                         Text("Enter the 8-digit code sent to $email.")
-                        OutlinedTextField(emailCode, { emailCode = it.filter(Char::isDigit).take(6) }, label = { Text("8-digit email code") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(emailCode, { emailCode = it.filter(Char::isDigit).take(8) }, label = { Text("8-digit email code") }, modifier = Modifier.fillMaxWidth())
                     }
                     3 -> {
                         Text("Verify your mobile", color = navy, style = MaterialTheme.typography.headlineSmall)
