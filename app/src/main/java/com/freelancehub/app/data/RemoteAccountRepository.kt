@@ -219,6 +219,59 @@ class RemoteAccountRepository(
         return currentUser()
     }
 
+    /** Saves verified signup identity fields while the new session is still memory-only. */
+    fun saveSignupProfile(
+        displayName: String,
+        country: String,
+        gender: String,
+        birthday: String,
+        role: UserRole
+    ): Unit {
+        require(Validation.text(displayName, 2, 120)) { "Enter your full name." }
+        require(country.isNotBlank()) { "Choose your country." }
+        require(gender in setOf("Male", "Female", "Other", "Prefer not to say")) {
+            "Choose a valid gender option."
+        }
+        require(birthday.matches(Regex("^\\d{4}-\\d{2}-\\d{2}$"))) {
+            "Enter your birthday in YYYY-MM-DD format."
+        }
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Your signup session has expired. Please verify your email again.")
+        val authUser = JSONObject(
+            String(client.readJsonResponse(client.openGet("/auth/v1/user", token)), StandardCharsets.UTF_8)
+        )
+        val userId = authUser.optString("id")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+            "Supabase Auth returned an invalid user id."
+        }
+        val payload = JSONObject()
+            .put("id", userId)
+            .put("display_name", displayName.trim())
+            .put("country", country.trim())
+            .put("gender", gender)
+            .put("birthday", birthday)
+            .put("capabilities", role.name)
+            .toString().toByteArray(StandardCharsets.UTF_8)
+        val existing = JSONArray(String(
+            client.readJsonResponse(client.openGet("/rest/v1/profiles?id=eq.$userId&select=id", token)),
+            StandardCharsets.UTF_8
+        ))
+        val saved = if (existing.length() > 0) {
+            client.readJsonResponse(client.openJsonPatch(
+                "/rest/v1/profiles?id=eq.$userId", payload, token,
+                SecureApiClient.newIdempotencyKey(), preferRepresentation = true
+            ))
+        } else {
+            client.readJsonResponse(client.openJsonPost(
+                "/rest/v1/profiles", payload, token,
+                SecureApiClient.newIdempotencyKey(), preferRepresentation = true
+            ))
+        }
+        require(JSONArray(String(saved, StandardCharsets.UTF_8)).length() > 0) {
+            "The server did not confirm saving your signup profile."
+        }
+    }
+
     fun updateProfile(input: RemoteProfileUpdate): RemoteAccount {
         require(Validation.text(input.displayName, 2, 120))
         require(Validation.text(input.bio, 0, 500))
