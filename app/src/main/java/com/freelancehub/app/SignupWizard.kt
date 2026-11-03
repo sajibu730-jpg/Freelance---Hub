@@ -52,6 +52,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
+    var confirmVisible by remember { mutableStateOf(false) }
     var accepted by remember { mutableStateOf(false) }
     var emailCode by remember { mutableStateOf("") }
     var mobileCode by remember { mutableStateOf("") }
@@ -123,7 +124,37 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                                 listOf("Male", "Female", "Other", "Prefer not to say").forEach { v -> DropdownMenuItem(text = { Text(v) }, onClick = { gender = v; genderOpen = false }) }
                             }
                         }
-                        OutlinedTextField(birthday, { birthday = it }, label = { Text("Birthday (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+                        var birthdayPickerOpen by remember { mutableStateOf(false) }
+                        OutlinedTextField(
+                            value = birthday,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Birthday") },
+                            placeholder = { Text("Choose your date of birth") },
+                            trailingIcon = {
+                                TextButton(onClick = { birthdayPickerOpen = true }) { Text("Choose") }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (birthdayPickerOpen) {
+                            val pickerState = rememberDatePickerState()
+                            DatePickerDialog(
+                                onDismissRequest = { birthdayPickerOpen = false },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        pickerState.selectedDateMillis?.let { millis ->
+                                            val date = java.time.Instant.ofEpochMilli(millis)
+                                                .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                                            birthday = date.toString()
+                                        }
+                                        birthdayPickerOpen = false
+                                    }) { Text("Confirm") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { birthdayPickerOpen = false }) { Text("Cancel") }
+                                }
+                            ) { DatePicker(state = pickerState) }
+                        }
                         Text("I want to join as", color = navy, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(role == UserRole.FREELANCER, { role = UserRole.FREELANCER }, label = { Text("Freelancer") })
@@ -156,7 +187,18 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         }
                         Text("Your complete number: +${PhoneNumberUtil.getInstance().getCountryCodeForRegion(phoneRegion)} $phoneNational", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(password, { password = it }, label = { Text("Password (8+ characters)") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(confirm, { confirm = it }, label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(
+                            confirm,
+                            { confirm = it },
+                            label = { Text("Confirm password") },
+                            visualTransformation = if (confirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { confirmVisible = !confirmVisible }) {
+                                    Icon(if (confirmVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(accepted, { accepted = it }); Text("I agree to the Rules & Guidelines") }
                     }
                     2 -> {
