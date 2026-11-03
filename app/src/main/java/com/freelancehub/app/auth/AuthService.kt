@@ -344,6 +344,11 @@ class AuthService(context: Context) {
         return session
     }
 
+    /** Clears a locally stored session when the user abandons an unfinished signup. */
+    fun discardPendingSignupSession() {
+        tokenStore.clear()
+    }
+
     fun logout(callback: ((Result<Unit>) -> Unit)? = null) {
         executor.execute {
             val result = runCatching {
