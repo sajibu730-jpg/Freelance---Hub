@@ -227,6 +227,7 @@ fun LoginScreen(
     var busy by remember { mutableStateOf(false) }
 var openingSignup by remember { mutableStateOf(false) }
 var passwordVisible by remember { mutableStateOf(false) }
+    var rememberMe by remember { mutableStateOf(true) }
 var resetBusy by remember { mutableStateOf(false) }
 var resetMessage by remember { mutableStateOf("") }
 var showRecoveryOptions by remember { mutableStateOf(false) }
@@ -437,7 +438,7 @@ FreelanceHubReferenceHeader()
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text("Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
                     },
@@ -506,20 +507,18 @@ FreelanceHubReferenceHeader()
                 if (!signup) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        TextButton(
-                            enabled = !resetBusy,
-                            onClick = {
-                                error = ""
-                                resetMessage = ""
-                                screenContext.startActivity(
-                                    Intent(screenContext, ForgotPasswordActivity::class.java)
-                                )
-                            }
-                        ) {
-                            Text("Forgot password?")
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it }, modifier = Modifier.size(34.dp), colors = CheckboxDefaults.colors(checkedColor = blue))
+                            Text("Remember me", color = navy, style = MaterialTheme.typography.labelMedium)
                         }
+                        TextButton(enabled = !resetBusy, onClick = {
+                            error = ""
+                            resetMessage = ""
+                            screenContext.startActivity(Intent(screenContext, ForgotPasswordActivity::class.java))
+                        }) { Text("Forgot password?", color = blue, style = MaterialTheme.typography.labelSmall) }
                     }
                 }
 
