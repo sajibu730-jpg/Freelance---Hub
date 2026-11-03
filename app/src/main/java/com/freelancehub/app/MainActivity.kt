@@ -836,7 +836,7 @@ TextButton(
                     Spacer(Modifier.width(6.dp))
 
                     Text(
-                        text = "Your account credentials are protected.",
+                        text = "Your account is authenticated through configured production backend.",
                         style = MaterialTheme.typography.bodySmall,
                         color = dark
                     )
@@ -847,7 +847,7 @@ TextButton(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "FREELANCE HUB  •  GLOBAL OPPORTUNITIES",
+            text = "PROFESSIONAL OPPORTUNITIES. A GLOBAL COMMUNITY.",
             style = MaterialTheme.typography.labelSmall,
             color = androidx.compose.ui.graphics.Color(0xFF6D7D94)
         )
