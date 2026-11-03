@@ -749,7 +749,7 @@ private fun SignupCountryPicker(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = if (showDialCode) selected?.let { "+${it.third} (${it.first})" } ?: "+971 (AE)" else selected?.second ?: "Choose country",
+            value = if (showDialCode) selected?.let { "+${it.third}" } ?: "+971" else selected?.second ?: "Choose country",
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
