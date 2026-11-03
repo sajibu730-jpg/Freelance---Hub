@@ -63,12 +63,12 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
         if (uri != null) {
             runCatching {
                 val type = context.contentResolver.getType(uri)?.lowercase()
-                    ?: error("Could not identify the selected image format.")
+                    ?: throw IllegalStateException("Could not identify the selected image format.")
                 require(type in setOf("image/jpeg", "image/png", "image/webp")) {
                     "Choose a JPG, PNG or WebP image."
                 }
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                    ?: error("Could not read the selected image.")
+                    ?: throw IllegalStateException("Could not read the selected image.")
                 require(bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) {
                     "Each image must be 5 MB or smaller."
                 }
