@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -94,18 +95,19 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
     val blue = Color(0xFF4169E1)
     val teal = Color(0xFF14A89A)
 
-    Column(Modifier.fillMaxSize().background(Color(0xFFF5F8FF)).verticalScroll(rememberScrollState()).imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(Modifier.fillMaxSize().background(Color(0xFFF4F8FF)).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        SignupBrandHeader()
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { if (step == 0) onCancel() else { step--; error = ""; message = "" } }) { Icon(Icons.Filled.ArrowBack, null, tint = navy) }
             Column {
                 Text("Create your account", color = navy, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("Your work. Your world. Your future.", color = Color.Gray)
+                Text("Your work. Your world. Your future.", color = Color(0xFF61728E))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             repeat(5) { i -> Box(Modifier.weight(1f).height(5.dp).background(if (i <= step) blue else Color(0xFFDCE5F5), RoundedCornerShape(5.dp))) }
         }
-        Text("STEP ${step + 1} OF 5", color = blue, style = MaterialTheme.typography.labelMedium)
+        Text("STEP ${step + 1} OF 5", color = blue, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
                 when (step) {
