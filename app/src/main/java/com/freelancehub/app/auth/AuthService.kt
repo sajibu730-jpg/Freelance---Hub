@@ -207,6 +207,14 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 require(name.trim().length in 2..80) { "Enter your full name." }
+                require(country.trim().isNotBlank()) { "Enter your country." }
+                require(gender.trim().isNotBlank()) { "Select your gender." }
+                val parsedBirthday = runCatching {
+                    java.time.LocalDate.parse(birthday.trim())
+                }.getOrNull() ?: error("Enter your birthday in YYYY-MM-DD format.")
+                require(!parsedBirthday.isAfter(java.time.LocalDate.now())) {
+                    "Birthday cannot be in the future."
+                }
                 val access = accessTokenForApiBlocking()
                     ?: error("Verify your email and mobile number before saving your profile.")
                 val user = request("GET", "/auth/v1/user", accessToken = access)
@@ -223,7 +231,7 @@ class AuthService(context: Context) {
                     .put("country", country.trim())
                     .put("gender", gender.trim())
                     .put("updated_at", java.time.Instant.now().toString())
-                if (birthday.isNotBlank()) payload.put("birthday", birthday.trim())
+                payload.put("birthday", parsedBirthday.toString())
                 val response = signupProfileUpsert(payload, access)
                 require(response.length() == 1 &&
                     response.optJSONObject(0)?.optString("display_name") == name.trim()) {
