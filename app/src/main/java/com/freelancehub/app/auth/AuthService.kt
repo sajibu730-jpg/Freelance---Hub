@@ -109,16 +109,51 @@ class AuthService(context: Context) {
                     "Enter a valid email address."
                 }
                 require(password.length >= 8) { "Use at least 8 characters for your password." }
-                val response = request(
-                    "POST",
-                    "/auth/v1/signup",
-                    JSONObject().put("email", email.trim())
-                        .put("password", password)
-                        .put("data", JSONObject()
-                            .put("display_name", name.trim())
-                            .put("role", role.name))
-                        .toString()
-                )
+                val signupPayload = JSONObject().put("email", email.trim())
+                    .put("password", password)
+                    .put("data", JSONObject()
+                        .put("display_name", name.trim())
+                        .put("role", role.name))
+                    .toString()
+                val response = try {
+                    request("POST", "/auth/v1/signup", signupPayload)
+                } catch (signupError: Exception) {
+                    val message = signupError.message.orEmpty()
+                    val alreadyRegistered = message.contains("already registered", true) ||
+                        message.contains("already exists", true) ||
+                        message.contains("email_exists", true)
+                    if (!alreadyRegistered) throw signupError
+
+                    val loginResponse = runCatching {
+                        request(
+                            "POST",
+                            "/auth/v1/token?grant_type=password",
+                            JSONObject().put("email", email.trim())
+                                .put("password", password).toString()
+                        )
+                    }.getOrNull()
+                    val loginUser = loginResponse?.optJSONObject("user")
+                    if (loginResponse != null && loginUser != null &&
+                        loginUser.optString("email_confirmed_at").isNotBlank()) {
+                        val access = loginResponse.optString("access_token")
+                        val refresh = loginResponse.optString("refresh_token")
+                        if (access.isNotBlank() && refresh.isNotBlank()) {
+                            pendingSignupSession = makeSession(access, refresh, loginUser, role)
+                            return@runCatching "VERIFIED:" + loginUser.optString("id")
+                        }
+                    }
+
+                    val resendResult = runCatching {
+                        request(
+                            "POST",
+                            "/auth/v1/resend",
+                            JSONObject().put("type", "signup")
+                                .put("email", email.trim()).toString()
+                        )
+                    }
+                    if (resendResult.isSuccess) return@runCatching "PENDING"
+                    throw signupError
+                }
                 val user = response.optJSONObject("user") ?: response
                 val userId = user.optString("id")
                 require(userId.isNotBlank()) {
@@ -166,6 +201,9 @@ class AuthService(context: Context) {
             })
         }
     }
+
+    /** Returns the in-memory session when resuming a previously verified signup. */
+    fun pendingSignupSessionSnapshot(): AuthSession? = pendingSignupSession
 
     /** Requests a fresh signup confirmation code for an account that is still awaiting email verification. */
     fun resendSignupEmailOtp(email: String, callback: (Result<Unit>) -> Unit) {
