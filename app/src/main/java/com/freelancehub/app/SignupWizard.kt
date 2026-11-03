@@ -474,13 +474,14 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     1 -> {
                         Text("Create New Account", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Now, set up your account details.", color = Color(0xFF667895), style = MaterialTheme.typography.bodySmall)
-                        OutlinedTextField(email, { email = it }, label = { Text("Email Address") }, leadingIcon = { Icon(Icons.Filled.Email, null, tint = Color(0xFF0759B8)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                        OutlinedTextField(password, { password = it }, label = { Text("Password") }, leadingIcon = { Icon(Icons.Filled.Lock, null, tint = Color(0xFF0759B8)) }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(email, { email = it }, label = { Text("Email Address") }, leadingIcon = { Icon(Icons.Filled.Email, null, tint = Color(0xFF0759B8)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(password, { password = it }, label = { Text("Password") }, leadingIcon = { Icon(Icons.Filled.Lock, null, tint = Color(0xFF0759B8)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(
                             confirm,
                             { confirm = it },
                             label = { Text("Confirm Password") },
                             leadingIcon = { Icon(Icons.Filled.Lock, null, tint = Color(0xFF0759B8)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             visualTransformation = if (confirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
                                 IconButton(onClick = { confirmVisible = !confirmVisible }) {
