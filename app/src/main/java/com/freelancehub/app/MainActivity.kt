@@ -123,6 +123,9 @@ fun LoginScreen(
     var signupStep by remember { mutableIntStateOf(0) }
     var mobile by remember { mutableStateOf("") }
     var mobileCountryCode by remember { mutableStateOf("+971") }
+    var mobileCountryName by remember { mutableStateOf("United Arab Emirates") }
+    var showSignupCountryPicker by remember { mutableStateOf(false) }
+    var signupCountrySearch by remember { mutableStateOf("") }
     var emailOtp by remember { mutableStateOf("") }
     var mobileOtp by remember { mutableStateOf("") }
     var country by remember { mutableStateOf("") }
@@ -332,6 +335,9 @@ Surface(
                             pass = ""
                             mobile = ""
                             mobileCountryCode = "+971"
+                mobileCountryName = "United Arab Emirates"
+            mobileCountryName = "United Arab Emirates"
+                            mobileCountryName = "United Arab Emirates"
                             emailOtp = ""
                             mobileOtp = ""
                             country = ""
@@ -546,42 +552,135 @@ Surface(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
-                            value = mobileCountryCode,
-                            onValueChange = { value ->
-                                val digits = value.filter(Char::isDigit).take(4)
-                                mobileCountryCode = if (digits.isEmpty()) "+" else "+$digits"
-                            },
-                            label = { Text("Country code") },
+                            value = mobileCountryName + " " + mobileCountryCode,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Country") },
+                            trailingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search country") },
                             singleLine = true,
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
-                            ),
-                            modifier = Modifier.weight(0.8f),
+                            modifier = Modifier.weight(1.15f).clickable { showSignupCountryPicker = true },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                         )
                         OutlinedTextField(
                             value = mobile,
                             onValueChange = { mobile = it.filter(Char::isDigit).take(14) },
+                            placeholder = { Text("Mobile Number") },
                             singleLine = true,
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
                             ),
-                            modifier = Modifier.weight(1.7f),
+                            modifier = Modifier.weight(1.35f),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                         )
                     }
+                }
+                if (showSignupCountryPicker) {
+                    val filteredSignupCountries = CountryCallingCodes.all.filter {
+                        it.first.contains(signupCountrySearch, ignoreCase = true) ||
+                            it.second.contains(signupCountrySearch.trim())
+                    }
+                    AlertDialog(
+                        onDismissRequest = { showSignupCountryPicker = false; signupCountrySearch = "" },
+                        title = { Text("Choose country code") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = signupCountrySearch,
+                                    onValueChange = { signupCountrySearch = it },
+                                    label = { Text("Search country or code") },
+                                    placeholder = { Text("United Arab Emirates or +971") },
+                                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                LazyColumn(Modifier.heightIn(max = 320.dp)) {
+                                    items(filteredSignupCountries) { item ->
+                                        TextButton(
+                                            onClick = {
+                                                mobileCountryName = item.first
+                                                mobileCountryCode = item.second
+                                                showSignupCountryPicker = false
+                                                signupCountrySearch = ""
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text(item.first)
+                                                Text(item.second, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                                if (filteredSignupCountries.isEmpty()) Text("No matching country found.")
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showSignupCountryPicker = false; signupCountrySearch = "" }) {
+                                Text("Close")
+                            }
+                        }
+                    )
+                }
+                if (signup && signupStep == 0) {
+                    TextButton(
+                        enabled = !busy && email.contains("@"),
+                        onClick = {
+                            busy = true
+                            error = ""
+                            authService.resendSignupEmailOtp(email) { result ->
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    busy = false
+                                    result.onSuccess {
+                                        signupStep = 1
+                                        error = "A new verification code has been requested. Check your inbox and spam folder."
+                                    }.onFailure { error = it.message ?: "Could not resend email code." }
+                                }
+                            }
+                        },
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
+                    ) { Text("Already started signup? Resend Code") }
                 }
                 if (signup && signupStep == 1) {
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(value = emailOtp, onValueChange = { emailOtp = it.filter(Char::isDigit).take(8) },
                         label = { Text("8-digit email verification code") }, singleLine = true,
                         modifier = Modifier.fillMaxWidth())
+                    TextButton(
+                        enabled = !busy,
+                        onClick = {
+                            busy = true
+                            error = ""
+                            authService.resendSignupEmailOtp(email) { result ->
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    busy = false
+                                    result.onSuccess { error = "A new verification code has been requested. Check your inbox and spam folder." }
+                                        .onFailure { error = it.message ?: "Could not resend email code." }
+                                }
+                            }
+                        },
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
+                    ) { Text("Resend Code") }
                 }
                 if (signup && signupStep == 3) {
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(value = mobileOtp, onValueChange = { mobileOtp = it.filter(Char::isDigit).take(8) },
                         label = { Text("8-digit SMS verification code") }, singleLine = true,
                         modifier = Modifier.fillMaxWidth())
+                    TextButton(
+                        enabled = !busy,
+                        onClick = {
+                            busy = true
+                            error = ""
+                            authService.sendSignupMobileOtp(mobileCountryCode + mobile) { result ->
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    busy = false
+                                    result.onSuccess { error = "A new SMS verification code has been requested." }
+                                        .onFailure { error = it.message ?: "Could not resend SMS code." }
+                                }
+                            }
+                        },
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
+                    ) { Text("Resend SMS Code") }
                 }
                 if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
@@ -764,7 +863,14 @@ Surface(
                                         main.post {
                                             busy = false
                                             result.onSuccess { signupStep = 1 }
-                                                .onFailure { error = it.message ?: "Could not create account." }
+                                                .onFailure {
+                                                    val message = it.message ?: "Could not create account."
+                                                    error = if (message.contains("already registered", true) ||
+                                                        message.contains("already exists", true) ||
+                                                        message.contains("email_exists", true)) {
+                                                        "এই ইমেইল দিয়ে Signup আগে শুরু হয়ে থাকতে পারে। কোড না পেলে নিচের Resend Code অপশন ব্যবহার করুন।"
+                                                    } else message
+                                                }
                                         }
                                     }
                                     1 -> authService.verifySignupEmail(email, emailOtp) { result ->
