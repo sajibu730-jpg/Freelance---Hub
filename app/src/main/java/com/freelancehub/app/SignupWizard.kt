@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -786,6 +787,8 @@ private fun SignupOtpBoxes(value: String, onValueChange: (String) -> Unit) {
         onValueChange = { onValueChange(it.filter(Char::isDigit).take(8)) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
+        textStyle = LocalTextStyle.current.copy(color = Color.Transparent),
+        cursorBrush = SolidColor(Color.Transparent),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
         decorationBox = { innerTextField ->
             Box(modifier = Modifier.fillMaxWidth()) {
