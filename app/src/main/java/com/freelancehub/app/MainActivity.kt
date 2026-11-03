@@ -698,30 +698,77 @@ FreelanceHubReferenceHeader()
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text(
-                            text = if (signup) "Create account" else "Sign In",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.18f),
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = white,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = if (signup) "Create account" else "Sign In",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
                 Spacer(Modifier.height(14.dp))
 
+                if (!signup) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFDCE7F5))
+                        Text("  OR  ", color = androidx.compose.ui.graphics.Color(0xFF71839B), style = MaterialTheme.typography.labelSmall)
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFDCE7F5))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFEAF4FF)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color(0xFFD4E9FF),
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(Icons.Filled.Person, contentDescription = null, tint = blue)
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Create a new account", color = navy, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text("Join our global community", color = dark, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = blue)
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment =
-                        androidx.compose.ui.Alignment.CenterVertically
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (signup) {
-                            "Already have an account?"
-                        } else {
-                            "New to Freelance Hub?"
-                        },
-                        color = dark,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    if (signup) Text("Already have an account?", color = dark, style = MaterialTheme.typography.bodySmall)
 
                     
 TextButton(
