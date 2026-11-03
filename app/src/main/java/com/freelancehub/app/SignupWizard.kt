@@ -5,6 +5,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -530,14 +533,14 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     2 -> {
                         Text("Verify Your Email", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("We've sent an 8-digit code to your email address.", color = Color(0xFF667895))
-                        Text("✉️", style = MaterialTheme.typography.displayLarge)
-                        OutlinedTextField(emailCode, { emailCode = it.filter(Char::isDigit).take(8) }, label = { Text("Enter 8-digit email code") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        Icon(Icons.Filled.Email, null, tint = Color(0xFF0875D1), modifier = Modifier.size(48.dp))
+                        SignupOtpBoxes(value = emailCode, onValueChange = { emailCode = it })
                     }
                     3 -> {
                         Text("Verify Your Mobile", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Enter the 8-digit code sent to your mobile number.", color = Color(0xFF667895))
-                        Text("📱", style = MaterialTheme.typography.displayLarge)
-                        OutlinedTextField(mobileCode, { mobileCode = it.filter(Char::isDigit).take(8) }, label = { Text("Enter 8-digit SMS code") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        Icon(Icons.Filled.Phone, null, tint = Color(0xFF0875D1), modifier = Modifier.size(48.dp))
+                        SignupOtpBoxes(value = mobileCode, onValueChange = { mobileCode = it })
                         TextButton(enabled = !busy, onClick = { session?.let { s -> busy = true; auth.signupMobileVerification(s, "send", signupPhone(phoneRegion, phoneNational)) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { message = "A new code was requested." }.onFailure { error = it.message ?: "Could not resend code." } } } } }) { Text("Resend code") }
                     }
                     4 -> {
@@ -774,4 +777,48 @@ private fun signupPhone(region: String, nationalNumber: String): String {
     val digits = nationalNumber.filter(Char::isDigit)
     require(digits.length in 4..14) { "Enter your mobile number." }
     return "+$callingCode$digits"
+}
+
+@Composable
+private fun SignupOtpBoxes(value: String, onValueChange: (String) -> Unit) {
+    BasicTextField(
+        value = value,
+        onValueChange = { onValueChange(it.filter(Char::isDigit).take(8)) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        decorationBox = { innerTextField ->
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    repeat(8) { index ->
+                        val digit = value.getOrNull(index)?.toString().orEmpty()
+                        Surface(
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color.White,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (index == value.length) Color(0xFF0875D1) else Color(0xFFD5E1F0)
+                            )
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    digit,
+                                    color = Color(0xFF092D67),
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
+                        }
+                    }
+                }
+                Box(modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                    innerTextField()
+                }
+            }
+        }
+    )
 }
