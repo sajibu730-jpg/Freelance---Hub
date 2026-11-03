@@ -362,25 +362,66 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(76.dp)
-                                    .background(Color(0xFFE6F2FF), RoundedCornerShape(50)),
-                                contentAlignment = Alignment.Center
+                            Surface(
+                                onClick = { pendingPhotoTarget = "profile"; photoPicker.launch("image/*") },
+                                modifier = Modifier.size(76.dp),
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFE6F2FF)
                             ) {
-                                Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = Color(0xFF0759B8), modifier = Modifier.size(32.dp))
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = Color(0xFF0759B8), modifier = Modifier.size(32.dp))
+                                }
                             }
                             Text("Add Profile Photo", color = Color(0xFF0759B8), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                             Text("Optional now", color = Color(0xFF7184A3), style = MaterialTheme.typography.labelSmall)
                         }
                         Text("Create New Account", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Let's get started! Fill in your personal information.", color = Color(0xFF667895), style = MaterialTheme.typography.bodySmall)
-                        OutlinedTextField(name, { name = it }, label = { Text("Full name") }, leadingIcon = { Icon(Icons.Filled.Person, null) }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(name, { name = it }, label = { Text("Full Name") }, leadingIcon = { Icon(Icons.Filled.Person, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        var roleOpen by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(roleOpen, { roleOpen = it }) {
+                            OutlinedTextField(
+                                value = if (role == UserRole.FREELANCER) "Freelancer" else "Client",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("I want to join as") },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(roleOpen) },
+                                leadingIcon = { Icon(Icons.Filled.Person, null) },
+                                singleLine = true
+                            )
+                            ExposedDropdownMenu(roleOpen, { roleOpen = false }) {
+                                DropdownMenuItem(text = { Text("Freelancer") }, onClick = { role = UserRole.FREELANCER; roleOpen = false })
+                                DropdownMenuItem(text = { Text("Client") }, onClick = { role = UserRole.CLIENT; roleOpen = false })
+                            }
+                        }
                         SignupCountryPicker(
                             label = "Country",
                             selectedRegion = countryIso,
                             onSelected = { region, display -> countryIso = region; country = display }
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            SignupCountryPicker(
+                                label = "Code",
+                                selectedRegion = phoneRegion,
+                                onSelected = { region, _ -> phoneRegion = region },
+                                modifier = Modifier.weight(0.42f),
+                                showDialCode = true
+                            )
+                            OutlinedTextField(
+                                value = phoneNational,
+                                onValueChange = { phoneNational = it.filter(Char::isDigit).take(14) },
+                                label = { Text("Mobile Number") },
+                                leadingIcon = { Icon(Icons.Filled.Phone, null) },
+                                modifier = Modifier.weight(0.58f),
+                                singleLine = true
+                            )
+                        }
+                        var genderOpen by remember { mutableStateOf(false) }
                         var genderOpen by remember { mutableStateOf(false) }
                         ExposedDropdownMenuBox(genderOpen, { genderOpen = it }) {
                             OutlinedTextField(gender, {}, readOnly = true, label = { Text("Gender") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(genderOpen) })
@@ -419,38 +460,11 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                                 }
                             ) { DatePicker(state = pickerState) }
                         }
-                        Text("I want to join as", color = navy, fontWeight = FontWeight.SemiBold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(role == UserRole.FREELANCER, { role = UserRole.FREELANCER }, label = { Text("Freelancer") })
-                            FilterChip(role == UserRole.CLIENT, { role = UserRole.CLIENT }, label = { Text("Client") })
-                        }
                     }
                     1 -> {
                         Text("Create New Account", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Now, set up your account details.", color = Color(0xFF667895), style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(email, { email = it }, label = { Text("Email address") }, leadingIcon = { Icon(Icons.Filled.Email, null) }, modifier = Modifier.fillMaxWidth())
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            SignupCountryPicker(
-                                label = "Code",
-                                selectedRegion = phoneRegion,
-                                onSelected = { region, _ -> phoneRegion = region },
-                                modifier = Modifier.weight(0.42f),
-                                showDialCode = true
-                            )
-                            OutlinedTextField(
-                                value = phoneNational,
-                                onValueChange = { phoneNational = it.filter(Char::isDigit).take(14) },
-                                label = { Text("Mobile number") },
-                                leadingIcon = { Icon(Icons.Filled.Phone, null) },
-                                modifier = Modifier.weight(0.58f),
-                                singleLine = true
-                            )
-                        }
-                        Text("Your complete number: +${PhoneNumberUtil.getInstance().getCountryCodeForRegion(phoneRegion)} $phoneNational", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(password, { password = it }, label = { Text("Password (8+ characters)") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(
                             confirm,
@@ -545,7 +559,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                 Button(enabled = !busy, onClick = {
                     error = ""; message = ""
                     when (step) {
-                        0 -> if (name.trim().length < 2 || country.isBlank() || !birthday.matches(Regex("""^\d{4}-\d{2}-\d{2}$"""))) error = "Enter your name, country and birthday as YYYY-MM-DD." else step = 1
+                        0 -> if (name.trim().length < 2 || country.isBlank() || phoneNational.length !in 4..14 || !birthday.matches(Regex("""^\d{4}-\d{2}-\d{2}$"""))) error = "Enter your name, country and birthday as YYYY-MM-DD." else step = 1
                         1 -> if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() || phoneNational.length !in 4..14 || password.length < 8 || password != confirm || !accepted) error = "Check email, mobile number, matching passwords and Rules acceptance." else {
                             busy = true
                             auth.beginSignup(name, email, password, role, country, gender, birthday) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 2; message = "Check your inbox for the 8-digit code." }.onFailure { error = it.message ?: "Could not create account." } } }
