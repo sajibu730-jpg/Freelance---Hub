@@ -1,9 +1,15 @@
 package com.freelancehub.app
 
 import android.net.Uri
+import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -547,47 +553,59 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     4 -> {
                         Text("Complete Your Profile", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Add a cover photo to make your profile stand out.", color = Color(0xFF667895))
+                        val coverPreview = remember(coverPhotoBytes) {
+                            coverPhotoBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+                        }
+                        val profilePreview = remember(profilePhotoBytes) {
+                            profilePhotoBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+                        }
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(142.dp)
-                                .background(
-                                    Brush.linearGradient(listOf(Color(0xFF0B4A8F), Color(0xFF48A4E8), Color(0xFFB8DDF8))),
-                                    RoundedCornerShape(16.dp)
-                                ),
-                            contentAlignment = Alignment.Center
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 34.dp)
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Icon(Icons.Filled.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp))
-                                Text(if (coverPhotoBytes == null) "Cover photo preview" else "Cover photo selected", color = Color.White, fontWeight = FontWeight.Bold)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(156.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Brush.linearGradient(listOf(Color(0xFF0B4A8F), Color(0xFF48A4E8), Color(0xFFB8DDF8)))),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (coverPreview != null) {
+                                    Image(coverPreview, contentDescription = "Cover photo preview", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                } else {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        Icon(Icons.Filled.Public, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp))
+                                        Text("Your cover photo", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(82.dp)
-                                .background(Color(0xFFE6F2FF), RoundedCornerShape(50)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Filled.CameraAlt, contentDescription = "Profile photo", tint = Color(0xFF0759B8), modifier = Modifier.size(30.dp))
-                        }
-                        OutlinedButton(
-                            onClick = { pendingPhotoTarget = "profile"; photoPicker.launch("image/*") },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Filled.Person, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (profilePhotoBytes == null) "Choose profile photo" else "Profile photo selected")
+                            Surface(
+                                onClick = { pendingPhotoTarget = "profile"; photoPicker.launch("image/*") },
+                                modifier = Modifier.align(Alignment.BottomStart).offset(x = 16.dp, y = 34.dp).size(82.dp),
+                                shape = CircleShape,
+                                color = Color(0xFFE6F2FF),
+                                border = androidx.compose.foundation.BorderStroke(3.dp, Color.White),
+                                shadowElevation = 4.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (profilePreview != null) {
+                                        Image(profilePreview, contentDescription = "Profile photo preview", modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                                    } else {
+                                        Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = Color(0xFF0759B8), modifier = Modifier.size(30.dp))
+                                    }
+                                }
+                            }
                         }
                         OutlinedButton(
                             onClick = { pendingPhotoTarget = "cover"; photoPicker.launch("image/*") },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Filled.Public, null)
+                            Icon(Icons.Filled.CameraAlt, null)
                             Spacer(Modifier.width(8.dp))
-                            Text(if (coverPhotoBytes == null) "Choose cover photo" else "Cover photo selected")
+                            Text(if (coverPhotoBytes == null) "Upload Cover Photo" else "Change Cover Photo")
                         }
-                        Text("JPG, PNG or WebP • Maximum 5 MB each", color = Color.Gray)
-                        Text("You can skip either image and add it later.", color = Color.Gray)
+                        Text("Tap the circular photo to add or change your profile picture.", color = Color(0xFF667895))
+                        Text("JPG, PNG or WebP • Maximum 5 MB each. Both photos are optional.", color = Color.Gray)
                     }
                 }
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
