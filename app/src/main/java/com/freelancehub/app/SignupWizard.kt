@@ -93,8 +93,8 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     }
                     2 -> {
                         Text("Verify your email", color = navy, style = MaterialTheme.typography.headlineSmall)
-                        Text("Enter the 6-digit code sent to $email.")
-                        OutlinedTextField(emailCode, { emailCode = it.filter(Char::isDigit).take(6) }, label = { Text("6-digit email code") }, modifier = Modifier.fillMaxWidth())
+                        Text("Enter the 8-digit code sent to $email.")
+                        OutlinedTextField(emailCode, { emailCode = it.filter(Char::isDigit).take(6) }, label = { Text("8-digit email code") }, modifier = Modifier.fillMaxWidth())
                     }
                     3 -> {
                         Text("Verify your mobile", color = navy, style = MaterialTheme.typography.headlineSmall)
@@ -116,9 +116,9 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         0 -> if (name.trim().length < 2 || country.isBlank() || !birthday.matches(Regex("""^\d{4}-\d{2}-\d{2}$"""))) error = "Enter your name, country and birthday as YYYY-MM-DD." else step = 1
                         1 -> if (!Validation.email(email) || !phone.matches(Regex("""^\+[1-9][0-9]{7,14}$""")) || password.length < 8 || password != confirm || !accepted) error = "Check email, mobile number, matching passwords and Rules acceptance." else {
                             busy = true
-                            auth.beginSignup(name, email, password, role, country, gender, birthday) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 2; message = "Check your inbox for the 6-digit code." }.onFailure { error = it.message ?: "Could not create account." } } }
+                            auth.beginSignup(name, email, password, role, country, gender, birthday) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 2; message = "Check your inbox for the 8-digit code." }.onFailure { error = it.message ?: "Could not create account." } } }
                         }
-                        2 -> if (emailCode.length != 6) error = "Enter the 6-digit email code." else {
+                        2 -> if (emailCode.length != 8) error = "Enter the 8-digit email code." else {
                             busy = true
                             auth.verifySignupEmail(email, emailCode) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 busy = false
