@@ -88,6 +88,152 @@ class AuthService(context: Context) {
         }
     }
 
+    /**
+     * Signup is deliberately split into account creation, email OTP verification,
+     * mobile OTP verification, and profile persistence. Unverified users never
+     * receive a saved app session.
+     */
+    fun createSignupAccount(
+        name: String,
+        email: String,
+        password: String,
+        role: UserRole,
+        callback: (Result<String>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Supabase configuration is incomplete." }
+                require(name.trim().length in 2..80) { "Enter your full name." }
+                require(email.trim().matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                    "Enter a valid email address."
+                }
+                require(password.length >= 8) { "Use at least 8 characters for your password." }
+                val response = request(
+                    "POST",
+                    "/auth/v1/signup",
+                    JSONObject().put("email", email.trim())
+                        .put("password", password)
+                        .put("data", JSONObject()
+                            .put("display_name", name.trim())
+                            .put("role", role.name))
+                        .toString()
+                )
+                val user = response.optJSONObject("user") ?: response
+                val userId = user.optString("id")
+                require(userId.isNotBlank()) {
+                    "Supabase did not create an account. Check the email address and try again."
+                }
+                userId
+            })
+        }
+    }
+
+    /** Confirms the Supabase signup email OTP and only then saves the session. */
+    fun verifySignupEmail(email: String, otp: String, callback: (Result<AuthSession>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                val target = email.trim()
+                require(target.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                    "Enter the email used during signup."
+                }
+                require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
+                    "Enter the 8-digit email verification code."
+                }
+                val response = request(
+                    "POST",
+                    "/auth/v1/verify",
+                    JSONObject().put("type", "signup")
+                        .put("email", target)
+                        .put("token", otp.trim())
+                        .toString()
+                )
+                val user = response.optJSONObject("user")
+                    ?: error("Email verification did not return an account.")
+                require(user.optString("email_confirmed_at").isNotBlank()) {
+                    "Supabase has not confirmed this email address yet."
+                }
+                val access = response.optString("access_token")
+                val refresh = response.optString("refresh_token")
+                require(access.isNotBlank() && refresh.isNotBlank()) {
+                    "Email was verified, but Supabase did not return a secure session."
+                }
+                val session = makeSession(access, refresh, user, UserRole.FREELANCER)
+                tokenStore.saveSession(session.accessToken, session.refreshToken)
+                session
+            })
+        }
+    }
+
+    /** Sends the 8-digit Twilio Verify SMS after the email has been confirmed. */
+    fun sendSignupMobileOtp(phone: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                    "Enter a valid mobile number with country code."
+                }
+                signupMobileRequest("send", phone)
+                Unit
+            })
+        }
+    }
+
+    /** Confirms the 8-digit SMS code; the Edge Function also confirms Auth phone and saves it. */
+    fun verifySignupMobileOtp(phone: String, otp: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                    "Enter a valid mobile number with country code."
+                }
+                require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
+                    "Enter the 8-digit SMS verification code."
+                }
+                val result = signupMobileRequest("verify", phone, otp.trim())
+                require(result.optBoolean("verified") && result.optBoolean("profileSaved")) {
+                    "Mobile verification completed, but the profile number was not saved."
+                }
+                Unit
+            })
+        }
+    }
+
+    /** Saves the remaining public profile fields after both contacts are verified. */
+    fun saveSignupProfile(
+        name: String,
+        country: String,
+        gender: String,
+        birthday: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(name.trim().length in 2..80) { "Enter your full name." }
+                val access = accessTokenForApiBlocking()
+                    ?: error("Verify your email and mobile number before saving your profile.")
+                val user = request("GET", "/auth/v1/user", accessToken = access)
+                val userId = user.optString("id")
+                require(userId.isNotBlank() && user.optString("email_confirmed_at").isNotBlank()) {
+                    "Verify your email address before saving your profile."
+                }
+                require(user.optString("phone_confirmed_at").isNotBlank()) {
+                    "Verify your mobile number before saving your profile."
+                }
+                val payload = JSONObject()
+                    .put("id", userId)
+                    .put("display_name", name.trim())
+                    .put("country", country.trim())
+                    .put("gender", gender.trim())
+                    .put("updated_at", java.time.Instant.now().toString())
+                if (birthday.isNotBlank()) payload.put("birthday", birthday.trim())
+                val response = signupProfileUpsert(payload, access)
+                require(response.length() == 1 &&
+                    response.optJSONObject(0)?.optString("display_name") == name.trim()) {
+                    "Supabase did not confirm that the profile was saved."
+                }
+                Unit
+            })
+        }
+    }
+
     fun refresh(callback: (Result<AuthSession>) -> Unit) {
         executor.execute {
             callback(runCatching { refreshBlocking() })
@@ -572,6 +718,73 @@ class AuthService(context: Context) {
                     connection.disconnect()
                 }
             })
+        }
+    }
+
+    private fun signupMobileRequest(action: String, phone: String, code: String? = null): JSONObject {
+        require(action == "send" || action == "verify") { "Invalid signup verification action." }
+        val access = accessTokenForApiBlocking()
+            ?: error("Verify your email address and sign in before mobile verification.")
+        val payload = JSONObject().put("action", action).put("phone", phone)
+        if (!code.isNullOrBlank()) payload.put("code", code)
+        val connection = URL(config.baseUrl.trim().trimEnd('/') + "/functions/v1/signup-mobile-verification")
+            .openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 30000
+            connection.instanceFollowRedirects = false
+            connection.useCaches = false
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("apikey", config.anonKey)
+            connection.setRequestProperty("Authorization", "Bearer $access")
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            connection.doOutput = true
+            connection.outputStream.use {
+                it.write(payload.toString().toByteArray(StandardCharsets.UTF_8))
+            }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+            val result = if (text.isBlank()) JSONObject() else JSONObject(text)
+            if (status !in 200..299) {
+                error(result.optString("error", "Signup mobile verification failed (HTTP $status)."))
+            }
+            return result
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun signupProfileUpsert(payload: JSONObject, access: String): org.json.JSONArray {
+        val url = URL(config.baseUrl.trim().trimEnd('/') + "/rest/v1/profiles?on_conflict=id")
+        val connection = url.openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 10000
+            connection.readTimeout = 20000
+            connection.instanceFollowRedirects = false
+            connection.useCaches = false
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("apikey", config.anonKey)
+            connection.setRequestProperty("Authorization", "Bearer $access")
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            connection.setRequestProperty("Prefer", "resolution=merge-duplicates,return=representation")
+            connection.doOutput = true
+            connection.outputStream.use {
+                it.write(payload.toString().toByteArray(StandardCharsets.UTF_8))
+            }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                val message = runCatching { JSONObject(text).optString("message") }
+                    .getOrDefault("")
+                error("Profile save failed (HTTP $status): $message")
+            }
+            return org.json.JSONArray(text)
+        } finally {
+            connection.disconnect()
         }
     }
 
