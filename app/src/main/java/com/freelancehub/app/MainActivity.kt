@@ -200,6 +200,15 @@ val white = androidx.compose.ui.graphics.Color.White
 val lavender = androidx.compose.ui.graphics.Color(0xFFF0EEFF)
 val teal = androidx.compose.ui.graphics.Color(0xFF14A89A)
 val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
+val referenceFieldColors = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+    unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+    focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF2B78E4),
+    unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFBFD7F5),
+    focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1769D2),
+    unfocusedLabelColor = androidx.compose.ui.graphics.Color(0xFF627895),
+    cursorColor = androidx.compose.ui.graphics.Color(0xFF1769D2)
+)
 
     val keyboardOpen = WindowInsets.isImeVisible
 
@@ -314,7 +323,8 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        colors = referenceFieldColors
                     )
 
                     Spacer(Modifier.height(14.dp))
@@ -358,23 +368,23 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     }
                     Spacer(Modifier.height(12.dp))
                     ExposedDropdownMenuBox(expanded = countryMenuExpanded, onExpandedChange = { countryMenuExpanded = !countryMenuExpanded }) {
-                        OutlinedTextField(value = signupCountry, onValueChange = {}, readOnly = true, label = { Text("Country") }, leadingIcon = { Icon(Icons.Filled.Public, contentDescription = null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countryMenuExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor(), shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                        OutlinedTextField(value = signupCountry, onValueChange = {}, readOnly = true, label = { Text("Country") }, leadingIcon = { Icon(Icons.Filled.Public, contentDescription = null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countryMenuExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor(), shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp), colors = referenceFieldColors)
                         ExposedDropdownMenu(expanded = countryMenuExpanded, onDismissRequest = { countryMenuExpanded = false }) {
                             CountryCallingCodes.all.forEach { item -> DropdownMenuItem(text = { Text(item.first) }, onClick = { signupCountry = item.first; signupCallingCode = item.second; countryMenuExpanded = false }) }
                         }
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        OutlinedTextField(value = signupCallingCode, onValueChange = {}, readOnly = true, label = { Text("Code") }, modifier = Modifier.width(96.dp), singleLine = true)
-                        OutlinedTextField(value = signupMobile, onValueChange = { signupMobile = it.filter { ch -> ch.isDigit() }.take(15) }, label = { Text("Mobile number") }, leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) }, modifier = Modifier.weight(1f), singleLine = true)
+                        OutlinedTextField(value = signupCallingCode, onValueChange = {}, readOnly = true, label = { Text("Code") }, modifier = Modifier.width(96.dp), singleLine = true, colors = referenceFieldColors)
+                        OutlinedTextField(value = signupMobile, onValueChange = { signupMobile = it.filter { ch -> ch.isDigit() }.take(15) }, label = { Text("Mobile number") }, leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) }, modifier = Modifier.weight(1f), singleLine = true, colors = referenceFieldColors)
                     }
                     Spacer(Modifier.height(10.dp))
                     ExposedDropdownMenuBox(expanded = genderMenuExpanded, onExpandedChange = { genderMenuExpanded = !genderMenuExpanded }) {
-                        OutlinedTextField(value = signupGender, onValueChange = {}, readOnly = true, label = { Text("Gender") }, leadingIcon = { Icon(Icons.Filled.PersonOutline, contentDescription = null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderMenuExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+                        OutlinedTextField(value = signupGender, onValueChange = {}, readOnly = true, label = { Text("Gender") }, leadingIcon = { Icon(Icons.Filled.PersonOutline, contentDescription = null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderMenuExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor(), colors = referenceFieldColors)
                         ExposedDropdownMenu(expanded = genderMenuExpanded, onDismissRequest = { genderMenuExpanded = false }) { listOf("Male", "Female", "Prefer not to say").forEach { item -> DropdownMenuItem(text = { Text(item) }, onClick = { signupGender = item; genderMenuExpanded = false }) } }
                     }
                     Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(value = signupBirthday, onValueChange = { signupBirthday = it }, label = { Text("Birthday") }, placeholder = { Text("DD / MM / YYYY") }, leadingIcon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedTextField(value = signupBirthday, onValueChange = { signupBirthday = it }, label = { Text("Birthday") }, placeholder = { Text("DD / MM / YYYY") }, leadingIcon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) }, modifier = Modifier.fillMaxWidth(), singleLine = true, colors = referenceFieldColors)
                     Spacer(Modifier.height(14.dp))
                     Spacer(Modifier.height(14.dp))
                     } else if (signupStep == 2 || signupStep == 3) {
@@ -574,7 +584,8 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                        colors = referenceFieldColors
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
