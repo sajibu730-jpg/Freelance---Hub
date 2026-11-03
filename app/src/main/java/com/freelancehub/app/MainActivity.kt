@@ -219,13 +219,16 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         Spacer(Modifier.height(if (keyboardOpen) 0.dp else 8.dp))
 
         
-        // Header follows the supplied master reference.\n        ReferenceBrandHeader()\n\n        Spacer(Modifier.height(20.dp))
+        // Header follows the supplied master reference.
+        ReferenceBrandHeader()
+
+        Spacer(Modifier.height(12.dp))
 
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 38.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
             color = white,
             shadowElevation = 5.dp
         ) {
@@ -761,11 +764,20 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Spacer(Modifier.width(6.dp))
 
                     Text(
-                        text = "Your account credentials are protected.",
+                        text = "Your account is authenticated through configured production backend.",
                         style = MaterialTheme.typography.bodySmall,
                         color = dark
                     )
                 }
+
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "PROFESSIONAL OPPORTUNITIES. A GLOBAL COMMUNITY.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = androidx.compose.ui.graphics.Color(0xFF6D7D94),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
 
