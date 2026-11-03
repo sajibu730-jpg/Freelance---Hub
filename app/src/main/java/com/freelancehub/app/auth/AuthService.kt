@@ -16,6 +16,7 @@ class AuthService(context: Context) {
     private val config: BackendConfig = RuntimeBackendConfig.current()
     private val tokenStore = TokenStore(context.applicationContext)
     private val executor = Executors.newSingleThreadExecutor()
+    @Volatile private var pendingSignupSession: AuthSession? = null
 
     fun isConfigured(): Boolean =
         config.isConfigured() && config.anonKey.isNotBlank()
@@ -158,7 +159,9 @@ class AuthService(context: Context) {
                     "Email was verified, but Supabase did not return a secure session."
                 }
                 val session = makeSession(access, refresh, user, UserRole.FREELANCER)
-                tokenStore.saveSession(session.accessToken, session.refreshToken)
+                // Keep signup credentials in memory until mobile verification and
+                // profile persistence succeed; relaunch must not bypass signup.
+                pendingSignupSession = session
                 session
             })
         }
@@ -215,8 +218,9 @@ class AuthService(context: Context) {
                 require(!parsedBirthday.isAfter(java.time.LocalDate.now())) {
                     "Birthday cannot be in the future."
                 }
-                val access = accessTokenForApiBlocking()
-                    ?: error("Verify your email and mobile number before saving your profile.")
+                val pending = pendingSignupSession
+                    ?: error("Your pending signup session expired. Please restart signup.")
+                val access = pending.accessToken
                 val user = request("GET", "/auth/v1/user", accessToken = access)
                 val userId = user.optString("id")
                 require(userId.isNotBlank() && user.optString("email_confirmed_at").isNotBlank()) {
@@ -237,6 +241,10 @@ class AuthService(context: Context) {
                     response.optJSONObject(0)?.optString("display_name") == name.trim()) {
                     "Supabase did not confirm that the profile was saved."
                 }
+                // Save the authenticated session only after both contacts and
+                // the required profile fields have been verified and persisted.
+                tokenStore.saveSession(pending.accessToken, pending.refreshToken)
+                pendingSignupSession = null
                 Unit
             })
         }
@@ -346,6 +354,7 @@ class AuthService(context: Context) {
 
     /** Clears a locally stored session when the user abandons an unfinished signup. */
     fun discardPendingSignupSession() {
+        pendingSignupSession = null
         tokenStore.clear()
     }
 
@@ -736,7 +745,8 @@ class AuthService(context: Context) {
 
     private fun signupMobileRequest(action: String, phone: String, code: String? = null): JSONObject {
         require(action == "send" || action == "verify") { "Invalid signup verification action." }
-        val access = accessTokenForApiBlocking()
+        val access = pendingSignupSession?.accessToken
+            ?: accessTokenForApiBlocking()
             ?: error("Verify your email address and sign in before mobile verification.")
         val payload = JSONObject().put("action", action).put("phone", phone)
         if (!code.isNullOrBlank()) payload.put("code", code)
