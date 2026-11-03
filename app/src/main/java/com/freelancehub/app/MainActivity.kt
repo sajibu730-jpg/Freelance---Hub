@@ -333,26 +333,26 @@ FreelanceHubReferenceHeader()
 
                     Spacer(Modifier.height(18.dp))
 
-                    Text(
-                        text = "ACCOUNT SETUP  •  STEP 1",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = blue
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        repeat(3) { index ->
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(4.dp),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-                                color = if (index == 0) blue else light
-                            ) {}
+                        listOf("Personal Info", "Account Details", "Verification").forEachIndexed { index, title ->
+                            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                Surface(
+                                    modifier = Modifier.size(28.dp),
+                                    shape = androidx.compose.foundation.shape.CircleShape,
+                                    color = if (index == 0) blue else androidx.compose.ui.graphics.Color(0xFFF0F4FA),
+                                    border = if (index == 0) null else androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFB8C8DD))
+                                ) {
+                                    Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                        Text("${index + 1}", color = if (index == 0) white else dark, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    }
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(title, color = if (index == 0) navy else dark, style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
 
@@ -367,7 +367,13 @@ FreelanceHubReferenceHeader()
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                            focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8),
+                            unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8)
+                        )
                     )
 
                     Spacer(Modifier.height(14.dp))
