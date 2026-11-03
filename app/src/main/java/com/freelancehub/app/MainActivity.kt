@@ -377,6 +377,7 @@ Surface(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
+                        enabled = !signup || signupStep == 0,
                         label = { Text("Full name") },
                         leadingIcon = {
                             Icon(Icons.Filled.Person, contentDescription = null)
@@ -403,6 +404,7 @@ Surface(
                         FilterChip(
                             selected = role == UserRole.FREELANCER,
                             onClick = { role = UserRole.FREELANCER },
+                            enabled = signupStep == 0,
                             label = { Text("Freelancer") },
                             leadingIcon = {
                                 Icon(Icons.Filled.Work, contentDescription = null)
@@ -413,6 +415,7 @@ Surface(
                         FilterChip(
                             selected = role == UserRole.CLIENT,
                             onClick = { role = UserRole.CLIENT },
+                            enabled = signupStep == 0,
                             label = { Text("Client") },
                             leadingIcon = {
                                 Icon(Icons.Filled.Business, contentDescription = null)
@@ -454,6 +457,7 @@ Surface(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
+                    enabled = !signup || signupStep == 0,
                     label = { Text("Email") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
@@ -469,6 +473,7 @@ Surface(
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
+                    enabled = !signup || signupStep == 0,
                     label = { Text("Password") },
                     leadingIcon = {
                         Icon(Icons.Filled.Lock, contentDescription = null)
@@ -825,6 +830,11 @@ TextButton(
             signupStep = 0
             emailOtp = ""
             mobileOtp = ""
+            mobile = ""
+            country = ""
+            gender = ""
+            birthday = ""
+            signupSession = null
             error = ""
             busy = false
         } else if (!openingSignup) {
@@ -835,6 +845,11 @@ TextButton(
                 signupStep = 0
                 emailOtp = ""
                 mobileOtp = ""
+                mobile = ""
+                country = ""
+                gender = ""
+                birthday = ""
+                signupSession = null
                 error = ""
                 busy = false
                 openingSignup = false
