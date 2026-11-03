@@ -335,8 +335,6 @@ Surface(
                             pass = ""
                             mobile = ""
                             mobileCountryCode = "+971"
-                mobileCountryName = "United Arab Emirates"
-            mobileCountryName = "United Arab Emirates"
                             mobileCountryName = "United Arab Emirates"
                             emailOtp = ""
                             mobileOtp = ""
@@ -862,8 +860,14 @@ Surface(
                                     0 -> authService.createSignupAccount(name, email, pass, role) { result ->
                                         main.post {
                                             busy = false
-                                            result.onSuccess { signupStep = 1 }
-                                                .onFailure {
+                                            result.onSuccess { outcome ->
+                                                if (outcome.startsWith("VERIFIED:")) {
+                                                    signupSession = authService.pendingSignupSessionSnapshot()
+                                                    signupStep = 2
+                                                } else {
+                                                    signupStep = 1
+                                                }
+                                            }.onFailure {
                                                     val message = it.message ?: "Could not create account."
                                                     error = if (message.contains("already registered", true) ||
                                                         message.contains("already exists", true) ||
@@ -978,6 +982,7 @@ TextButton(
             pass = ""
             mobile = ""
             mobileCountryCode = "+971"
+            mobileCountryName = "United Arab Emirates"
             emailOtp = ""
             mobileOtp = ""
             country = ""
