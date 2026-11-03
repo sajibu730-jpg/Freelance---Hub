@@ -216,16 +216,19 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     )
                 ).padding(start = 22.dp, end = 18.dp, top = 28.dp, bottom = 22.dp)
             ) {
-                Icon(Icons.Filled.Public, null, tint = androidx.compose.ui.graphics.Color(0x334FC3FF), modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).size(116.dp))
+                Icon(Icons.Filled.Public, null, tint = androidx.compose.ui.graphics.Color(0x334FC3FF), modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).size(148.dp))
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = androidx.compose.ui.Alignment.Start) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(13.dp), color = androidx.compose.ui.graphics.Color(0xFF063E83)) {
-                            Box(Modifier.size(54.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                Text("F", style = MaterialTheme.typography.displaySmall, color = androidx.compose.ui.graphics.Color(0xFF29C8FF), fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
-                            }
-                        }
+                        Text(
+                            "F",
+                            modifier = Modifier.padding(start = 2.dp),
+                            style = MaterialTheme.typography.displayLarge,
+                            color = androidx.compose.ui.graphics.Color(0xFF19C8F5),
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
                         Column {
-                            Text("Freelance Hub", style = MaterialTheme.typography.headlineSmall, color = white, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Freelance Hub", style = MaterialTheme.typography.headlineMedium, color = white, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Text("Your work. Your world. Your future.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFDCEBFF))
                         }
                     }
@@ -246,13 +249,13 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
             color = white,
-            shadowElevation = 5.dp
+            shadowElevation = 8.dp
         ) {
             Column(
-                modifier = Modifier.padding(22.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp)
             ) {
                 if (signup) {
                     TextButton(
@@ -366,7 +369,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "Sign in to continue to your workspace.",
+                        text = "Sign in to continue your journey.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
                     )
@@ -388,7 +391,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text("Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
                     },
@@ -637,10 +640,25 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text(
-                            text = if (signup) "Create account" else "Sign In",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color(0x334FC3FF)
+                            ) {
+                                Box(Modifier.size(27.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(Icons.Filled.ArrowForward, null, tint = white, modifier = Modifier.size(17.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(9.dp))
+                            Text(
+                                text = if (signup) "Create account" else "Sign In",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
 
