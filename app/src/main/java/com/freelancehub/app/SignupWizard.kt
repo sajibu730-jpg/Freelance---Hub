@@ -1,5 +1,8 @@
 package com.freelancehub.app
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -25,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import com.freelancehub.app.auth.AuthService
 import com.freelancehub.app.auth.AuthSession
 import com.freelancehub.app.data.UserRole
+import com.freelancehub.app.data.RuntimeBackendConfig
+import com.freelancehub.app.data.RemoteAccountRepository
+import com.freelancehub.app.network.SecureApiClient
 
 @Composable
 fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel: () -> Unit) {
@@ -46,6 +53,36 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var profilePhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var profilePhotoType by remember { mutableStateOf<String?>(null) }
+    var coverPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var coverPhotoType by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                val type = context.contentResolver.getType(uri)?.lowercase()
+                    ?: error("Could not identify the selected image format.")
+                require(type in setOf("image/jpeg", "image/png", "image/webp")) {
+                    "Choose a JPG, PNG or WebP image."
+                }
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: error("Could not read the selected image.")
+                require(bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) {
+                    "Each image must be 5 MB or smaller."
+                }
+                if (pendingPhotoTarget == "profile") {
+                    profilePhotoBytes = bytes
+                    profilePhotoType = type
+                } else {
+                    coverPhotoBytes = bytes
+                    coverPhotoType = type
+                }
+                error = ""
+            }.onFailure { error = it.message ?: "Image selection failed." }
+        }
+    }
+    var pendingPhotoTarget by remember { mutableStateOf("profile") }
     val navy = Color(0xFF142B52)
     val blue = Color(0xFF4169E1)
     val teal = Color(0xFF14A89A)
@@ -104,8 +141,25 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     }
                     4 -> {
                         Text("Profile photo & cover photo", color = navy, style = MaterialTheme.typography.headlineSmall)
-                        Text("Photo upload will be available here. You can complete this setup after your account details are verified.")
+                        Text("Add your profile and cover images to complete your public profile.")
+                        OutlinedButton(
+                            onClick = { pendingPhotoTarget = "profile"; photoPicker.launch("image/*") },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.Person, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (profilePhotoBytes == null) "Choose profile photo" else "Profile photo selected")
+                        }
+                        OutlinedButton(
+                            onClick = { pendingPhotoTarget = "cover"; photoPicker.launch("image/*") },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.Public, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (coverPhotoBytes == null) "Choose cover photo" else "Cover photo selected")
+                        }
                         Text("JPG, PNG or WebP • Maximum 5 MB each", color = Color.Gray)
+                        Text("You can skip either image and add it later.", color = Color.Gray)
                     }
                 }
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
@@ -129,7 +183,31 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                             busy = true
                             auth.signupMobileVerification(s, "verify", phone.trim(), mobileCode) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 4; message = "Mobile number verified." }.onFailure { error = it.message ?: "Mobile verification failed." } } }
                         } ?: run { error = "Signup session expired. Please start again." }
-                        4 -> session?.let { s -> auth.completeSignup(s); onComplete(s) } ?: run { error = "Signup session expired. Please start again." }
+                        4 -> session?.let { s ->
+                            busy = true
+                            Thread {
+                                val result = runCatching {
+                                    val client = SecureApiClient(RuntimeBackendConfig.current())
+                                    val account = RemoteAccountRepository(client) { s.accessToken }
+                                    account.saveSignupProfile(name, country, gender, birthday)
+                                    profilePhotoBytes?.let { bytes ->
+                                        account.updateProfilePhoto(bytes, profilePhotoType ?: "image/jpeg")
+                                    }
+                                    coverPhotoBytes?.let { bytes ->
+                                        account.updateCoverPhoto(bytes, coverPhotoType ?: "image/jpeg")
+                                    }
+                                }
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    busy = false
+                                    result.onSuccess {
+                                        auth.completeSignup(s)
+                                        onComplete(s)
+                                    }.onFailure {
+                                        error = it.message ?: "Could not save your profile. Please try again."
+                                    }
+                                }
+                            }.start()
+                        } ?: run { error = "Signup session expired. Please start again." }
                     }
                 }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.buttonColors(containerColor = blue)) {
                     if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text(if (step == 4) "Complete account setup" else "Continue")
