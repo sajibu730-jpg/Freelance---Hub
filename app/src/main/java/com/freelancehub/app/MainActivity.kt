@@ -397,6 +397,17 @@ FreelanceHubReferenceHeader()
                             leadingIcon = {
                                 Icon(Icons.Filled.Work, contentDescription = null)
                             },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = androidx.compose.ui.graphics.Color(0xFFE4F0FF),
+                                selectedLabelColor = androidx.compose.ui.graphics.Color(0xFF075BC6),
+                                selectedLeadingIconColor = androidx.compose.ui.graphics.Color(0xFF075BC6)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = role == UserRole.FREELANCER,
+                                borderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8),
+                                selectedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8)
+                            ),
                             modifier = Modifier.weight(1f)
                         )
 
@@ -407,6 +418,17 @@ FreelanceHubReferenceHeader()
                             leadingIcon = {
                                 Icon(Icons.Filled.Business, contentDescription = null)
                             },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = androidx.compose.ui.graphics.Color(0xFFE4F0FF),
+                                selectedLabelColor = androidx.compose.ui.graphics.Color(0xFF075BC6),
+                                selectedLeadingIconColor = androidx.compose.ui.graphics.Color(0xFF075BC6)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = role == UserRole.CLIENT,
+                                borderColor = androidx.compose.ui.graphics.Color(0xFFD3E3F8),
+                                selectedBorderColor = androidx.compose.ui.graphics.Color(0xFF1976E8)
+                            ),
                             modifier = Modifier.weight(1f)
                         )
                     }
