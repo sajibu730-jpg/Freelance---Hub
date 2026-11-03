@@ -122,6 +122,7 @@ fun LoginScreen(
     var signup by remember { mutableStateOf(false) }
     var signupStep by remember { mutableIntStateOf(0) }
     var mobile by remember { mutableStateOf("") }
+    var mobileCountryCode by remember { mutableStateOf("+971") }
     var emailOtp by remember { mutableStateOf("") }
     var mobileOtp by remember { mutableStateOf("") }
     var country by remember { mutableStateOf("") }
@@ -330,6 +331,7 @@ Surface(
                             email = ""
                             pass = ""
                             mobile = ""
+                            mobileCountryCode = "+971"
                             emailOtp = ""
                             mobileOtp = ""
                             country = ""
@@ -538,13 +540,36 @@ Surface(
 
                 if (signup && signupStep == 0) {
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = mobile,
-                        onValueChange = { mobile = it.filter { ch -> ch.isDigit() || ch == '+' }.take(16) },
-                        label = { Text("Mobile number with country code (e.g. +9715XXXXXXXX)") },
-                        leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
-                        singleLine = true, modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = mobileCountryCode,
+                            onValueChange = { value ->
+                                val digits = value.filter(Char::isDigit).take(4)
+                                mobileCountryCode = if (digits.isEmpty()) "+" else "+$digits"
+                            },
+                            label = { Text("Country code") },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+                            ),
+                            modifier = Modifier.weight(0.8f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        )
+                        OutlinedTextField(
+                            value = mobile,
+                            onValueChange = { mobile = it.filter(Char::isDigit).take(14) },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+                            ),
+                            modifier = Modifier.weight(1.7f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        )
+                    }
                 }
                 if (signup && signupStep == 1) {
                     Spacer(Modifier.height(12.dp))
@@ -751,7 +776,7 @@ Surface(
                                             }.onFailure { error = it.message ?: "Email verification failed." }
                                         }
                                     }
-                                    2 -> authService.sendSignupMobileOtp(mobile) { result ->
+                                    2 -> authService.sendSignupMobileOtp(mobileCountryCode + mobile) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess { signupStep = 3 }
@@ -780,9 +805,9 @@ Surface(
                         }
                     },
                     enabled = valid && !busy && (!signup || when (signupStep) {
-                        0 -> mobile.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))
+                        0 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) && (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))
                         1 -> emailOtp.length == 8
-                        2 -> mobile.isNotBlank()
+                        2 -> mobileCountryCode.isNotBlank() && mobile.isNotBlank()
                         3 -> mobileOtp.length == 8
                         4 -> country.isNotBlank() && gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
@@ -846,6 +871,7 @@ TextButton(
             email = ""
             pass = ""
             mobile = ""
+            mobileCountryCode = "+971"
             emailOtp = ""
             mobileOtp = ""
             country = ""
@@ -864,6 +890,7 @@ TextButton(
                 emailOtp = ""
                 mobileOtp = ""
                 mobile = ""
+                mobileCountryCode = "+971"
                 country = ""
                 gender = ""
                 birthday = ""
