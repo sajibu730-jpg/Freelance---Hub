@@ -158,6 +158,7 @@ fun LoginScreen(
     var busy by remember { mutableStateOf(false) }
 var openingSignup by remember { mutableStateOf(false) }
 var passwordVisible by remember { mutableStateOf(false) }
+var rememberMe by remember { mutableStateOf(false) }
 var resetBusy by remember { mutableStateOf(false) }
 var resetMessage by remember { mutableStateOf("") }
 var showRecoveryOptions by remember { mutableStateOf(false) }
@@ -446,8 +447,21 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                 if (!signup) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = rememberMe,
+                                onCheckedChange = { rememberMe = it },
+                                colors = CheckboxDefaults.colors(checkedColor = blue)
+                            )
+                            Text(
+                                "Remember me",
+                                color = dark,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                         TextButton(
                             enabled = !resetBusy,
                             onClick = {
@@ -456,9 +470,10 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                                 screenContext.startActivity(
                                     Intent(screenContext, ForgotPasswordActivity::class.java)
                                 )
-                            }
+                            },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                         ) {
-                            Text("Forgot password?")
+                            Text("Forgot password?", color = blue)
                         }
                     }
                 }
@@ -627,78 +642,106 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text(
-                            text = if (signup) "Create account" else "Sign In",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(9.dp)
+                        ) {
+                            Text(
+                                text = if (signup) "Create account" else "Sign In",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            )
+                            Icon(Icons.Filled.ArrowForward, contentDescription = null)
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(14.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment =
-                        androidx.compose.ui.Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (signup) {
-                            "Already have an account?"
-                        } else {
-                            "New to Freelance Hub?"
-                        },
-                        color = dark,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-
-                    
-TextButton(
-    enabled = !openingSignup,
-    onClick = {
-        if (signup) {
-            signup = false
-            error = ""
-            busy = false
-        } else if (!openingSignup) {
-            openingSignup = true
-            scope.launch {
-                delay(2200)
-                signup = true
-                error = ""
-                busy = false
-                openingSignup = false
-            }
-        }
-    }
-) {
-    Row(
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        if (openingSignup) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(16.dp),
-                strokeWidth = 2.dp,
-                color = blue
-            )
-            Spacer(Modifier.width(8.dp))
-            Text("Opening account setup…", color = blue)
-        } else {
-            Text(
-                text = if (signup) "Sign in" else "Create a new account",
-                color = blue
-            )
-        }
-    }
-}
-
-
+                if (!signup) {
+                    Spacer(Modifier.height(18.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFDCE5F1))
+                        Text(
+                            "  OR  ",
+                            color = androidx.compose.ui.graphics.Color(0xFF71819A),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFDCE5F1))
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                            .clickable(enabled = !openingSignup) {
+                                if (!openingSignup) {
+                                    openingSignup = true
+                                    scope.launch {
+                                        delay(2200)
+                                        signup = true
+                                        error = ""
+                                        busy = false
+                                        openingSignup = false
+                                    }
+                                }
+                            },
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFF0F6FF),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            androidx.compose.ui.graphics.Color(0xFFD8E7FA)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color(0xFFDCEBFF),
+                                modifier = Modifier.size(42.dp)
+                            ) {
+                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = blue)
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "Create a new account",
+                                    color = navy,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                )
+                                Text(
+                                    "Join our global community",
+                                    color = dark,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            if (openingSignup) {
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = blue)
+                            } else {
+                                Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = blue)
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text("Already have an account?", color = dark, style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = {
+                            signup = false
+                            error = ""
+                            busy = false
+                        }) { Text("Sign in", color = blue) }
+                    }
                 }
-
-                HorizontalDivider(
-                    color = androidx.compose.ui.graphics.Color(0xFFE4EAF3)
-                )
 
                 Spacer(Modifier.height(12.dp))
 
