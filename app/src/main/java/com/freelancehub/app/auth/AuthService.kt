@@ -131,7 +131,7 @@ class AuthService(context: Context) {
     ) {
         executor.execute {
             callback(runCatching {
-                require(code.trim().matches(Regex("^[0-9]{6}$"))) { "Enter the 8-digit email verification code." }
+                require(code.trim().matches(Regex("^[0-9]{8}$"))) { "Enter the 8-digit email verification code." }
                 val json = request("POST", "/auth/v1/verify",
                     JSONObject().put("type", "signup").put("email", email.trim())
                         .put("token", code.trim()).toString())
