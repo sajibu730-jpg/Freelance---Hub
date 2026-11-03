@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/onboarding-design-match
   pull_request:
     branches:
       - main
