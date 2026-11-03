@@ -59,6 +59,7 @@ class MainActivity:ComponentActivity(){
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
     var loggedIn by remember{mutableStateOf(false)}
+    var showSignupWizard by remember { mutableStateOf(false) }
     var sessionChecking by remember{mutableStateOf(true)}
     LaunchedEffect(Unit) {
         auth.restoreSession { result ->
@@ -78,8 +79,23 @@ class MainActivity:ComponentActivity(){
         Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
             CircularProgressIndicator()
         }
+    } else if(!loggedIn && showSignupWizard){
+        SignupWizard(
+            auth = auth,
+            onComplete = { session ->
+                repo.initializeAccountRole(session.role)
+                val old = repo.profile()
+                repo.saveProfile(old.copy(email = session.email, name = session.name, role = session.role))
+                repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
+                loggedIn = true
+            },
+            onCancel = { showSignupWizard = false }
+        )
     } else if(!loggedIn){
-        LoginScreen(authConfigured=auth.isConfigured()){email,name,password,role,isSignup,setError->
+        LoginScreen(
+            authConfigured = auth.isConfigured(),
+            onOpenSignup = { showSignupWizard = true }
+        ) { email,name,password,role,isSignup,setError ->
             auth.authenticate(isSignup,name,email,password,role){result->
                 android.os.Handler(android.os.Looper.getMainLooper()).post{
                     result.onSuccess { session ->
@@ -102,6 +118,7 @@ class MainActivity:ComponentActivity(){
 @Composable
 fun LoginScreen(
     authConfigured: Boolean,
+    onOpenSignup: () -> Unit = {},
     onLogin: (
         String,
         String,
@@ -721,15 +738,8 @@ TextButton(
             signup = false
             error = ""
             busy = false
-        } else if (!openingSignup) {
-            openingSignup = true
-            scope.launch {
-                delay(2200)
-                signup = true
-                error = ""
-                busy = false
-                openingSignup = false
-            }
+        } else {
+            onOpenSignup()
         }
     }
 ) {
