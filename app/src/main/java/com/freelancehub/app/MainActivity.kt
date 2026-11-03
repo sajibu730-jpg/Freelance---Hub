@@ -853,7 +853,6 @@ TextButton(
             birthday = ""
             signupSession = null
             role = UserRole.FREELANCER
-            emailOtp = ""
             mobileOtp = ""
             mobile = ""
             country = ""
