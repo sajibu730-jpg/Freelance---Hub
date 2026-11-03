@@ -474,7 +474,6 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     1 -> {
                         Text("Create New Account", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Now, set up your account details.", color = Color(0xFF667895), style = MaterialTheme.typography.bodySmall)
-                        SignupStageProgress(1)
                         OutlinedTextField(email, { email = it }, label = { Text("Email Address") }, leadingIcon = { Icon(Icons.Filled.Email, null, tint = Color(0xFF0759B8)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(password, { password = it }, label = { Text("Password") }, leadingIcon = { Icon(Icons.Filled.Lock, null, tint = Color(0xFF0759B8)) }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(
