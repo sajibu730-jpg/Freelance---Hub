@@ -632,10 +632,20 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     enabled = valid && !busy,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(15.dp),
+                        .height(54.dp)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                listOf(
+                                    androidx.compose.ui.graphics.Color(0xFF1769D2),
+                                    androidx.compose.ui.graphics.Color(0xFF4169E1)
+                                )
+                            ),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50.dp)
+                        ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = blue
+                        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                        disabledContainerColor = androidx.compose.ui.graphics.Color(0xFF9CB7DE)
                     )
                 ) {
                     if (busy) {
