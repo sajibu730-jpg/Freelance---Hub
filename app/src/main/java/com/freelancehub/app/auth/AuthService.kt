@@ -210,7 +210,7 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 val target = email.trim()
-                require(target.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                     "Enter a valid email address before requesting a new code."
                 }
                 request(
