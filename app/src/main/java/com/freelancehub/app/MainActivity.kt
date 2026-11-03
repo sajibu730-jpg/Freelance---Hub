@@ -318,7 +318,7 @@ FreelanceHubReferenceHeader()
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Create your account",
+                        text = "Create New Account",
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy
                     )
@@ -326,7 +326,7 @@ FreelanceHubReferenceHeader()
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "Start your journey with Freelance Hub.",
+                        text = "Let’s get started! Fill in your personal information.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
                     )
