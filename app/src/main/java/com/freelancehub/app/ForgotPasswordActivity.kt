@@ -147,7 +147,7 @@ private fun ForgotPasswordScreen(
                     Text(
                         when (step) {
                             1 -> "Enter the email address or mobile number already registered to your account. We will send a one-time code."
-                            2 -> if (isPhone) "Enter the 6-digit SMS code sent to your registered mobile number." else "Enter the 8-digit email code sent to your registered email address."
+                            2 -> "Enter the 8-digit verification code sent to your registered mobile number or email address."
                             else -> "Changing your password is optional. You can set a new password now or skip and continue to your account."
                         },
                         color = Color(0xFF53627A),
@@ -310,7 +310,7 @@ private fun ForgotPasswordScreen(
                                             busy = false
                                             result.onSuccess {
                                                 step = 2
-                                                info = if (isPhone) "A 6-digit verification code has been requested by SMS." else "An 8-digit verification code has been requested by email. Check your inbox and spam folder."
+                                                info = "An 8-digit verification code has been requested. Check your messages."
                                             }.onFailure {
                                                 error = it.message ?: "Could not send the verification code."
                                             }
@@ -334,17 +334,17 @@ private fun ForgotPasswordScreen(
                         )
                         OutlinedTextField(
                             value = otp,
-                            onValueChange = { value -> otp = value.filter(Char::isDigit).take(if (isPhone) 6 else 8); error = "" },
+                            onValueChange = { value -> otp = value.filter(Char::isDigit).take(8); error = "" },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text(if (isPhone) "6-digit SMS code" else "8-digit email code") },
-                            placeholder = { Text(if (isPhone) "Enter 6 digits" else "Enter 8 digits") },
+                            label = { Text("8-digit verification code") },
+                            placeholder = { Text("Enter 8 digits") },
                             singleLine = true,
                             enabled = !busy,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                         Button(
                             onClick = {
-                                val expectedLength = if (isPhone) 6 else 8
+                                val expectedLength = 8
                                 if (!otp.matches(Regex("^[0-9]{$expectedLength}$"))) {
                                     error = "Enter the $expectedLength-digit verification code sent to your contact."
                                 } else {
