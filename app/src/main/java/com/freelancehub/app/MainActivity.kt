@@ -154,6 +154,13 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
+    var signupCountry by remember { mutableStateOf("United Arab Emirates") }
+    var signupCallingCode by remember { mutableStateOf("+971") }
+    var signupMobile by remember { mutableStateOf("") }
+    var signupGender by remember { mutableStateOf("") }
+    var signupBirthday by remember { mutableStateOf("") }
+    var countryMenuExpanded by remember { mutableStateOf(false) }
+    var genderMenuExpanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 var openingSignup by remember { mutableStateOf(false) }
@@ -336,6 +343,30 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                         )
                     }
 
+                    Spacer(Modifier.height(12.dp))
+                    Surface(modifier = Modifier.size(82.dp).align(androidx.compose.ui.Alignment.CenterHorizontally), shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFEAF3FF), border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFBFD7F5))) {
+                        Box(contentAlignment = androidx.compose.ui.Alignment.Center) { Icon(Icons.Filled.AddAPhoto, contentDescription = "Add profile photo", tint = blue, modifier = Modifier.size(28.dp)) }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    ExposedDropdownMenuBox(expanded = countryMenuExpanded, onExpandedChange = { countryMenuExpanded = !countryMenuExpanded }) {
+                        OutlinedTextField(value = signupCountry, onValueChange = {}, readOnly = true, label = { Text("Country") }, leadingIcon = { Icon(Icons.Filled.Public, contentDescription = null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countryMenuExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor(), shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                        ExposedDropdownMenu(expanded = countryMenuExpanded, onDismissRequest = { countryMenuExpanded = false }) {
+                            CountryCallingCodes.all.forEach { item -> DropdownMenuItem(text = { Text(item.first) }, onClick = { signupCountry = item.first; signupCallingCode = item.second; countryMenuExpanded = false }) }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        OutlinedTextField(value = signupCallingCode, onValueChange = {}, readOnly = true, label = { Text("Code") }, modifier = Modifier.width(96.dp), singleLine = true)
+                        OutlinedTextField(value = signupMobile, onValueChange = { signupMobile = it.filter { ch -> ch.isDigit() }.take(15) }, label = { Text("Mobile number") }, leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) }, modifier = Modifier.weight(1f), singleLine = true)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    ExposedDropdownMenuBox(expanded = genderMenuExpanded, onExpandedChange = { genderMenuExpanded = !genderMenuExpanded }) {
+                        OutlinedTextField(value = signupGender, onValueChange = {}, readOnly = true, label = { Text("Gender") }, leadingIcon = { Icon(Icons.Filled.PersonOutline, contentDescription = null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderMenuExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+                        ExposedDropdownMenu(expanded = genderMenuExpanded, onDismissRequest = { genderMenuExpanded = false }) { listOf("Male", "Female", "Prefer not to say").forEach { item -> DropdownMenuItem(text = { Text(item) }, onClick = { signupGender = item; genderMenuExpanded = false }) } }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(value = signupBirthday, onValueChange = { signupBirthday = it }, label = { Text("Birthday") }, placeholder = { Text("DD / MM / YYYY") }, leadingIcon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    Spacer(Modifier.height(14.dp))
                     Spacer(Modifier.height(14.dp))
                 } else {
                     Text(
