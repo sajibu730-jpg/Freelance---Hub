@@ -349,6 +349,67 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
 }
 
 
+
+@Composable
+private fun SignupStageProgress(step: Int) {
+    val activeStage = when (step) { 0 -> 0; 1 -> 1; else -> 2 }
+    val labels = listOf("Personal Info", "Account Details", "Verification")
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        labels.forEachIndexed { index, label ->
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(25.dp).background(
+                        if (index <= activeStage) Color(0xFF0868D8) else Color.White,
+                        RoundedCornerShape(50)
+                    ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("${index + 1}", color = if (index <= activeStage) Color.White else Color(0xFF7184A3), fontWeight = FontWeight.Bold)
+                }
+                Text(label, color = if (index == activeStage) Color(0xFF073A83) else Color(0xFF7184A3), style = MaterialTheme.typography.labelSmall, fontWeight = if (index == activeStage) FontWeight.Bold else FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SignupBrandHeader() {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(142.dp).background(
+            Brush.linearGradient(listOf(Color(0xFF06265F), Color(0xFF0757B8), Color(0xFF0788E8))),
+            RoundedCornerShape(22.dp)
+        ).padding(horizontal = 18.dp, vertical = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.align(Alignment.CenterStart),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(modifier = Modifier.size(48.dp).background(Color(0xFF11C5F4), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Text("F", color = Color(0xFF052A67), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Freelance Hub", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                Text("Your work. Your world. Your future.", color = Color(0xFFDCEBFF), style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        Surface(modifier = Modifier.align(Alignment.BottomCenter), color = Color(0xFF1768C7), shape = RoundedCornerShape(50)) {
+            Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Icon(Icons.Filled.Public, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                Text("GLOBAL FREELANCE MARKETPLACE", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SignupCountryPicker(
