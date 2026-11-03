@@ -106,7 +106,7 @@ class AuthService(context: Context) {
             callback(runCatching {
                 require(isConfigured()) { "Supabase configuration is incomplete." }
                 require(name.trim().length in 2..80) { "Enter your full name." }
-                require(email.trim().matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) { "Enter a valid email address." }
+                require(email.trim().matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) { "Enter a valid email address." }
                 require(password.length >= 8) { "Use at least 8 characters for your password." }
                 val metadata = JSONObject().apply {
                     put("display_name", name.trim())
@@ -155,7 +155,7 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 require(action == "send" || action == "verify") { "Invalid mobile verification action." }
-                require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) { "Enter the mobile number with its country code." }
+                require(phone.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) { "Enter the mobile number with its country code." }
                 if (action == "verify") require(code.orEmpty().matches(Regex("^[0-9]{8}$"))) { "Enter the 8-digit SMS code." }
                 val payload = JSONObject().put("action", action).put("phone", phone)
                 if (!code.isNullOrBlank()) payload.put("code", code.trim())
