@@ -295,7 +295,7 @@ FreelanceHubReferenceHeader()
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
             color = white,
             shadowElevation = 5.dp
