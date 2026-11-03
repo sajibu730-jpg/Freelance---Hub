@@ -88,6 +88,101 @@ class AuthService(context: Context) {
         }
     }
 
+    /**
+     * Starts signup without persisting an authenticated session. Supabase sends
+     * its configured email confirmation OTP; phone verification is a separate step.
+     */
+    fun beginSignup(
+        name: String,
+        email: String,
+        password: String,
+        role: UserRole,
+        country: String,
+        gender: String,
+        birthday: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Supabase configuration is incomplete." }
+                require(name.trim().length in 2..80) { "Enter your full name." }
+                require(email.trim().matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) { "Enter a valid email address." }
+                require(password.length >= 8) { "Use at least 8 characters for your password." }
+                val metadata = JSONObject().apply {
+                    put("display_name", name.trim())
+                    put("role", role.name)
+                    put("country", country.trim())
+                    put("gender", gender.trim())
+                    put("birthday", birthday.trim())
+                }
+                val payload = JSONObject().put("email", email.trim())
+                    .put("password", password).put("data", metadata)
+                request("POST", "/auth/v1/signup", payload.toString())
+                Unit
+            })
+        }
+    }
+
+    /** Verifies the email signup OTP but deliberately keeps its session in memory only. */
+    fun verifySignupEmail(
+        email: String,
+        code: String,
+        callback: (Result<AuthSession>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(code.trim().matches(Regex("^[0-9]{6}$"))) { "Enter the 6-digit email verification code." }
+                val json = request("POST", "/auth/v1/verify",
+                    JSONObject().put("type", "signup").put("email", email.trim())
+                        .put("token", code.trim()).toString())
+                val access = json.optString("access_token")
+                val refresh = json.optString("refresh_token")
+                val user = json.optJSONObject("user") ?: error("Email verification did not return an account.")
+                require(access.isNotBlank() && refresh.isNotBlank()) { "Email verified, but no secure session was returned. Please sign in." }
+                makeSession(access, refresh, user, UserRole.FREELANCER)
+            })
+        }
+    }
+
+    /** Sends or verifies the 8-digit Twilio signup OTP using the email-verified bearer token. */
+    fun signupMobileVerification(
+        session: AuthSession,
+        action: String,
+        phone: String,
+        code: String? = null,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(action == "send" || action == "verify") { "Invalid mobile verification action." }
+                require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) { "Enter the mobile number with its country code." }
+                if (action == "verify") require(code.orEmpty().matches(Regex("^[0-9]{8}$"))) { "Enter the 8-digit SMS code." }
+                val payload = JSONObject().put("action", action).put("phone", phone)
+                if (!code.isNullOrBlank()) payload.put("code", code.trim())
+                val connection = URL(config.baseUrl.trim().trimEnd('/') + "/functions/v1/signup-mobile-verification")
+                    .openConnection() as HttpURLConnection
+                try {
+                    connection.requestMethod = "POST"
+                    connection.connectTimeout = 15000
+                    connection.readTimeout = 25000
+                    connection.setRequestProperty("Accept", "application/json")
+                    connection.setRequestProperty("apikey", config.anonKey)
+                    connection.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                    connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    connection.doOutput = true
+                    connection.outputStream.use { it.write(payload.toString().toByteArray(StandardCharsets.UTF_8)) }
+                    val status = connection.responseCode
+                    val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                    val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    val result = if (body.isBlank()) JSONObject() else JSONObject(body)
+                    if (status !in 200..299) error(result.optString("error", "Mobile verification request failed."))
+                    if (action == "verify") tokenStore.saveSession(session.accessToken, session.refreshToken)
+                    Unit
+                } finally { connection.disconnect() }
+            })
+        }
+    }
+
     fun refresh(callback: (Result<AuthSession>) -> Unit) {
         executor.execute {
             callback(runCatching { refreshBlocking() })
