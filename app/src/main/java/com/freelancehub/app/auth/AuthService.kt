@@ -104,7 +104,7 @@ class AuthService(context: Context) {
             callback(runCatching {
                 require(isConfigured()) { "Supabase configuration is incomplete." }
                 require(name.trim().length in 2..80) { "Enter your full name." }
-                require(email.trim().matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                require(email.trim().matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                     "Enter a valid email address."
                 }
                 require(password.length >= 8) { "Use at least 8 characters for your password." }
@@ -133,7 +133,7 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 val target = email.trim()
-                require(target.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                     "Enter the email used during signup."
                 }
                 require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
@@ -168,7 +168,7 @@ class AuthService(context: Context) {
     fun sendSignupMobileOtp(phone: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
-                require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                require(phone.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid mobile number with country code."
                 }
                 signupMobileRequest("send", phone)
@@ -181,7 +181,7 @@ class AuthService(context: Context) {
     fun verifySignupMobileOtp(phone: String, otp: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
-                require(phone.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))) {
+                require(phone.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid mobile number with country code."
                 }
                 require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
