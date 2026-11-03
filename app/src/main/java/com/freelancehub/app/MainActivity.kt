@@ -79,7 +79,13 @@ class MainActivity:ComponentActivity(){
             CircularProgressIndicator()
         }
     } else if(!loggedIn){
-        LoginScreen(authConfigured=auth.isConfigured()){email,name,password,role,isSignup,setError->
+        LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
+            val old=repo.profile()
+            repo.initializeAccountRole(session.role)
+            repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
+            repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
+            loggedIn=true
+        }){email,name,password,role,isSignup,setError->
             auth.authenticate(isSignup,name,email,password,role){result->
                 android.os.Handler(android.os.Looper.getMainLooper()).post{
                     result.onSuccess { session ->
@@ -102,6 +108,8 @@ class MainActivity:ComponentActivity(){
 @Composable
 fun LoginScreen(
     authConfigured: Boolean,
+    authService: AuthService,
+    onSignupComplete: (com.freelancehub.app.auth.AuthSession) -> Unit,
     onLogin: (
         String,
         String,
@@ -112,6 +120,14 @@ fun LoginScreen(
     ) -> Unit
 ) {
     var signup by remember { mutableStateOf(false) }
+    var signupStep by remember { mutableIntStateOf(0) }
+    var mobile by remember { mutableStateOf("") }
+    var emailOtp by remember { mutableStateOf("") }
+    var mobileOtp by remember { mutableStateOf("") }
+    var country by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("") }
+    var birthday by remember { mutableStateOf("") }
+    var signupSession by remember { mutableStateOf<com.freelancehub.app.auth.AuthSession?>(null) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -502,6 +518,40 @@ Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
 
+                if (signup && signupStep == 0) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = mobile,
+                        onValueChange = { mobile = it.filter { ch -> ch.isDigit() || ch == '+' }.take(16) },
+                        label = { Text("Mobile number with country code (e.g. +9715XXXXXXXX)") },
+                        leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
+                        singleLine = true, modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (signup && signupStep == 1) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(value = emailOtp, onValueChange = { emailOtp = it.filter(Char::isDigit).take(8) },
+                        label = { Text("8-digit email verification code") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth())
+                }
+                if (signup && signupStep == 3) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(value = mobileOtp, onValueChange = { mobileOtp = it.filter(Char::isDigit).take(8) },
+                        label = { Text("8-digit SMS verification code") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth())
+                }
+                if (signup && signupStep == 4) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(value = country, onValueChange = { country = it },
+                        label = { Text("Country") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = gender, onValueChange = { gender = it },
+                        label = { Text("Gender") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = birthday, onValueChange = { birthday = it },
+                        label = { Text("Birthday (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+
                 Spacer(Modifier.height(6.dp))
 
                 if (!signup) {
@@ -659,20 +709,66 @@ Surface(
                         if (valid && !busy) {
                             busy = true
                             error = ""
-
-                            onLogin(
-                                email.trim(),
-                                name.trim(),
-                                pass,
-                                role,
-                                signup
-                            ) { message ->
-                                busy = false
-                                error = message
+                            if (!signup) {
+                                onLogin(email.trim(), name.trim(), pass, role, false) { message ->
+                                    busy = false
+                                    error = message
+                                }
+                            } else {
+                                val main = android.os.Handler(android.os.Looper.getMainLooper())
+                                when (signupStep) {
+                                    0 -> authService.createSignupAccount(name, email, pass, role) { result ->
+                                        main.post {
+                                            busy = false
+                                            result.onSuccess { signupStep = 1 }
+                                                .onFailure { error = it.message ?: "Could not create account." }
+                                        }
+                                    }
+                                    1 -> authService.verifySignupEmail(email, emailOtp) { result ->
+                                        main.post {
+                                            busy = false
+                                            result.onSuccess { session ->
+                                                signupSession = session
+                                                signupStep = 2
+                                            }.onFailure { error = it.message ?: "Email verification failed." }
+                                        }
+                                    }
+                                    2 -> authService.sendSignupMobileOtp(mobile) { result ->
+                                        main.post {
+                                            busy = false
+                                            result.onSuccess { signupStep = 3 }
+                                                .onFailure { error = it.message ?: "Could not send SMS code." }
+                                        }
+                                    }
+                                    3 -> authService.verifySignupMobileOtp(mobile, mobileOtp) { result ->
+                                        main.post {
+                                            busy = false
+                                            result.onSuccess { signupStep = 4 }
+                                                .onFailure { error = it.message ?: "Mobile verification failed." }
+                                        }
+                                    }
+                                    4 -> authService.saveSignupProfile(name, country, gender, birthday) { result ->
+                                        main.post {
+                                            busy = false
+                                            result.onSuccess {
+                                                val session = signupSession
+                                                if (session != null) onSignupComplete(session)
+                                                else error = "Profile saved, but the login session is missing. Please sign in."
+                                            }.onFailure { error = it.message ?: "Could not save profile." }
+                                        }
+                                    }
+                                }
                             }
                         }
                     },
-                    enabled = valid && !busy,
+                    enabled = valid && !busy && (!signup || when (signupStep) {
+                        0 -> mobile.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))
+                        1 -> emailOtp.length == 8
+                        2 -> mobile.isNotBlank()
+                        3 -> mobileOtp.length == 8
+                        4 -> country.isNotBlank() && gender.isNotBlank()
+                        else -> false
+                    }),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
@@ -689,7 +785,13 @@ Surface(
                         )
                     } else {
                         Text(
-                            text = if (signup) "Create account" else "Sign In",
+                            text = if (!signup) "Sign In" else when (signupStep) {
+                                0 -> "Create account & send email code"
+                                1 -> "Verify email code"
+                                2 -> "Send mobile SMS code"
+                                3 -> "Verify mobile code"
+                                else -> "Save profile & finish signup"
+                            },
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
