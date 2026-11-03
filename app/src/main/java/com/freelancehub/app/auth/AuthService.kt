@@ -123,6 +123,23 @@ class AuthService(context: Context) {
         }
     }
 
+    /** Requests another signup confirmation code without creating a second account. */
+    fun resendSignupEmail(email: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(email.trim().matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                    "Enter a valid email address before requesting another code."
+                }
+                request(
+                    "POST",
+                    "/auth/v1/resend",
+                    JSONObject().put("type", "signup").put("email", email.trim()).toString()
+                )
+                Unit
+            })
+        }
+    }
+
     /** Verifies the email signup OTP but deliberately keeps its session in memory only. */
     fun verifySignupEmail(
         email: String,
