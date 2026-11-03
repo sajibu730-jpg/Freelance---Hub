@@ -176,11 +176,16 @@ class AuthService(context: Context) {
                     val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
                     val result = if (body.isBlank()) JSONObject() else JSONObject(body)
                     if (status !in 200..299) error(result.optString("error", "Mobile verification request failed."))
-                    if (action == "verify") tokenStore.saveSession(session.accessToken, session.refreshToken)
+                    // Keep the verified signup session in memory until the final profile setup step.
                     Unit
                 } finally { connection.disconnect() }
             })
         }
+    }
+
+    /** Persist signup credentials only after every onboarding step has completed. */
+    fun completeSignup(session: AuthSession) {
+        tokenStore.saveSession(session.accessToken, session.refreshToken)
     }
 
     fun refresh(callback: (Result<AuthSession>) -> Unit) {
