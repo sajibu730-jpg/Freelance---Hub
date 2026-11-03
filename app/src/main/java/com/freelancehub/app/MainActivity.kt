@@ -227,13 +227,13 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 38.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
             color = white,
             shadowElevation = 5.dp
         ) {
             Column(
-                modifier = Modifier.padding(22.dp)
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 22.dp)
             ) {
                 if (signup) {
                     TextButton(
