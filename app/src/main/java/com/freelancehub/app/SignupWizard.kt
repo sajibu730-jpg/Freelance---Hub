@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import java.util.Locale
+import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.freelancehub.app.auth.AuthService
 import com.freelancehub.app.auth.AuthSession
 import com.freelancehub.app.data.UserRole
@@ -38,6 +41,9 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
     var step by remember { mutableIntStateOf(0) }
     var name by remember { mutableStateOf("") }
     var country by remember { mutableStateOf("United Arab Emirates") }
+    var countryIso by remember { mutableStateOf("AE") }
+    var phoneRegion by remember { mutableStateOf("AE") }
+    var phoneNational by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("Prefer not to say") }
     var birthday by remember { mutableStateOf("") }
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
@@ -105,7 +111,11 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     0 -> {
                         Text("Personal information", color = navy, style = MaterialTheme.typography.headlineSmall)
                         OutlinedTextField(name, { name = it }, label = { Text("Full name") }, leadingIcon = { Icon(Icons.Filled.Person, null) }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(country, { country = it }, label = { Text("Country") }, leadingIcon = { Icon(Icons.Filled.Public, null) }, modifier = Modifier.fillMaxWidth())
+                        SignupCountryPicker(
+                            label = "Country",
+                            selectedRegion = countryIso,
+                            onSelected = { region, display -> countryIso = region; country = display }
+                        )
                         var genderOpen by remember { mutableStateOf(false) }
                         ExposedDropdownMenuBox(genderOpen, { genderOpen = it }) {
                             OutlinedTextField(gender, {}, readOnly = true, label = { Text("Gender") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(genderOpen) })
@@ -123,7 +133,28 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     1 -> {
                         Text("Account details", color = navy, style = MaterialTheme.typography.headlineSmall)
                         OutlinedTextField(email, { email = it }, label = { Text("Email address") }, leadingIcon = { Icon(Icons.Filled.Email, null) }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(phone, { phone = it }, label = { Text("Mobile with country code, e.g. +971...") }, leadingIcon = { Icon(Icons.Filled.Phone, null) }, modifier = Modifier.fillMaxWidth())
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            SignupCountryPicker(
+                                label = "Code",
+                                selectedRegion = phoneRegion,
+                                onSelected = { region, _ -> phoneRegion = region },
+                                modifier = Modifier.weight(0.42f),
+                                showDialCode = true
+                            )
+                            OutlinedTextField(
+                                value = phoneNational,
+                                onValueChange = { phoneNational = it.filter(Char::isDigit).take(14) },
+                                label = { Text("Mobile number") },
+                                leadingIcon = { Icon(Icons.Filled.Phone, null) },
+                                modifier = Modifier.weight(0.58f),
+                                singleLine = true
+                            )
+                        }
+                        Text("Your complete number: +${PhoneNumberUtil.getInstance().getCountryCodeForRegion(phoneRegion)} $phoneNational", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(password, { password = it }, label = { Text("Password (8+ characters)") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(confirm, { confirm = it }, label = { Text("Confirm password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
                         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(accepted, { accepted = it }); Text("I agree to the Rules & Guidelines") }
@@ -135,9 +166,9 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     }
                     3 -> {
                         Text("Verify your mobile", color = navy, style = MaterialTheme.typography.headlineSmall)
-                        Text("Enter the 8-digit SMS code sent to $phone.")
+                        Text("Enter the 8-digit SMS code sent to ${signupPhone(phoneRegion, phoneNational)}.")
                         OutlinedTextField(mobileCode, { mobileCode = it.filter(Char::isDigit).take(8) }, label = { Text("8-digit SMS code") }, modifier = Modifier.fillMaxWidth())
-                        TextButton(enabled = !busy, onClick = { session?.let { s -> busy = true; auth.signupMobileVerification(s, "send", phone.trim()) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { message = "A new code was requested." }.onFailure { error = it.message ?: "Could not resend code." } } } } }) { Text("Resend code") }
+                        TextButton(enabled = !busy, onClick = { session?.let { s -> busy = true; auth.signupMobileVerification(s, "send", signupPhone(phoneRegion, phoneNational)) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { message = "A new code was requested." }.onFailure { error = it.message ?: "Could not resend code." } } } } }) { Text("Resend code") }
                     }
                     4 -> {
                         Text("Profile photo & cover photo", color = navy, style = MaterialTheme.typography.headlineSmall)
@@ -168,7 +199,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     error = ""; message = ""
                     when (step) {
                         0 -> if (name.trim().length < 2 || country.isBlank() || !birthday.matches(Regex("""^\d{4}-\d{2}-\d{2}$"""))) error = "Enter your name, country and birthday as YYYY-MM-DD." else step = 1
-                        1 -> if (!Validation.email(email) || !phone.matches(Regex("""^\+[1-9][0-9]{7,14}$""")) || password.length < 8 || password != confirm || !accepted) error = "Check email, mobile number, matching passwords and Rules acceptance." else {
+                        1 -> if (!Validation.email(email) || phoneNational.length !in 4..14 || password.length < 8 || password != confirm || !accepted) error = "Check email, mobile number, matching passwords and Rules acceptance." else {
                             busy = true
                             auth.beginSignup(name, email, password, role, country, gender, birthday) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 2; message = "Check your inbox for the 8-digit code." }.onFailure { error = it.message ?: "Could not create account." } } }
                         }
@@ -181,7 +212,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         }
                         3 -> if (mobileCode.length != 8) error = "Enter the 8-digit SMS code." else session?.let { s ->
                             busy = true
-                            auth.signupMobileVerification(s, "verify", phone.trim(), mobileCode) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 4; message = "Mobile number verified." }.onFailure { error = it.message ?: "Mobile verification failed." } } }
+                            auth.signupMobileVerification(s, "verify", signupPhone(phoneRegion, phoneNational), mobileCode) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 4; message = "Mobile number verified." }.onFailure { error = it.message ?: "Mobile verification failed." } } }
                         } ?: run { error = "Signup session expired. Please start again." }
                         4 -> session?.let { s ->
                             busy = true
@@ -215,4 +246,80 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
             }
         }
     }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SignupCountryPicker(
+    label: String,
+    selectedRegion: String,
+    onSelected: (String, String) -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    showDialCode: Boolean = false
+) {
+    val phoneUtil = remember { PhoneNumberUtil.getInstance() }
+    val locale = remember { Locale.getDefault() }
+    val regions = remember {
+        phoneUtil.supportedRegions
+            .mapNotNull { region ->
+                val display = Locale("", region).getDisplayCountry(locale)
+                if (display.isBlank()) null else Triple(region, display, phoneUtil.getCountryCodeForRegion(region))
+            }
+            .sortedBy { it.second.lowercase(locale) }
+    }
+    var expanded by remember { mutableStateOf(false) }
+    var search by remember { mutableStateOf("") }
+    val selected = regions.firstOrNull { it.first == selectedRegion }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it; if (!it) search = "" },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = if (showDialCode) selected?.let { "+${it.third} (${it.first})" } ?: "+971 (AE)" else selected?.second ?: "Choose country",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
+            singleLine = true
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false; search = "" },
+            modifier = Modifier.heightIn(max = 340.dp)
+        ) {
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                label = { Text("Search country or code") },
+                leadingIcon = { Icon(Icons.Filled.Search, null) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                singleLine = true
+            )
+            regions.filter {
+                it.second.contains(search, ignoreCase = true) ||
+                    it.first.contains(search, ignoreCase = true) ||
+                    "+${it.third}".contains(search.trim())
+            }.take(80).forEach { item ->
+                DropdownMenuItem(
+                    text = { Text(if (showDialCode) "${item.second}  (+${item.third})" else item.second) },
+                    onClick = {
+                        onSelected(item.first, item.second)
+                        expanded = false
+                        search = ""
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun signupPhone(region: String, nationalNumber: String): String {
+    val callingCode = PhoneNumberUtil.getInstance().getCountryCodeForRegion(region)
+    require(callingCode > 0) { "Choose a valid mobile country code." }
+    val digits = nationalNumber.filter(Char::isDigit)
+    require(digits.length in 4..14) { "Enter your mobile number." }
+    return "+$callingCode$digits"
 }
