@@ -402,6 +402,20 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Spacer(Modifier.height(12.dp))
                 }
 
+                if (signup && signupStep == 1) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().height(82.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFF0F6FF),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFD8E7FA))
+                    ) {
+                        Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Icon(Icons.Filled.LaptopChromebook, contentDescription = null, tint = blue, modifier = Modifier.size(52.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
                 if (!signup || signupStep == 1) {
                 // EMAIL FIELD
                 OutlinedTextField(
