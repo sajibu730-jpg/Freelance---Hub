@@ -386,7 +386,6 @@ val referenceFieldColors = OutlinedTextFieldDefaults.colors(
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(value = signupBirthday, onValueChange = { signupBirthday = it }, label = { Text("Birthday") }, placeholder = { Text("DD / MM / YYYY") }, leadingIcon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) }, modifier = Modifier.fillMaxWidth(), singleLine = true, colors = referenceFieldColors)
                     Spacer(Modifier.height(14.dp))
-                    Spacer(Modifier.height(14.dp))
                     } else if (signupStep == 2 || signupStep == 3) {
                         val digits = if (signupStep == 2) emailOtpDigits else mobileOtpDigits
                         Text(if (signupStep == 2) email.trim() else "$signupCallingCode$signupMobile", color = dark, style = MaterialTheme.typography.bodyMedium)
