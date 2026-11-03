@@ -358,6 +358,15 @@ FreelanceHubReferenceHeader()
 
                     Spacer(Modifier.height(20.dp))
 
+                    Text(
+                        text = "PERSONAL INFORMATION",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = androidx.compose.ui.graphics.Color(0xFF3157D5),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
@@ -377,6 +386,17 @@ FreelanceHubReferenceHeader()
                     )
 
                     Spacer(Modifier.height(14.dp))
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        text = "ACCOUNT TYPE",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = androidx.compose.ui.graphics.Color(0xFF3157D5),
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(6.dp))
 
                     Text(
                         text = "I want to join as",
