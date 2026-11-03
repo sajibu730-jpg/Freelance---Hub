@@ -326,6 +326,9 @@ Surface(
                             authService.discardPendingSignupSession()
                             signup = false
                             signupStep = 0
+                            name = ""
+                            email = ""
+                            pass = ""
                             mobile = ""
                             emailOtp = ""
                             mobileOtp = ""
@@ -333,6 +336,7 @@ Surface(
                             gender = ""
                             birthday = ""
                             signupSession = null
+                            role = UserRole.FREELANCER
                             error = ""
                             busy = false
                         }
@@ -838,6 +842,17 @@ TextButton(
             authService.discardPendingSignupSession()
             signup = false
             signupStep = 0
+            name = ""
+            email = ""
+            pass = ""
+            mobile = ""
+            emailOtp = ""
+            mobileOtp = ""
+            country = ""
+            gender = ""
+            birthday = ""
+            signupSession = null
+            role = UserRole.FREELANCER
             emailOtp = ""
             mobileOtp = ""
             mobile = ""
