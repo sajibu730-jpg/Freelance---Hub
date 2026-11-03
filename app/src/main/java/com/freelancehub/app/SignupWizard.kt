@@ -463,21 +463,24 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     1 -> {
                         Text("Create New Account", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Now, set up your account details.", color = Color(0xFF667895), style = MaterialTheme.typography.bodySmall)
-                        OutlinedTextField(email, { email = it }, label = { Text("Email address") }, leadingIcon = { Icon(Icons.Filled.Email, null) }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(password, { password = it }, label = { Text("Password (8+ characters)") }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth())
+                        SignupStageProgress(1)
+                        OutlinedTextField(email, { email = it }, label = { Text("Email Address") }, leadingIcon = { Icon(Icons.Filled.Email, null, tint = Color(0xFF0759B8)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(password, { password = it }, label = { Text("Password") }, leadingIcon = { Icon(Icons.Filled.Lock, null, tint = Color(0xFF0759B8)) }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) } }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(
                             confirm,
                             { confirm = it },
-                            label = { Text("Confirm password") },
+                            label = { Text("Confirm Password") },
+                            leadingIcon = { Icon(Icons.Filled.Lock, null, tint = Color(0xFF0759B8)) },
                             visualTransformation = if (confirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
                                 IconButton(onClick = { confirmVisible = !confirmVisible }) {
                                     Icon(if (confirmVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(accepted, { accepted = it }); Text("I agree to the Rules & Guidelines") }
+                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(accepted, { accepted = it }); Text("I agree to the Rules & Guidelines", color = navy, fontWeight = FontWeight.SemiBold) }
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = Color(0xFFF0F7FF),
@@ -486,9 +489,38 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                             Column(
                                 modifier = Modifier.padding(vertical = 12.dp, horizontal = 14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                verticalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
-                                Text("💻", style = MaterialTheme.typography.displaySmall)
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFDCEEFF)) {
+                                            Icon(Icons.Filled.Public, null, tint = Color(0xFF0875D1), modifier = Modifier.padding(9.dp).size(22.dp))
+                                        }
+                                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFDCEEFF)) {
+                                            Icon(Icons.Filled.Email, null, tint = Color(0xFF0875D1), modifier = Modifier.padding(9.dp).size(22.dp))
+                                        }
+                                    }
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Box(
+                                            modifier = Modifier.width(112.dp).height(66.dp)
+                                                .background(Color(0xFF092D67), RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("F", color = Color(0xFF20C9F5), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Black)
+                                        }
+                                        Box(
+                                            modifier = Modifier.width(132.dp).height(7.dp)
+                                                .background(Color(0xFF8DBCEB), RoundedCornerShape(50))
+                                        )
+                                    }
+                                }
                                 Text("Work Globally, Grow Freely", color = navy, fontWeight = FontWeight.Bold)
                                 Text("Your skills. Our platform. A better future.", color = Color(0xFF667895), style = MaterialTheme.typography.labelSmall)
                             }
