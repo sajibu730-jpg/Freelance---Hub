@@ -414,9 +414,9 @@ class AuthService(context: Context) {
                 require(currentEmail.trim().contains("@") && newEmail.trim().contains("@")) {
                     "A valid current and new email address are required."
                 }
-                require(currentEmailOtp.trim().matches(Regex("^[0-9]{6,8}$")) &&
-                    newEmailOtp.trim().matches(Regex("^[0-9]{6,8}$"))) {
-                    "Enter both verification codes from your email messages."
+                require(currentEmailOtp.trim().matches(Regex("^[0-9]{8}$")) &&
+                    newEmailOtp.trim().matches(Regex("^[0-9]{8}$"))) {
+                    "Enter both 8-digit verification codes from your email messages."
                 }
 
                 val currentVerification = request(
@@ -471,7 +471,7 @@ class AuthService(context: Context) {
                 require(type == "email_change" || type == "phone_change") {
                     "Unsupported verification type."
                 }
-                val expectedLength = if (type == "phone_change") 8 else 6
+                val expectedLength = 8
                 require(otp.trim().matches(Regex("^[0-9]{$expectedLength}$"))) {
                     "Enter the $expectedLength-digit verification code from your message."
                 }
