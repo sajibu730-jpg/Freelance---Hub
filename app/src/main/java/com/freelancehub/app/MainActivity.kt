@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -385,7 +386,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                                 Box(
                                     modifier = Modifier.weight(1f).height(48.dp)
                                         .background(androidx.compose.ui.graphics.Color(0xFFF1F6FF), androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
-                                        .then(Modifier)
+                                        .border(1.dp, androidx.compose.ui.graphics.Color(0xFFBFD7F5), androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
                                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
                                         .background(androidx.compose.ui.graphics.Color.Transparent)
                                         .padding(horizontal = 2.dp),
