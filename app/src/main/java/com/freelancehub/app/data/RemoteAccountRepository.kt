@@ -224,8 +224,7 @@ class RemoteAccountRepository(
         displayName: String,
         country: String,
         gender: String,
-        birthday: String,
-        role: UserRole
+        birthday: String
     ): Unit {
         require(Validation.text(displayName, 2, 120)) { "Enter your full name." }
         require(country.isNotBlank()) { "Choose your country." }
@@ -250,7 +249,6 @@ class RemoteAccountRepository(
             .put("country", country.trim())
             .put("gender", gender)
             .put("birthday", birthday)
-            .put("capabilities", role.name)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val existing = JSONArray(String(
             client.readJsonResponse(client.openGet("/rest/v1/profiles?id=eq.$userId&select=id", token)),
