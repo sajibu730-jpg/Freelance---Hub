@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -289,7 +290,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        repeat(3) { index ->
+                        repeat(5) { index ->
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
@@ -381,23 +382,57 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                         Spacer(Modifier.height(22.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                             repeat(8) { index ->
-                                OutlinedTextField(value = digits[index], onValueChange = { value -> digits[index] = value.filter { it.isDigit() }.take(1) }, modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center), shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                                Box(
+                                    modifier = Modifier.weight(1f).height(48.dp)
+                                        .background(androidx.compose.ui.graphics.Color(0xFFF1F6FF), androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                                        .then(Modifier)
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                                        .background(androidx.compose.ui.graphics.Color.Transparent)
+                                        .padding(horizontal = 2.dp),
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) {
+                                    BasicTextField(
+                                        value = digits[index],
+                                        onValueChange = { value -> digits[index] = value.filter { it.isDigit() }.take(1) },
+                                        singleLine = true,
+                                        textStyle = MaterialTheme.typography.titleMedium.copy(color = navy, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        decorationBox = { innerTextField ->
+                                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) { innerTextField() }
+                                        }
+                                    )
+                                }
                             }
                         }
                         Spacer(Modifier.height(18.dp))
                         TextButton(onClick = { if (signupStep == 2) emailOtpDigits.indices.forEach { emailOtpDigits[it] = "" } else mobileOtpDigits.indices.forEach { mobileOtpDigits[it] = "" } }) { Text("Resend Code", color = blue) }
                     } else if (signupStep == 4) {
-                        Surface(modifier = Modifier.fillMaxWidth().height(112.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = androidx.compose.ui.graphics.Color(0xFFEAF3FF), border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFBFD7F5))) {
-                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, tint = blue, modifier = Modifier.size(34.dp))
-                                    Text("Add Cover Photo", color = blue, style = MaterialTheme.typography.labelLarge)
+                        Box(Modifier.fillMaxWidth().height(178.dp)) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().height(132.dp).align(androidx.compose.ui.Alignment.TopCenter),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                                color = androidx.compose.ui.graphics.Color(0xFFEAF3FF),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFBFD7F5))
+                            ) {
+                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                        Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, tint = blue, modifier = Modifier.size(30.dp))
+                                        Text("Add Cover Photo", color = blue, style = MaterialTheme.typography.labelLarge)
+                                    }
                                 }
                             }
-                        }
-                        Spacer(Modifier.height(18.dp))
-                        Surface(modifier = Modifier.size(104.dp).align(androidx.compose.ui.Alignment.CenterHorizontally), shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFEAF3FF), border = androidx.compose.foundation.BorderStroke(2.dp, androidx.compose.ui.graphics.Color(0xFF8AB8EF))) {
-                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) { Icon(Icons.Filled.AddAPhoto, contentDescription = null, tint = blue, modifier = Modifier.size(34.dp)) }
+                            Surface(
+                                modifier = Modifier.size(94.dp).align(androidx.compose.ui.Alignment.BottomCenter),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                border = androidx.compose.foundation.BorderStroke(3.dp, white),
+                                shadowElevation = 4.dp
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(3.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Color(0xFFEAF3FF)),
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) { Icon(Icons.Filled.AddAPhoto, contentDescription = null, tint = blue, modifier = Modifier.size(30.dp)) }
+                            }
                         }
                     } // end signup content steps
                 } else {
