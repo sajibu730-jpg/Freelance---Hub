@@ -151,6 +151,8 @@ fun LoginScreen(
 ) {
     var signup by remember { mutableStateOf(false) }
     var signupStep by remember { mutableIntStateOf(0) }
+    val emailOtpDigits = remember { mutableStateListOf("", "", "", "", "", "", "", "") }
+    val mobileOtpDigits = remember { mutableStateListOf("", "", "", "", "", "", "", "") }
     var confirmPassword by remember { mutableStateOf("") }
     var acceptedGuidelines by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -260,7 +262,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = if (signupStep == 0) "Personal Information" else "Account Details",
+                        text = when (signupStep) { 0 -> "Personal Information"; 1 -> "Account Details"; 2 -> "Verify Your Email"; 3 -> "Verify Your Mobile"; else -> "Complete Your Profile" },
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy
                     )
@@ -268,7 +270,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = if (signupStep == 0) "Tell us a little about yourself." else "Set up your sign-in details.",
+                        text = when (signupStep) { 0 -> "Tell us a little about yourself."; 1 -> "Set up your sign-in details."; 2 -> "Enter the 8-digit code sent to your email."; 3 -> "Enter the 8-digit code sent to your mobile."; else -> "Add your profile and cover photos." },
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
                     )
@@ -276,7 +278,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Spacer(Modifier.height(18.dp))
 
                     Text(
-                        text = if (signupStep == 0) "ACCOUNT SETUP  •  STEP 1" else "ACCOUNT SETUP  •  STEP 2",
+                        text = when (signupStep) { 0 -> "ACCOUNT SETUP  •  STEP 1"; 1 -> "ACCOUNT SETUP  •  STEP 2"; 2 -> "EMAIL VERIFICATION"; 3 -> "MOBILE VERIFICATION"; else -> "PROFILE SETUP" },
                         style = MaterialTheme.typography.labelMedium,
                         color = blue
                     )
@@ -373,7 +375,31 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     OutlinedTextField(value = signupBirthday, onValueChange = { signupBirthday = it }, label = { Text("Birthday") }, placeholder = { Text("DD / MM / YYYY") }, leadingIcon = { Icon(Icons.Filled.CalendarToday, contentDescription = null) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Spacer(Modifier.height(14.dp))
                     Spacer(Modifier.height(14.dp))
-                    } // end Personal Information step
+                    } else if (signupStep == 2 || signupStep == 3) {
+                        val digits = if (signupStep == 2) emailOtpDigits else mobileOtpDigits
+                        Text(if (signupStep == 2) email.trim() else "$signupCallingCode$signupMobile", color = dark, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(22.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            repeat(8) { index ->
+                                OutlinedTextField(value = digits[index], onValueChange = { value -> digits[index] = value.filter { it.isDigit() }.take(1) }, modifier = Modifier.weight(1f), singleLine = true, textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center), shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        TextButton(onClick = { if (signupStep == 2) emailOtpDigits.indices.forEach { emailOtpDigits[it] = "" } else mobileOtpDigits.indices.forEach { mobileOtpDigits[it] = "" } }) { Text("Resend Code", color = blue) }
+                    } else if (signupStep == 4) {
+                        Surface(modifier = Modifier.fillMaxWidth().height(112.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = androidx.compose.ui.graphics.Color(0xFFEAF3FF), border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFBFD7F5))) {
+                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                    Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, tint = blue, modifier = Modifier.size(34.dp))
+                                    Text("Add Cover Photo", color = blue, style = MaterialTheme.typography.labelLarge)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Surface(modifier = Modifier.size(104.dp).align(androidx.compose.ui.Alignment.CenterHorizontally), shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFEAF3FF), border = androidx.compose.foundation.BorderStroke(2.dp, androidx.compose.ui.graphics.Color(0xFF8AB8EF))) {
+                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) { Icon(Icons.Filled.AddAPhoto, contentDescription = null, tint = blue, modifier = Modifier.size(34.dp)) }
+                        }
+                    } // end signup content steps
                 } else {
                     Text(
                         text = "Welcome Back",
@@ -697,7 +723,20 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                                 error = ""
                                 signupStep = 1
                             }
-                        } else if (valid && !busy && (!signup || (confirmPassword == pass && acceptedGuidelines))) {
+                        } else if (signup && signupStep == 1) {
+                            if (!Validation.email(email) || !Validation.password(pass)) error = "Please enter a valid email and password."
+                            else if (confirmPassword != pass) error = "Passwords do not match."
+                            else if (!acceptedGuidelines) error = "Please accept the Rules & Guidelines."
+                            else { error = ""; signupStep = 2 }
+                        } else if (signup && signupStep == 2) {
+                            if (emailOtpDigits.any { it.isBlank() }) error = "Enter all 8 email code digits."
+                            else { error = ""; signupStep = 3 }
+                        } else if (signup && signupStep == 3) {
+                            if (mobileOtpDigits.any { it.isBlank() }) error = "Enter all 8 mobile code digits."
+                            else { error = ""; signupStep = 4 }
+                        } else if (signup && signupStep == 4) {
+                            error = "Photo selection will be connected after the design stage."
+                        } else if (valid && !busy) {
                             busy = true
                             error = ""
                             onLogin(email.trim(), name.trim(), pass, role, signup) { message ->
@@ -710,7 +749,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                             error = "Please accept the Rules & Guidelines."
                         }
                     },
-                    enabled = !busy && (if (signup && signupStep == 0) true else valid && (!signup || (confirmPassword == pass && acceptedGuidelines))),
+                    enabled = !busy && (if (signup) when (signupStep) { 0 -> true; 1 -> valid && confirmPassword == pass && acceptedGuidelines; 2 -> emailOtpDigits.all { it.isNotBlank() }; 3 -> mobileOtpDigits.all { it.isNotBlank() }; else -> true } else valid),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
@@ -741,7 +780,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                             horizontalArrangement = Arrangement.spacedBy(9.dp)
                         ) {
                             Text(
-                                text = if (!signup) "Sign In" else if (signupStep == 0) "Next Step" else "Create Account",
+                                text = if (!signup) "Sign In" else when (signupStep) { 0, 1 -> "Next Step"; 2 -> "Verify Email"; 3 -> "Verify Mobile"; else -> "Complete Profile" },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                             )
