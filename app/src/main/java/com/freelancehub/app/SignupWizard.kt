@@ -553,10 +553,10 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         Text("Complete Your Profile", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         Text("Add a cover photo to make your profile stand out.", color = Color(0xFF667895))
                         val coverPreview = remember(coverPhotoBytes) {
-                            coverPhotoBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+                            coverPhotoBytes?.let(::decodeSignupPhotoPreview)
                         }
                         val profilePreview = remember(profilePhotoBytes) {
-                            profilePhotoBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+                            profilePhotoBytes?.let(::decodeSignupPhotoPreview)
                         }
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 34.dp)
@@ -841,4 +841,21 @@ private fun SignupOtpBoxes(value: String, onValueChange: (String) -> Unit) {
             }
         }
     )
+}
+
+
+private fun decodeSignupPhotoPreview(bytes: ByteArray): androidx.compose.ui.graphics.ImageBitmap? {
+    return runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val maxPreviewDimension = 900
+        var sampleSize = 1
+        while (bounds.outWidth / sampleSize > maxPreviewDimension ||
+            bounds.outHeight / sampleSize > maxPreviewDimension
+        ) {
+            sampleSize *= 2
+        }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
+    }.getOrNull()
 }
