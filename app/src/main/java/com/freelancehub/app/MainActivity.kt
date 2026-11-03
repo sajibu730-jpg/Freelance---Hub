@@ -485,6 +485,9 @@ Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
+                if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
+                    Text("Enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
 
                 Spacer(Modifier.height(14.dp))
 
@@ -542,6 +545,10 @@ Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
 
+                if (signup && signupStep == 0 && pass.isNotBlank() && !Validation.password(pass)) {
+                    Text("Password must contain at least 8 characters, including a letter and a number.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+
                 if (signup && signupStep == 0) {
                     Spacer(Modifier.height(12.dp))
                     Row(
@@ -570,6 +577,10 @@ Surface(
                             modifier = Modifier.weight(1.35f),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                         )
+                    }
+                    if (mobile.isNotBlank() &&
+                        !(mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
+                        Text("Enter a valid mobile number for the selected country.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 if (showSignupCountryPicker) {
@@ -893,7 +904,7 @@ Surface(
                                                 .onFailure { error = it.message ?: "Could not send SMS code." }
                                         }
                                     }
-                                    3 -> authService.verifySignupMobileOtp(mobile, mobileOtp) { result ->
+                                    3 -> authService.verifySignupMobileOtp(mobileCountryCode + mobile, mobileOtp) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess { signupStep = 4 }
