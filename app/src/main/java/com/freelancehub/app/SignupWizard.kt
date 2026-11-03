@@ -241,7 +241,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                     error = ""; message = ""
                     when (step) {
                         0 -> if (name.trim().length < 2 || country.isBlank() || !birthday.matches(Regex("""^\d{4}-\d{2}-\d{2}$"""))) error = "Enter your name, country and birthday as YYYY-MM-DD." else step = 1
-                        1 -> if (!Validation.email(email) || phoneNational.length !in 4..14 || password.length < 8 || password != confirm || !accepted) error = "Check email, mobile number, matching passwords and Rules acceptance." else {
+                        1 -> if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() || phoneNational.length !in 4..14 || password.length < 8 || password != confirm || !accepted) error = "Check email, mobile number, matching passwords and Rules acceptance." else {
                             busy = true
                             auth.beginSignup(name, email, password, role, country, gender, birthday) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { step = 2; message = "Check your inbox for the 8-digit code." }.onFailure { error = it.message ?: "Could not create account." } } }
                         }
@@ -249,7 +249,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                             busy = true
                             auth.verifySignupEmail(email, emailCode) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 busy = false
-                                r.onSuccess { s -> session = s; step = 3; busy = true; auth.signupMobileVerification(s, "send", phone.trim()) { sent -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; sent.onSuccess { message = "The 8-digit SMS code was requested." }.onFailure { error = it.message ?: "SMS request failed." } } } }.onFailure { error = it.message ?: "Email verification failed." }
+                                r.onSuccess { s -> session = s; step = 3; busy = true; auth.signupMobileVerification(s, "send", signupPhone(phoneRegion, phoneNational)) { sent -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; sent.onSuccess { message = "The 8-digit SMS code was requested." }.onFailure { error = it.message ?: "SMS request failed." } } } }.onFailure { error = it.message ?: "Email verification failed." }
                             } }
                         }
                         3 -> if (mobileCode.length != 8) error = "Enter the 8-digit SMS code." else session?.let { s ->
