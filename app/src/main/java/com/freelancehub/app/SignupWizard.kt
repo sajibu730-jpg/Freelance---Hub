@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Person
@@ -109,7 +110,24 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
                 when (step) {
                     0 -> {
-                        Text("Personal information", color = navy, style = MaterialTheme.typography.headlineSmall)
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(76.dp)
+                                    .background(Color(0xFFE6F2FF), RoundedCornerShape(50)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = Color(0xFF0759B8), modifier = Modifier.size(32.dp))
+                            }
+                            Text("Add Profile Photo", color = Color(0xFF0759B8), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                            Text("Optional now", color = Color(0xFF7184A3), style = MaterialTheme.typography.labelSmall)
+                        }
+                        Text("Create New Account", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Text("Let's get started! Fill in your personal information.", color = Color(0xFF667895), style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(name, { name = it }, label = { Text("Full name") }, leadingIcon = { Icon(Icons.Filled.Person, null) }, modifier = Modifier.fillMaxWidth())
                         SignupCountryPicker(
                             label = "Country",
@@ -161,7 +179,8 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         }
                     }
                     1 -> {
-                        Text("Account details", color = navy, style = MaterialTheme.typography.headlineSmall)
+                        Text("Create New Account", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Text("Now, set up your account details.", color = Color(0xFF667895), style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(email, { email = it }, label = { Text("Email address") }, leadingIcon = { Icon(Icons.Filled.Email, null) }, modifier = Modifier.fillMaxWidth())
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -199,21 +218,61 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                             modifier = Modifier.fillMaxWidth()
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(accepted, { accepted = it }); Text("I agree to the Rules & Guidelines") }
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFFF0F7FF),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 14.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text("💻", style = MaterialTheme.typography.displaySmall)
+                                Text("Work Globally, Grow Freely", color = navy, fontWeight = FontWeight.Bold)
+                                Text("Your skills. Our platform. A better future.", color = Color(0xFF667895), style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
                     }
                     2 -> {
-                        Text("Verify your email", color = navy, style = MaterialTheme.typography.headlineSmall)
-                        Text("Enter the 8-digit code sent to $email.")
-                        OutlinedTextField(emailCode, { emailCode = it.filter(Char::isDigit).take(8) }, label = { Text("8-digit email code") }, modifier = Modifier.fillMaxWidth())
+                        Text("Verify Your Email", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Text("We've sent an 8-digit code to your email address.", color = Color(0xFF667895))
+                        Text("✉️", style = MaterialTheme.typography.displayLarge)
+                        OutlinedTextField(emailCode, { emailCode = it.filter(Char::isDigit).take(8) }, label = { Text("Enter 8-digit email code") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     }
                     3 -> {
-                        Text("Verify your mobile", color = navy, style = MaterialTheme.typography.headlineSmall)
-                        Text("Enter the 8-digit SMS code sent to ${signupPhone(phoneRegion, phoneNational)}.")
-                        OutlinedTextField(mobileCode, { mobileCode = it.filter(Char::isDigit).take(8) }, label = { Text("8-digit SMS code") }, modifier = Modifier.fillMaxWidth())
+                        Text("Verify Your Mobile", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Text("Enter the 8-digit code sent to your mobile number.", color = Color(0xFF667895))
+                        Text("📱", style = MaterialTheme.typography.displayLarge)
+                        OutlinedTextField(mobileCode, { mobileCode = it.filter(Char::isDigit).take(8) }, label = { Text("Enter 8-digit SMS code") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         TextButton(enabled = !busy, onClick = { session?.let { s -> busy = true; auth.signupMobileVerification(s, "send", signupPhone(phoneRegion, phoneNational)) { r -> android.os.Handler(android.os.Looper.getMainLooper()).post { busy = false; r.onSuccess { message = "A new code was requested." }.onFailure { error = it.message ?: "Could not resend code." } } } } }) { Text("Resend code") }
                     }
                     4 -> {
-                        Text("Profile photo & cover photo", color = navy, style = MaterialTheme.typography.headlineSmall)
-                        Text("Add your profile and cover images to complete your public profile.")
+                        Text("Complete Your Profile", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Text("Add a cover photo to make your profile stand out.", color = Color(0xFF667895))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(142.dp)
+                                .background(
+                                    Brush.linearGradient(listOf(Color(0xFF0B4A8F), Color(0xFF48A4E8), Color(0xFFB8DDF8))),
+                                    RoundedCornerShape(16.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp))
+                                Text(if (coverPhotoBytes == null) "Cover photo preview" else "Cover photo selected", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(82.dp)
+                                .background(Color(0xFFE6F2FF), RoundedCornerShape(50)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.CameraAlt, contentDescription = "Profile photo", tint = Color(0xFF0759B8), modifier = Modifier.size(30.dp))
+                        }
                         OutlinedButton(
                             onClick = { pendingPhotoTarget = "profile"; photoPicker.launch("image/*") },
                             modifier = Modifier.fillMaxWidth()
@@ -282,7 +341,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         } ?: run { error = "Signup session expired. Please start again." }
                     }
                 }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.buttonColors(containerColor = blue)) {
-                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text(if (step == 4) "Complete account setup" else "Continue")
+                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text(when (step) { 0, 1 -> "Next Step"; 2 -> "Verify Email"; 3 -> "Verify Mobile"; else -> "Complete Sign Up" })
                 }
             }
         }
