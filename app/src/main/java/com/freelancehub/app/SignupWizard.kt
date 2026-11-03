@@ -422,7 +422,6 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                             )
                         }
                         var genderOpen by remember { mutableStateOf(false) }
-                        var genderOpen by remember { mutableStateOf(false) }
                         ExposedDropdownMenuBox(genderOpen, { genderOpen = it }) {
                             OutlinedTextField(gender, {}, readOnly = true, label = { Text("Gender") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(genderOpen) })
                             ExposedDropdownMenu(genderOpen, { genderOpen = false }) {
