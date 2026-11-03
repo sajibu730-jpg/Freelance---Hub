@@ -334,24 +334,47 @@ FreelanceHubReferenceHeader()
                     Spacer(Modifier.height(18.dp))
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        listOf("Personal Info", "Account Details", "Email OTP", "Mobile OTP", "Complete Profile").forEachIndexed { index, title ->
-                            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        listOf(
+                            "Personal Info",
+                            "Account Details",
+                            "Email OTP",
+                            "Mobile OTP",
+                            "Profile",
+                            "Guidelines"
+                        ).forEachIndexed { index, title ->
+                            Column(
+                                modifier = Modifier.width(76.dp),
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                            ) {
                                 Surface(
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(30.dp),
                                     shape = androidx.compose.foundation.shape.CircleShape,
                                     color = if (index == 0) blue else androidx.compose.ui.graphics.Color(0xFFF0F4FA),
-                                    border = if (index == 0) null else androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFB8C8DD))
+                                    border = if (index == 0) null else androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        androidx.compose.ui.graphics.Color(0xFFB8C8DD)
+                                    )
                                 ) {
                                     Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                        Text("${index + 1}", color = if (index == 0) white else dark, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                        Text(
+                                            "${index + 1}",
+                                            color = if (index == 0) white else dark,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        )
                                     }
                                 }
-                                Spacer(Modifier.height(4.dp))
-                                Text(title, color = if (index == 0) navy else dark, style = MaterialTheme.typography.labelSmall)
+                                Spacer(Modifier.height(5.dp))
+                                Text(
+                                    title,
+                                    color = if (index == 0) navy else dark,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 2,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
                             }
                         }
                     }
