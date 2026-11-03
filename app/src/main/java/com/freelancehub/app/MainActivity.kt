@@ -449,7 +449,8 @@ val referenceFieldColors = OutlinedTextFieldDefaults.colors(
                     Text(
                         text = "Welcome Back",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = navy
+                        color = navy,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
 
                     Spacer(Modifier.height(6.dp))
@@ -457,10 +458,10 @@ val referenceFieldColors = OutlinedTextFieldDefaults.colors(
                     Text(
                         text = "Sign in to continue your journey.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = dark
+                        color = androidx.compose.ui.graphics.Color(0xFF627895)
                     )
 
-                    Spacer(Modifier.height(22.dp))
+                    Spacer(Modifier.height(20.dp))
                 }
 
                 if (!authConfigured) {
@@ -498,13 +499,8 @@ val referenceFieldColors = OutlinedTextFieldDefaults.colors(
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
-                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
-                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF2B78E4),
-                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD1E2F8)
-                    )
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    colors = referenceFieldColors
                 )
 
                 Spacer(Modifier.height(12.dp))
