@@ -542,6 +542,22 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
                         Text("We've sent an 8-digit code to your email address.", color = Color(0xFF667895))
                         Icon(Icons.Filled.Email, null, tint = Color(0xFF0875D1), modifier = Modifier.size(48.dp))
                         SignupOtpBoxes(value = emailCode, onValueChange = { emailCode = it })
+                        TextButton(
+                            enabled = !busy,
+                            onClick = {
+                                busy = true
+                                auth.resendSignupEmail(email) { result ->
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        busy = false
+                                        result.onSuccess {
+                                            message = "A new email verification code was requested."
+                                        }.onFailure {
+                                            error = it.message ?: "Could not resend the email code."
+                                        }
+                                    }
+                                }
+                            }
+                        ) { Text("Resend email code") }
                     }
                     3 -> {
                         Text("Verify Your Mobile", color = navy, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
