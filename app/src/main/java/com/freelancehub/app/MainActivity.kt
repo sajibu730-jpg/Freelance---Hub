@@ -98,6 +98,44 @@ class MainActivity:ComponentActivity(){
     }
 }
 
+@Composable
+private fun ReferenceBrandHeader() {
+    val navy = androidx.compose.ui.graphics.Color(0xFF06245A)
+    val royal = androidx.compose.ui.graphics.Color(0xFF0756B8)
+    val cyan = androidx.compose.ui.graphics.Color(0xFF16C5F4)
+    Box(Modifier.fillMaxWidth().height(166.dp).background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(navy, androidx.compose.ui.graphics.Color(0xFF073C91), royal)))) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val centerX=size.width*0.88f; val centerY=size.height*0.43f; val radius=size.minDimension*0.39f
+            for(row in -8..8) for(column in -8..8) {
+                val x=centerX+column*7.5f; val y=centerY+row*7.5f; val dx=x-centerX; val dy=y-centerY
+                if(dx*dx+dy*dy<radius*radius) drawCircle(androidx.compose.ui.graphics.Color(0x5549C8FF),1.35f,androidx.compose.ui.geometry.Offset(x,y))
+            }
+            val wave=androidx.compose.ui.graphics.Path().apply { moveTo(0f,size.height*.77f); cubicTo(size.width*.23f,size.height*1.04f,size.width*.72f,size.height*.91f,size.width,size.height*.72f); lineTo(size.width,size.height); lineTo(0f,size.height); close() }
+            drawPath(wave,androidx.compose.ui.graphics.Color(0xFF0C64C6).copy(alpha=.65f))
+            val lower=androidx.compose.ui.graphics.Path().apply { moveTo(0f,size.height*.88f); cubicTo(size.width*.28f,size.height*1.04f,size.width*.70f,size.height*.99f,size.width,size.height*.84f); lineTo(size.width,size.height); lineTo(0f,size.height); close() }
+            drawPath(lower,androidx.compose.ui.graphics.Color(0xFF4AB7F4).copy(alpha=.35f))
+        }
+        Column(Modifier.fillMaxWidth().padding(top=18.dp),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally) {
+            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.Center) {
+                Text("F",color=cyan,style=MaterialTheme.typography.displayMedium,fontWeight=androidx.compose.ui.text.font.FontWeight.Black)
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("Freelance Hub",color=androidx.compose.ui.graphics.Color.White,style=MaterialTheme.typography.headlineMedium,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("Your work. Your world. Your future.",color=androidx.compose.ui.graphics.Color(0xFFE2F1FF),style=MaterialTheme.typography.labelSmall)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),color=androidx.compose.ui.graphics.Color(0xFF1455A5),border=androidx.compose.foundation.BorderStroke(1.dp,androidx.compose.ui.graphics.Color(0xFF368BE2))) {
+                Row(Modifier.padding(horizontal=13.dp,vertical=6.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Public,contentDescription=null,tint=androidx.compose.ui.graphics.Color(0xFFBCEBFF),modifier=Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("GLOBAL FREELANCE MARKETPLACE",color=androidx.compose.ui.graphics.Color.White,style=MaterialTheme.typography.labelSmall,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(
@@ -180,118 +218,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         Spacer(Modifier.height(if (keyboardOpen) 0.dp else 8.dp))
 
         
-        // BRAND HEADER — GLOBAL FREELANCE HUB DESIGN
-Surface(
-    modifier = Modifier
-    .fillMaxWidth()
-    .padding(horizontal = 18.dp),
-    shape = androidx.compose.foundation.shape.RoundedCornerShape(
-        topStart = 0.dp,
-        topEnd = 0.dp,
-        bottomStart = 34.dp,
-        bottomEnd = 34.dp
-    ),
-    color = androidx.compose.ui.graphics.Color(0xFF071B43),
-    shadowElevation = 8.dp
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                androidx.compose.ui.graphics.Brush.linearGradient(
-                    colors = listOf(
-                        androidx.compose.ui.graphics.Color(0xFF071B43),
-                        androidx.compose.ui.graphics.Color(0xFF123D83),
-                        androidx.compose.ui.graphics.Color(0xFF0757B8)
-                    )
-                )
-            )
-            .padding(horizontal = 18.dp, vertical = 24.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Public,
-            contentDescription = null,
-            tint = androidx.compose.ui.graphics.Color(0x334FC3FF),
-            modifier = Modifier
-                .align(androidx.compose.ui.Alignment.TopEnd)
-                .size(100.dp)
-        )
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-        ) {
-            Surface(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                color = androidx.compose.ui.graphics.Color(0xFFDBF2FF)
-            ) {
-                Box(
-                    modifier = Modifier.size(58.dp),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    Text(
-                        text = "F",
-                        color = androidx.compose.ui.graphics.Color(0xFF0878E8),
-                        style = MaterialTheme.typography.headlineLarge
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                text = "Freelance Hub",
-                style = MaterialTheme.typography.headlineMedium,
-                color = androidx.compose.ui.graphics.Color.White
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = "Your work. Your world. Your future.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = androidx.compose.ui.graphics.Color(0xFFDCEBFF)
-            )
-
-            Spacer(Modifier.height(18.dp))
-
-            Surface(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
-                color = androidx.compose.ui.graphics.Color(0xFF1455A5),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    androidx.compose.ui.graphics.Color(0xFF428DEB)
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(
-                        horizontal = 16.dp,
-                        vertical = 10.dp
-                    ),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Public,
-                        contentDescription = "Global marketplace",
-                        tint = androidx.compose.ui.graphics.Color(0xFFBCEBFF),
-                        modifier = Modifier.size(22.dp)
-                    )
-
-                    Spacer(Modifier.width(8.dp))
-
-                    Text(
-                        text = "GLOBAL FREELANCE MARKETPLACE",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = androidx.compose.ui.graphics.Color.White
-                    )
-                }
-            }
-        }
-    }
-}
-
-        Spacer(Modifier.height(20.dp))
+        // Header follows the supplied master reference.\n        ReferenceBrandHeader()\n\n        Spacer(Modifier.height(20.dp))
 
 
         // LOGIN OR SEPARATE SIGNUP PAGE
