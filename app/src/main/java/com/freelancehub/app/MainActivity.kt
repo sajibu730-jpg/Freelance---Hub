@@ -821,6 +821,9 @@ TextButton(
     onClick = {
         if (signup) {
             signup = false
+            signupStep = 0
+            emailOtp = ""
+            mobileOtp = ""
             error = ""
             busy = false
         } else if (!openingSignup) {
@@ -828,6 +831,9 @@ TextButton(
             scope.launch {
                 delay(2200)
                 signup = true
+                signupStep = 0
+                emailOtp = ""
+                mobileOtp = ""
                 error = ""
                 busy = false
                 openingSignup = false
