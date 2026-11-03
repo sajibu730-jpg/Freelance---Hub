@@ -127,7 +127,7 @@ class AuthService(context: Context) {
     fun resendSignupEmail(email: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
-                require(email.trim().matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                require(android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
                     "Enter a valid email address before requesting another code."
                 }
                 request(
