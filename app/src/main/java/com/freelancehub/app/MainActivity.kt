@@ -3357,17 +3357,17 @@ fun RemoteAccountSecurityScreen(
                         )
                         OutlinedTextField(
                             value = otp,
-                            onValueChange = { otp = it.filter(Char::isDigit).take(6) },
-                            label = { Text("6-digit SMS code") },
+                            onValueChange = { otp = it.filter(Char::isDigit).take(8) },
+                            label = { Text("8-digit SMS code") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                     Button(
                         enabled = !busy && (if (method == "email") {
-                            currentEmailOtp.length >= 6 && newEmailOtp.length >= 6
+                            currentEmailOtp.length == 8 && newEmailOtp.length == 8
                         } else {
-                            otp.length >= 6
+                            otp.length == 8
                         }),
                         onClick = {
                             busy = true
@@ -3519,8 +3519,8 @@ private fun RemoteAccountVerificationScreen(
                     )
                     OutlinedTextField(
                         value = otp,
-                        onValueChange = { onOtpChange(it.filter(Char::isDigit).take(6)) },
-                        label = { Text("6-digit SMS verification code") },
+                        onValueChange = { onOtpChange(it.filter(Char::isDigit).take(8)) },
+                        label = { Text("8-digit SMS verification code") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -3528,7 +3528,7 @@ private fun RemoteAccountVerificationScreen(
                 if (message.isNotBlank()) Text(message, color = androidx.compose.ui.graphics.Color(0xFF16764A))
                 if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
                 Button(
-                    enabled = !busy && (if (method == "email") currentEmailOtp.length >= 6 && newEmailOtp.length >= 6 else otp.length >= 6),
+                    enabled = !busy && (if (method == "email") currentEmailOtp.length == 8 && newEmailOtp.length == 8 else otp.length == 8),
                     onClick = onVerify,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
