@@ -132,6 +132,7 @@ fun LoginScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    var rememberMe by remember { mutableStateOf(true) }
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -197,116 +198,48 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         Spacer(Modifier.height(if (keyboardOpen) 0.dp else 8.dp))
 
         
-        // BRAND HEADER — GLOBAL FREELANCE HUB DESIGN
-Surface(
-    modifier = Modifier
-    .fillMaxWidth()
-    .padding(horizontal = 18.dp),
-    shape = androidx.compose.foundation.shape.RoundedCornerShape(
-        topStart = 0.dp,
-        topEnd = 0.dp,
-        bottomStart = 34.dp,
-        bottomEnd = 34.dp
-    ),
-    color = androidx.compose.ui.graphics.Color(0xFF071B43),
-    shadowElevation = 8.dp
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                androidx.compose.ui.graphics.Brush.linearGradient(
-                    colors = listOf(
-                        androidx.compose.ui.graphics.Color(0xFF071B43),
-                        androidx.compose.ui.graphics.Color(0xFF123D83),
-                        androidx.compose.ui.graphics.Color(0xFF0757B8)
-                    )
-                )
-            )
-            .padding(horizontal = 18.dp, vertical = 24.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Public,
-            contentDescription = null,
-            tint = androidx.compose.ui.graphics.Color(0x334FC3FF),
-            modifier = Modifier
-                .align(androidx.compose.ui.Alignment.TopEnd)
-                .size(100.dp)
-        )
-
-        Column(
+        // REFERENCE-MATCHED FREELANCE HUB BRAND HEADER
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 34.dp, bottomEnd = 34.dp),
+            color = androidx.compose.ui.graphics.Color(0xFF06275E),
+            shadowElevation = 7.dp
         ) {
-            Surface(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                color = androidx.compose.ui.graphics.Color(0xFFDBF2FF)
+            Box(
+                Modifier.fillMaxWidth().background(
+                    androidx.compose.ui.graphics.Brush.linearGradient(
+                        listOf(
+                            androidx.compose.ui.graphics.Color(0xFF061D49),
+                            androidx.compose.ui.graphics.Color(0xFF073B83),
+                            androidx.compose.ui.graphics.Color(0xFF0874D8)
+                        )
+                    )
+                ).padding(start = 22.dp, end = 18.dp, top = 28.dp, bottom = 22.dp)
             ) {
-                Box(
-                    modifier = Modifier.size(58.dp),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    Text(
-                        text = "F",
-                        color = androidx.compose.ui.graphics.Color(0xFF0878E8),
-                        style = MaterialTheme.typography.headlineLarge
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                text = "Freelance Hub",
-                style = MaterialTheme.typography.headlineMedium,
-                color = androidx.compose.ui.graphics.Color.White
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = "Your work. Your world. Your future.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = androidx.compose.ui.graphics.Color(0xFFDCEBFF)
-            )
-
-            Spacer(Modifier.height(18.dp))
-
-            Surface(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
-                color = androidx.compose.ui.graphics.Color(0xFF1455A5),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    androidx.compose.ui.graphics.Color(0xFF428DEB)
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(
-                        horizontal = 16.dp,
-                        vertical = 10.dp
-                    ),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Public,
-                        contentDescription = "Global marketplace",
-                        tint = androidx.compose.ui.graphics.Color(0xFFBCEBFF),
-                        modifier = Modifier.size(22.dp)
-                    )
-
-                    Spacer(Modifier.width(8.dp))
-
-                    Text(
-                        text = "GLOBAL FREELANCE MARKETPLACE",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = androidx.compose.ui.graphics.Color.White
-                    )
+                Icon(Icons.Filled.Public, null, tint = androidx.compose.ui.graphics.Color(0x334FC3FF), modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).size(116.dp))
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = androidx.compose.ui.Alignment.Start) {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(13.dp), color = androidx.compose.ui.graphics.Color(0xFF063E83)) {
+                            Box(Modifier.size(54.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Text("F", style = MaterialTheme.typography.displaySmall, color = androidx.compose.ui.graphics.Color(0xFF29C8FF), fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                            }
+                        }
+                        Column {
+                            Text("Freelance Hub", style = MaterialTheme.typography.headlineSmall, color = white, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Your work. Your world. Your future.", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFDCEBFF))
+                        }
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp), color = androidx.compose.ui.graphics.Color(0xFF1455A5), border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF428DEB))) {
+                        Row(Modifier.padding(horizontal = 15.dp, vertical = 8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Public, "Global marketplace", tint = androidx.compose.ui.graphics.Color(0xFFBCEBFF), modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("GLOBAL FREELANCE MARKETPLACE", style = MaterialTheme.typography.labelMedium, color = white, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         Spacer(Modifier.height(20.dp))
 
@@ -522,22 +455,21 @@ Surface(
                 Spacer(Modifier.height(6.dp))
 
                 if (!signup) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it }, modifier = Modifier.size(28.dp), colors = CheckboxDefaults.colors(checkedColor = blue))
+                            Spacer(Modifier.width(5.dp))
+                            Text("Remember me", color = navy, style = MaterialTheme.typography.labelMedium)
+                        }
                         TextButton(
                             enabled = !resetBusy,
                             onClick = {
                                 error = ""
                                 resetMessage = ""
-                                screenContext.startActivity(
-                                    Intent(screenContext, ForgotPasswordActivity::class.java)
-                                )
-                            }
-                        ) {
-                            Text("Forgot password?")
-                        }
+                                screenContext.startActivity(Intent(screenContext, ForgotPasswordActivity::class.java))
+                            },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) { Text("Forgot password?", color = blue, style = MaterialTheme.typography.labelMedium) }
                     }
                 }
 
@@ -714,57 +646,37 @@ Surface(
 
                 Spacer(Modifier.height(14.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment =
-                        androidx.compose.ui.Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (signup) {
-                            "Already have an account?"
-                        } else {
-                            "New to Freelance Hub?"
-                        },
-                        color = dark,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-
-                    
-TextButton(
-    enabled = !openingSignup,
-    onClick = {
-        if (signup) {
-            signup = false
-            error = ""
-            busy = false
-        } else {
-            onOpenSignup()
-        }
-    }
-) {
-    Row(
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        if (openingSignup) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(16.dp),
-                strokeWidth = 2.dp,
-                color = blue
-            )
-            Spacer(Modifier.width(8.dp))
-            Text("Opening account setup…", color = blue)
-        } else {
-            Text(
-                text = if (signup) "Sign in" else "Create a new account",
-                color = blue
-            )
-        }
-    }
-}
-
-
+                if (!signup) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFDCE7F7))
+                        Text("  OR  ", color = androidx.compose.ui.graphics.Color(0xFF7186A8), style = MaterialTheme.typography.labelSmall)
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFDCE7F7))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable(enabled = !openingSignup) { onOpenSignup() },
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(17.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFEAF3FF)
+                    ) {
+                        Row(Modifier.padding(horizontal = 14.dp, vertical = 13.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Surface(shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFD5E8FF)) {
+                                Box(Modifier.size(42.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(Icons.Filled.PersonAddAlt1, null, tint = blue)
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Create a new account", color = blue, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text("Join our global community", color = dark, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Icon(Icons.Filled.ArrowForward, "Create account", tint = blue)
+                        }
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text("Already have an account?", color = dark, style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { signup = false; error = ""; busy = false }) { Text("Sign in", color = blue) }
+                    }
                 }
 
                 HorizontalDivider(
