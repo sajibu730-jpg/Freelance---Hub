@@ -549,7 +549,7 @@ Surface(
                     Text("Password must contain at least 8 characters, including a letter and a number.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
-                if (signup && signupStep == 0) {
+                if (signup && (signupStep == 0 || signupStep == 2)) {
                     Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -690,6 +690,15 @@ Surface(
                         },
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
                     ) { Text("Resend SMS Code") }
+                    TextButton(
+                        enabled = !busy,
+                        onClick = {
+                            signupStep = 2
+                            mobileOtp = ""
+                            error = ""
+                        },
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
+                    ) { Text("Change mobile number") }
                 }
                 if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
