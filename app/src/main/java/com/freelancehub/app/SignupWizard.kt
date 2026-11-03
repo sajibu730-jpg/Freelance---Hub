@@ -58,6 +58,7 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
     var coverPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
     var coverPhotoType by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    var pendingPhotoTarget by remember { mutableStateOf("profile") }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             runCatching {
@@ -82,7 +83,6 @@ fun SignupWizard(auth: AuthService, onComplete: (AuthSession) -> Unit, onCancel:
             }.onFailure { error = it.message ?: "Image selection failed." }
         }
     }
-    var pendingPhotoTarget by remember { mutableStateOf("profile") }
     val navy = Color(0xFF142B52)
     val blue = Color(0xFF4169E1)
     val teal = Color(0xFF14A89A)
