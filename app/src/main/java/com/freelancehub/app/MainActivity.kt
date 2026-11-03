@@ -343,7 +343,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "Sign in to continue to your workspace.",
+                        text = "Sign in to continue your journey.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
                     )
@@ -365,16 +365,22 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text("Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF2B78E4),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD1E2F8)
+                    )
                 )
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
 
                 // PASSWORD FIELD — EYE AND COPY PRESERVED
                 OutlinedTextField(
@@ -426,10 +432,16 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF1F6FF),
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF2B78E4),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD1E2F8)
+                    )
                 )
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(4.dp))
 
                 if (!signup) {
                     Row(
