@@ -135,6 +135,7 @@ fun LoginScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    var confirmPass by remember { mutableStateOf("") }
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -173,7 +174,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     val valid = authConfigured &&
         Validation.email(email) &&
         Validation.password(pass) &&
-        (!signup || Validation.text(name, 2, 80))
+        (!signup || (Validation.text(name, 2, 80) && pass == confirmPass))
 
     Column(
         modifier = Modifier
@@ -333,6 +334,7 @@ Surface(
                             name = ""
                             email = ""
                             pass = ""
+                            confirmPass = ""
                             mobile = ""
                             mobileCountryCode = "+971"
                             mobileCountryName = "United Arab Emirates"
@@ -405,6 +407,9 @@ Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     )
+                    if (signup && signupStep == 0 && name.isNotBlank() && !Validation.text(name, 2, 80)) {
+                        Text("পূর্ণ নাম কমপক্ষে ২ অক্ষরের হতে হবে।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
 
                     Spacer(Modifier.height(14.dp))
 
@@ -546,7 +551,24 @@ Surface(
                 )
 
                 if (signup && signupStep == 0 && pass.isNotBlank() && !Validation.password(pass)) {
-                    Text("Password must contain at least 8 characters, including a letter and a number.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে এবং অন্তত ১টি ইংরেজি অক্ষর ও ১টি সংখ্যা থাকতে হবে।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                if (signup && signupStep == 0) {
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = confirmPass,
+                        onValueChange = { confirmPass = it },
+                        enabled = true,
+                        label = { Text("Confirm Password") },
+                        leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    )
+                    if (confirmPass.isNotBlank() && pass != confirmPass) {
+                        Text("পাসওয়ার্ড দুটি মিলছে না।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
 
                 if (signup && (signupStep == 0 || signupStep == 2)) {
@@ -556,16 +578,21 @@ Surface(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        OutlinedTextField(
-                            value = mobileCountryName + " " + mobileCountryCode,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Country") },
-                            trailingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search country") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1.15f).clickable { showSignupCountryPicker = true },
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                        )
+                        OutlinedButton(
+                            onClick = { signupCountrySearch = ""; showSignupCountryPicker = true },
+                            modifier = Modifier.weight(1.15f).height(56.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Country code", style = MaterialTheme.typography.labelSmall, color = navy)
+                                    Text(mobileCountryName, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                                    Text(mobileCountryCode, style = MaterialTheme.typography.labelMedium, color = blue)
+                                }
+                                Icon(Icons.Filled.Search, contentDescription = "Search country")
+                            }
+                        }
                         OutlinedTextField(
                             value = mobile,
                             onValueChange = { mobile = it.filter(Char::isDigit).take(14) },
@@ -889,7 +916,9 @@ Surface(
                                                 }
                                             }.onFailure {
                                                     val message = it.message ?: "Could not create account."
-                                                    error = if (message.contains("already registered", true) ||
+                                                    error = if (message.contains("535", true) || message.contains("username and password not accepted", true)) {
+                                                        "ইমেইল পাঠানো যাচ্ছে না: Supabase-এর SMTP লগইন তথ্য Gmail প্রত্যাখ্যান করেছে। SMTP সেটিংস ঠিক না করা পর্যন্ত OTP যাবে না।"
+                                                    } else if (message.contains("already registered", true) ||
                                                         message.contains("already exists", true) ||
                                                         message.contains("email_exists", true)) {
                                                         "এই ইমেইল দিয়ে Signup আগে শুরু হয়ে থাকতে পারে। কোড না পেলে নিচের Resend Code অপশন ব্যবহার করুন।"
@@ -1000,6 +1029,7 @@ TextButton(
             name = ""
             email = ""
             pass = ""
+                            confirmPass = ""
             mobile = ""
             mobileCountryCode = "+971"
             mobileCountryName = "United Arab Emirates"
