@@ -1044,6 +1044,10 @@ class AuthService(context: Context) {
                     error("This email address is already registered to another account. Use an email address that is not linked to an existing account.")
                 }
 
+                if (status >= 500 && (path == "/auth/v1/signup" || path == "/auth/v1/resend")) {
+                    error("EMAIL_DELIVERY_FAILED: Supabase could not send the email verification message. Check the project's SMTP configuration and credentials before retrying.")
+                }
+
                 error("Supabase HTTP $status: $message")
             }
 
