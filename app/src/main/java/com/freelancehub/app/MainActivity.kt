@@ -491,7 +491,7 @@ Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
                 if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
-                    Text("Enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text("সঠিক ইমেইল ঠিকানা লিখুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(Modifier.height(14.dp))
@@ -916,7 +916,7 @@ Surface(
                                                 }
                                             }.onFailure {
                                                     val message = it.message ?: "Could not create account."
-                                                    error = if (message.contains("535", true) || message.contains("username and password not accepted", true)) {
+                                                    error = if (message.contains("EMAIL_DELIVERY_FAILED", true) || message.contains("535", true) || message.contains("username and password not accepted", true)) {
                                                         "ইমেইল পাঠানো যাচ্ছে না: Supabase-এর SMTP লগইন তথ্য Gmail প্রত্যাখ্যান করেছে। SMTP সেটিংস ঠিক না করা পর্যন্ত OTP যাবে না।"
                                                     } else if (message.contains("already registered", true) ||
                                                         message.contains("already exists", true) ||
