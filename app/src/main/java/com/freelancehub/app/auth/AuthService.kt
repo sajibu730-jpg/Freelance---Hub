@@ -121,37 +121,11 @@ class AuthService(context: Context) {
                     val message = signupError.message.orEmpty()
                     val alreadyRegistered = message.contains("already registered", true) ||
                         message.contains("already exists", true) ||
-                        message.contains("email_exists", true)
-                    if (!alreadyRegistered) throw signupError
-
-                    val loginResponse = runCatching {
-                        request(
-                            "POST",
-                            "/auth/v1/token?grant_type=password",
-                            JSONObject().put("email", email.trim())
-                                .put("password", password).toString()
-                        )
-                    }.getOrNull()
-                    val loginUser = loginResponse?.optJSONObject("user")
-                    if (loginResponse != null && loginUser != null &&
-                        loginUser.optString("email_confirmed_at").isNotBlank()) {
-                        val access = loginResponse.optString("access_token")
-                        val refresh = loginResponse.optString("refresh_token")
-                        if (access.isNotBlank() && refresh.isNotBlank()) {
-                            pendingSignupSession = makeSession(access, refresh, loginUser, role)
-                            return@runCatching "VERIFIED:" + loginUser.optString("id")
-                        }
+                        message.contains("email_exists", true) ||
+                        message.contains("user_already_exists", true)
+                    if (alreadyRegistered) {
+                        error("এই ইমেইল ঠিকানাটি আগে ব্যবহার করা হয়েছে। নতুন অ্যাকাউন্ট খুলতে অন্য ইমেইল ব্যবহার করুন।")
                     }
-
-                    val resendResult = runCatching {
-                        request(
-                            "POST",
-                            "/auth/v1/resend",
-                            JSONObject().put("type", "signup")
-                                .put("email", email.trim()).toString()
-                        )
-                    }
-                    if (resendResult.isSuccess) return@runCatching "PENDING"
                     throw signupError
                 }
                 val user = response.optJSONObject("user") ?: response
@@ -219,6 +193,49 @@ class AuthService(context: Context) {
                     JSONObject().put("type", "signup").put("email", target).toString()
                 )
                 Unit
+            })
+        }
+    }
+
+    /** Checks whether a signup email or phone is already in use without exposing Auth users. */
+    fun checkSignupIdentifier(kind: String, value: String, callback: (Result<Boolean>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Signup validation is unavailable because the backend is not configured." }
+                require(kind == "email" || kind == "phone") { "Unsupported signup identifier." }
+                val normalized = if (kind == "email") value.trim().lowercase() else value.trim()
+                require(
+                    if (kind == "email") normalized.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))
+                    else normalized.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))
+                ) { "Enter a valid signup contact." }
+
+                val connection = URL(config.baseUrl.trim().trimEnd('/') + "/functions/v1/check-signup-identifier")
+                    .openConnection() as HttpURLConnection
+                try {
+                    connection.requestMethod = "POST"
+                    connection.connectTimeout = 10000
+                    connection.readTimeout = 15000
+                    connection.instanceFollowRedirects = false
+                    connection.useCaches = false
+                    connection.setRequestProperty("Accept", "application/json")
+                    connection.setRequestProperty("apikey", config.anonKey)
+                    connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    connection.doOutput = true
+                    val payload = JSONObject().put("kind", kind).put("value", normalized).toString()
+                    connection.outputStream.use {
+                        it.write(payload.toByteArray(StandardCharsets.UTF_8))
+                    }
+                    val status = connection.responseCode
+                    val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                    val responseText = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+                    val result = if (responseText.isBlank()) JSONObject() else JSONObject(responseText)
+                    if (status !in 200..299) {
+                        error(result.optString("error", "Signup contact validation failed. Please try again."))
+                    }
+                    result.optBoolean("duplicate", false)
+                } finally {
+                    connection.disconnect()
+                }
             })
         }
     }
