@@ -511,7 +511,11 @@ Surface(
                 // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = {
+                        email = it
+                        emailDuplicate = null
+                        emailCheckError = ""
+                    },
                     enabled = !signup || signupStep == 0,
                     label = { Text("Email") },
                     leadingIcon = {
@@ -523,6 +527,11 @@ Surface(
                 )
                 if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
                     Text("সঠিক ইমেইল ঠিকানা লিখুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                if (signup && signupStep == 0 && emailDuplicate == true) {
+                    Text("এই ইমেইল ঠিকানাটি আগে ব্যবহার করা হয়েছে। নতুন অ্যাকাউন্ট খুলতে অন্য ইমেইল ব্যবহার করুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                } else if (signup && signupStep == 0 && emailCheckError.isNotBlank()) {
+                    Text(emailCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(Modifier.height(14.dp))
