@@ -684,6 +684,8 @@ Surface(
                                             onClick = {
                                                 mobileCountryName = item.first
                                                 mobileCountryCode = item.second
+                                                mobileDuplicate = null
+                                                mobileCheckError = ""
                                                 showSignupCountryPicker = false
                                                 signupCountrySearch = ""
                                             },
