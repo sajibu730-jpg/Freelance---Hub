@@ -124,6 +124,10 @@ fun LoginScreen(
     var mobile by remember { mutableStateOf("") }
     var mobileCountryCode by remember { mutableStateOf("+971") }
     var mobileCountryName by remember { mutableStateOf("United Arab Emirates") }
+    var emailDuplicate by remember { mutableStateOf<Boolean?>(null) }
+    var emailCheckError by remember { mutableStateOf("") }
+    var mobileDuplicate by remember { mutableStateOf<Boolean?>(null) }
+    var mobileCheckError by remember { mutableStateOf("") }
     var showSignupCountryPicker by remember { mutableStateOf(false) }
     var signupCountrySearch by remember { mutableStateOf("") }
     var emailOtp by remember { mutableStateOf("") }
