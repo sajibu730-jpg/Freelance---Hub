@@ -187,6 +187,24 @@ LaunchedEffect(signup, signupStep, email) {
         }
     }
 }
+LaunchedEffect(signup, signupStep, mobile, mobileCountryCode) {
+    val target = mobileCountryCode + mobile
+    if (signup && (signupStep == 0 || signupStep == 2) &&
+        target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
+        mobileDuplicate = null
+        mobileCheckError = ""
+        delay(600)
+        authService.checkSignupIdentifier("phone", target) { result ->
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                if (mobileCountryCode + mobile == target) {
+                    result.onSuccess { mobileDuplicate = it }
+                        .onFailure { mobileCheckError = it.message ?: "মোবাইল নম্বর যাচাই করা যাচ্ছে না।" }
+                }
+            }
+        }
+    }
+}
+
     val clipboardManager = LocalClipboardManager.current
 
     
