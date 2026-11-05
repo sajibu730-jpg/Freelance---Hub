@@ -160,6 +160,33 @@ val loginScrollState = rememberScrollState()
 LaunchedEffect(signup) {
     loginScrollState.scrollTo(0)
 }
+
+LaunchedEffect(signup, signupStep, email) {
+    if (!signup || signupStep != 0 || !Validation.email(email)) {
+        if (!signup || signupStep == 0) {
+            emailDuplicate = null
+            emailCheckError = ""
+        }
+        return@LaunchedEffect
+    }
+    emailDuplicate = null
+    emailCheckError = ""
+    val checkedEmail = email.trim().lowercase()
+    delay(600)
+    authService.checkSignupIdentifier("email", checkedEmail) { result ->
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            if (signup && signupStep == 0 && email.trim().equals(checkedEmail, ignoreCase = true)) {
+                result.onSuccess {
+                    emailDuplicate = it
+                    emailCheckError = ""
+                }.onFailure {
+                    emailDuplicate = null
+                    emailCheckError = it.message ?: "ইমেইল যাচাই করা যাচ্ছে না। পরে আবার চেষ্টা করুন।"
+                }
+            }
+        }
+    }
+}
     val clipboardManager = LocalClipboardManager.current
 
     
