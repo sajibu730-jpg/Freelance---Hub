@@ -635,7 +635,11 @@ Surface(
                         }
                         OutlinedTextField(
                             value = mobile,
-                            onValueChange = { mobile = it.filter(Char::isDigit).take(14) },
+                            onValueChange = {
+                                mobile = it.filter(Char::isDigit).take(14)
+                                mobileDuplicate = null
+                                mobileCheckError = ""
+                            },
                             placeholder = { Text("Mobile Number") },
                             singleLine = true,
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -648,6 +652,11 @@ Surface(
                     if (mobile.isNotBlank() &&
                         !(mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                         Text("Enter a valid mobile number for the selected country.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    if ((signupStep == 0 || signupStep == 2) && mobileDuplicate == true) {
+                        Text("এই মোবাইল নম্বরটি আগে ব্যবহার করা হয়েছে। নতুন অ্যাকাউন্ট খুলতে অন্য নম্বর ব্যবহার করুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    } else if ((signupStep == 0 || signupStep == 2) && mobileCheckError.isNotBlank()) {
+                        Text(mobileCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 if (showSignupCountryPicker) {
