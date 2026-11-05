@@ -1033,9 +1033,13 @@ Surface(
                         }
                     },
                     enabled = valid && !busy && (!signup || when (signupStep) {
-                        0 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) && (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))
+                        0 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
+                            (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) &&
+                            emailDuplicate == false && mobileDuplicate == false &&
+                            emailCheckError.isBlank() && mobileCheckError.isBlank()
                         1 -> emailOtp.length == 8
-                        2 -> mobileCountryCode.isNotBlank() && mobile.isNotBlank()
+                        2 -> mobileCountryCode.isNotBlank() && mobile.isNotBlank() &&
+                            mobileDuplicate == false && mobileCheckError.isBlank()
                         3 -> mobileOtp.length == 8
                         4 -> country.isNotBlank() && gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
