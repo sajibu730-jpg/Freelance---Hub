@@ -772,7 +772,7 @@ Surface(
                         label = { Text("8-digit SMS verification code") }, singleLine = true,
                         modifier = Modifier.fillMaxWidth())
                     TextButton(
-                        enabled = !busy,
+                        enabled = !busy && mobileDuplicate == false && mobileCheckError.isBlank(),
                         onClick = {
                             busy = true
                             error = ""
