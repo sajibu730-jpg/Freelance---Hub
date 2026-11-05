@@ -205,8 +205,8 @@ class AuthService(context: Context) {
                 require(kind == "email" || kind == "phone") { "Unsupported signup identifier." }
                 val normalized = if (kind == "email") value.trim().lowercase() else value.trim()
                 require(
-                    if (kind == "email") normalized.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))
-                    else normalized.matches(Regex("""^\\+[1-9][0-9]{7,14}$"""))
+                    if (kind == "email") normalized.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))
+                    else normalized.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))
                 ) { "Enter a valid signup contact." }
 
                 val connection = URL(config.baseUrl.trim().trimEnd('/') + "/functions/v1/check-signup-identifier")
