@@ -609,7 +609,7 @@ Surface(
                 )
 
                 if (signup && signupStep == 0 && pass.isNotBlank() && !Validation.password(pass)) {
-                    Text("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে এবং অন্তত ১টি ইংরেজি অক্ষর ও ১টি সংখ্যা থাকতে হবে।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text("Password must be at least 8 characters long and include at least 1 English letter and 1 number.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 if (signup && signupStep == 0) {
                     Spacer(Modifier.height(10.dp))
