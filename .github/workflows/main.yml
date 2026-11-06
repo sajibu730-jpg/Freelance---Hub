@@ -1,5 +1,6 @@
 name: Android Build
 
+# Manual APK build and verification after backend key migration.
 on:
   push:
     branches:
