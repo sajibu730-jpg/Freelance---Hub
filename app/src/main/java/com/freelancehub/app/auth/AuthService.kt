@@ -346,11 +346,13 @@ class AuthService(context: Context) {
                 require(userId.isNotBlank() && user.optString("email_confirmed_at").isNotBlank()) {
                     "Verify your email address before saving your profile."
                 }
+                val authPhoneVerified = user.optString("phone_confirmed_at").isNotBlank() &&
+                    user.optString("phone").trim() == phone
                 val payload = JSONObject()
                     .put("id", userId)
                     .put("display_name", name.trim())
                     .put("mobile_number", phone)
-                    .put("mobile_verified", false)
+                    .put("mobile_verified", authPhoneVerified)
                     .put("country", country.trim())
                     .put("gender", gender.trim())
                     .put("updated_at", java.time.Instant.now().toString())
@@ -359,8 +361,8 @@ class AuthService(context: Context) {
                 require(response.length() == 1 &&
                     response.optJSONObject(0)?.optString("display_name") == name.trim() &&
                     response.optJSONObject(0)?.optString("mobile_number") == phone &&
-                    !response.optJSONObject(0)?.optBoolean("mobile_verified", true)!!) {
-                    "Supabase did not confirm that the profile and unverified mobile number were saved."
+                    response.optJSONObject(0)?.optBoolean("mobile_verified", false) == authPhoneVerified) {
+                    "Supabase did not confirm that the profile and mobile verification status were saved."
                 }
                 tokenStore.saveSession(pending.accessToken, pending.refreshToken)
                 pendingSignupSession = null
