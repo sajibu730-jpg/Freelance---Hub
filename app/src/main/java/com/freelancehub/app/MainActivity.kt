@@ -544,7 +544,7 @@ Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                 )
                 if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
-                    Text("সঠিক ইমেইল ঠিকানা লিখুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text("Please enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 if (signup && signupStep == 0 && emailDuplicate == true) {
                     Text("এই ইমেইল ঠিকানাটি আগে ব্যবহার করা হয়েছে। নতুন অ্যাকাউন্ট খুলতে অন্য ইমেইল ব্যবহার করুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
