@@ -207,7 +207,7 @@ LaunchedEffect(signup, signupStep, email) {
                     emailCheckError = ""
                 }.onFailure {
                     emailDuplicate = null
-                    emailCheckError = it.message ?: "ইমেইল যাচাই করা যাচ্ছে না। পরে আবার চেষ্টা করুন।"
+                    emailCheckError = it.message ?: "Unable to check this email address. Please try again later."
                 }
             }
         }
@@ -573,7 +573,7 @@ Surface(
                     Text("Please enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 if (signup && signupStep == 0 && emailDuplicate == true) {
-                    Text("এই ইমেইল ঠিকানাটি আগে ব্যবহার করা হয়েছে। নতুন অ্যাকাউন্ট খুলতে অন্য ইমেইল ব্যবহার করুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text("This email address is already in use. Please use a different email address to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 } else if (signup && signupStep == 0 && emailCheckError.isNotBlank()) {
                     Text(emailCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -1063,11 +1063,11 @@ Surface(
                                             }.onFailure {
                                                     val message = it.message ?: "Could not create account."
                                                     error = if (message.contains("EMAIL_DELIVERY_FAILED", true) || message.contains("535", true) || message.contains("username and password not accepted", true)) {
-                                                        "ইমেইল পাঠানো যাচ্ছে না: Supabase-এর SMTP লগইন তথ্য Gmail প্রত্যাখ্যান করেছে। SMTP সেটিংস ঠিক না করা পর্যন্ত OTP যাবে না।"
+                                                        "Unable to send the email: Gmail rejected the Supabase SMTP login credentials. OTP delivery will not work until the SMTP settings are corrected."
                                                     } else if (message.contains("already registered", true) ||
                                                         message.contains("already exists", true) ||
                                                         message.contains("email_exists", true)) {
-                                                        "এই ইমেইল দিয়ে Signup আগে শুরু হয়ে থাকতে পারে। কোড না পেলে নিচের Resend Code অপশন ব্যবহার করুন।"
+                                                        "Signup may already have been started with this email address. If you did not receive the code, use the Resend Code option below."
                                                     } else message
                                                 }
                                         }
