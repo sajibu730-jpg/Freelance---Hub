@@ -146,13 +146,13 @@ Deno.serve(async (req: Request) => {
   try {
     duplicateCheck = await checkPhoneDuplicate(req, phone, supabaseUrl, serviceRole, user.id);
   } catch {
-    return json(503, { error: "মোবাইল নম্বর যাচাই করা যাচ্ছে না। কিছুক্ষণ পরে আবার চেষ্টা করুন।" });
+    return json(503, { error: "Unable to verify this mobile number. Please try again later." });
   }
   if (!duplicateCheck.allowed) {
-    return json(429, { error: "অনেকবার যাচাইয়ের চেষ্টা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।" });
+    return json(429, { error: "Too many verification attempts. Please try again later." });
   }
   if (duplicateCheck.duplicate) {
-    return json(409, { error: "এই মোবাইল নম্বরটি আগে ব্যবহার করা হয়েছে। নতুন অ্যাকাউন্ট খুলতে অন্য নম্বর ব্যবহার করুন।" });
+    return json(409, { error: "This mobile number is already in use. Please use a different number to create a new account." });
   }
 
   const basic = btoa(accountSid + ":" + authToken);
