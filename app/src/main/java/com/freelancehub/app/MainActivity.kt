@@ -132,6 +132,11 @@ fun LoginScreen(
     var signupCountrySearch by remember { mutableStateOf("") }
     var emailOtp by remember { mutableStateOf("") }
     var mobileOtp by remember { mutableStateOf("") }
+    var signupSmsOtpEnabled by remember { mutableStateOf(false) }
+    var signupWhatsAppOtpEnabled by remember { mutableStateOf(false) }
+    var signupOtpSettingsLoaded by remember { mutableStateOf(false) }
+    var mobileOtpChannel by remember { mutableStateOf("sms") }
+    var signupMobileVerified by remember { mutableStateOf(false) }
     var country by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("") }
     var birthday by remember { mutableStateOf("") }
@@ -154,6 +159,27 @@ var recoveryEmail by remember { mutableStateOf("") }
 val screenContext = LocalContext.current
 val resetAuthService = remember(screenContext) { AuthService(screenContext) }
 val scope = rememberCoroutineScope()
+
+fun loadSignupOtpSettings() {
+    busy = true
+    error = ""
+    authService.getSignupOtpChannels { result ->
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            busy = false
+            result.onSuccess { channels ->
+                signupSmsOtpEnabled = channels.smsEnabled
+                signupWhatsAppOtpEnabled = channels.whatsappEnabled
+                signupOtpSettingsLoaded = true
+                mobileOtpChannel = if (channels.whatsappEnabled && !channels.smsEnabled) "whatsapp" else "sms"
+                signupStep = if (channels.smsEnabled || channels.whatsappEnabled) 2 else 4
+            }.onFailure {
+                signupOtpSettingsLoaded = false
+                signupStep = 2
+                error = it.message ?: "Could not load mobile verification settings. Tap Retry to continue."
+            }
+        }
+    }
+}
 
 val loginScrollState = rememberScrollState()
 
@@ -625,7 +651,7 @@ Surface(
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     )
                     if (confirmPass.isNotBlank() && pass != confirmPass) {
-                        Text("পাসওয়ার্ড দুটি মিলছে না।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text("The passwords do not match.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
 
@@ -766,26 +792,69 @@ Surface(
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
                     ) { Text("Resend Code") }
                 }
+                if (signup && signupStep == 2 && !signupOtpSettingsLoaded) {
+                    TextButton(
+                        enabled = !busy,
+                        onClick = { loadSignupOtpSettings() },
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
+                    ) { Text("Retry verification settings") }
+                }
+                if (signup && signupStep == 2 && signupOtpSettingsLoaded &&
+                    signupSmsOtpEnabled && signupWhatsAppOtpEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Choose where to receive your verification code.", style = MaterialTheme.typography.bodySmall)
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f).clickable { mobileOtpChannel = "whatsapp" },
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = mobileOtpChannel == "whatsapp",
+                                onClick = { mobileOtpChannel = "whatsapp" }
+                            )
+                            Text("WhatsApp")
+                        }
+                        Row(
+                            modifier = Modifier.weight(1f).clickable { mobileOtpChannel = "sms" },
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = mobileOtpChannel == "sms",
+                                onClick = { mobileOtpChannel = "sms" }
+                            )
+                            Text("SMS")
+                        }
+                    }
+                }
                 if (signup && signupStep == 3) {
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(value = mobileOtp, onValueChange = { mobileOtp = it.filter(Char::isDigit).take(8) },
-                        label = { Text("8-digit SMS verification code") }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = mobileOtp,
+                        onValueChange = { mobileOtp = it.filter(Char::isDigit).take(8) },
+                        label = { Text(if (mobileOtpChannel == "whatsapp") "8-digit WhatsApp verification code" else "8-digit SMS verification code") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     TextButton(
                         enabled = !busy && mobileDuplicate == false && mobileCheckError.isBlank(),
                         onClick = {
                             busy = true
                             error = ""
-                            authService.sendSignupMobileOtp(mobileCountryCode + mobile) { result ->
+                            authService.sendSignupMobileOtp(mobileCountryCode + mobile, mobileOtpChannel) { result ->
                                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                                     busy = false
-                                    result.onSuccess { error = "A new SMS verification code has been requested." }
-                                        .onFailure { error = it.message ?: "Could not resend SMS code." }
+                                    result.onSuccess {
+                                        error = if (mobileOtpChannel == "whatsapp") {
+                                            "A new WhatsApp verification code has been requested."
+                                        } else {
+                                            "A new SMS verification code has been requested."
+                                        }
+                                    }.onFailure { error = it.message ?: "Could not resend verification code." }
                                 }
                             }
                         },
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
-                    ) { Text("Resend SMS Code") }
+                    ) { Text(if (mobileOtpChannel == "whatsapp") "Resend WhatsApp Code" else "Resend SMS Code") }
                     TextButton(
                         enabled = !busy,
                         onClick = {
@@ -798,6 +867,14 @@ Surface(
                 }
                 if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
+                    if (!signupMobileVerified) {
+                        Text(
+                            "Mobile verification is currently turned off. Your number will be saved as unverified.",
+                            color = MaterialTheme.colorScheme.secondary,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
                     OutlinedTextField(value = country, onValueChange = { country = it },
                         label = { Text("Country") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
@@ -979,7 +1056,7 @@ Surface(
                                             result.onSuccess { outcome ->
                                                 if (outcome.startsWith("VERIFIED:")) {
                                                     signupSession = authService.pendingSignupSessionSnapshot()
-                                                    signupStep = 2
+                                                    loadSignupOtpSettings()
                                                 } else {
                                                     signupStep = 1
                                                 }
@@ -1000,25 +1077,35 @@ Surface(
                                             busy = false
                                             result.onSuccess { session ->
                                                 signupSession = session
-                                                signupStep = 2
+                                                loadSignupOtpSettings()
                                             }.onFailure { error = it.message ?: "Email verification failed." }
                                         }
                                     }
-                                    2 -> authService.sendSignupMobileOtp(mobileCountryCode + mobile) { result ->
-                                        main.post {
+                                    2 -> {
+                                        if (!signupOtpSettingsLoaded ||
+                                            (!signupSmsOtpEnabled && !signupWhatsAppOtpEnabled)) {
                                             busy = false
-                                            result.onSuccess { signupStep = 3 }
-                                                .onFailure { error = it.message ?: "Could not send SMS code." }
+                                            error = "Mobile verification settings are not ready. Please retry."
+                                        } else {
+                                            authService.sendSignupMobileOtp(mobileCountryCode + mobile, mobileOtpChannel) { result ->
+                                                main.post {
+                                                    busy = false
+                                                    result.onSuccess { signupStep = 3 }
+                                                        .onFailure { error = it.message ?: "Could not send verification code." }
+                                                }
+                                            }
                                         }
                                     }
-                                    3 -> authService.verifySignupMobileOtp(mobileCountryCode + mobile, mobileOtp) { result ->
+                                    3 -> authService.verifySignupMobileOtp(mobileCountryCode + mobile, mobileOtp, mobileOtpChannel) { result ->
                                         main.post {
                                             busy = false
-                                            result.onSuccess { signupStep = 4 }
-                                                .onFailure { error = it.message ?: "Mobile verification failed." }
+                                            result.onSuccess {
+                                                signupMobileVerified = true
+                                                signupStep = 4
+                                            }.onFailure { error = it.message ?: "Mobile verification failed." }
                                         }
                                     }
-                                    4 -> authService.saveSignupProfile(name, country, gender, birthday) { result ->
+                                    4 -> authService.saveSignupProfile(name, mobileCountryCode + mobile, country, gender, birthday) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess {
@@ -1038,7 +1125,9 @@ Surface(
                             emailDuplicate == false && mobileDuplicate == false &&
                             emailCheckError.isBlank() && mobileCheckError.isBlank()
                         1 -> emailOtp.length == 8
-                        2 -> mobileCountryCode.isNotBlank() && mobile.isNotBlank() &&
+                        2 -> signupOtpSettingsLoaded &&
+                            (signupSmsOtpEnabled || signupWhatsAppOtpEnabled) &&
+                            mobileCountryCode.isNotBlank() && mobile.isNotBlank() &&
                             mobileDuplicate == false && mobileCheckError.isBlank()
                         3 -> mobileOtp.length == 8
                         4 -> country.isNotBlank() && gender.isNotBlank() &&
