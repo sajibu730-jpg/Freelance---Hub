@@ -240,30 +240,73 @@ class AuthService(context: Context) {
         }
     }
 
-    /** Sends the 8-digit Twilio Verify SMS after the email has been confirmed. */
-    fun sendSignupMobileOtp(phone: String, callback: (Result<Unit>) -> Unit) {
+    /** Reads the server-controlled signup OTP channels. Missing flags fail closed. */
+    fun getSignupOtpChannels(callback: (Result<SignupOtpChannels>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                require(isConfigured()) { "Backend is not configured." }
+                val url = URL(
+                    config.baseUrl.trim().trimEnd('/') +
+                        "/rest/v1/app_feature_flags?key=in.(signup_sms_otp_enabled,signup_whatsapp_otp_enabled)&select=key,enabled"
+                )
+                val connection = url.openConnection() as HttpURLConnection
+                try {
+                    connection.requestMethod = "GET"
+                    connection.connectTimeout = 8000
+                    connection.readTimeout = 10000
+                    connection.setRequestProperty("Accept", "application/json")
+                    connection.setRequestProperty("apikey", config.anonKey)
+                    connection.setRequestProperty("Authorization", "Bearer " + config.anonKey)
+                    val status = connection.responseCode
+                    if (status !in 200..299) error("Signup verification settings could not be loaded.")
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    val rows = org.json.JSONArray(response)
+                    var smsEnabled: Boolean? = null
+                    var whatsappEnabled: Boolean? = null
+                    for (index in 0 until rows.length()) {
+                        val row = rows.optJSONObject(index) ?: continue
+                        when (row.optString("key")) {
+                            "signup_sms_otp_enabled" -> smsEnabled = row.optBoolean("enabled", false)
+                            "signup_whatsapp_otp_enabled" -> whatsappEnabled = row.optBoolean("enabled", false)
+                        }
+                    }
+                    require(smsEnabled != null && whatsappEnabled != null) {
+                        "Signup verification settings are incomplete."
+                    }
+                    SignupOtpChannels(smsEnabled == true, whatsappEnabled == true)
+                } finally {
+                    connection.disconnect()
+                }
+            })
+        }
+    }
+
+    /** Sends an 8-digit OTP through the selected, server-enabled channel. */
+    fun sendSignupMobileOtp(phone: String, channel: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
                 require(phone.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid mobile number with country code."
                 }
-                signupMobileRequest("send", phone)
+                require(channel == "sms" || channel == "whatsapp") { "Choose a supported verification channel." }
+                signupMobileRequest("send", phone, channel = channel)
                 Unit
             })
         }
     }
 
-    /** Confirms the 8-digit SMS code; the Edge Function also confirms Auth phone and saves it. */
-    fun verifySignupMobileOtp(phone: String, otp: String, callback: (Result<Unit>) -> Unit) {
+    /** Confirms the 8-digit OTP and records the Auth/profile number as verified. */
+    fun verifySignupMobileOtp(phone: String, otp: String, channel: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
                 require(phone.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                     "Enter a valid mobile number with country code."
                 }
+                require(channel == "sms" || channel == "whatsapp") { "Choose a supported verification channel." }
                 require(otp.trim().matches(Regex("^[0-9]{8}$"))) {
-                    "Enter the 8-digit SMS verification code."
+                    "Enter the 8-digit verification code."
                 }
-                val result = signupMobileRequest("verify", phone, otp.trim())
+                val result = signupMobileRequest("verify", phone, otp.trim(), channel)
                 require(result.optBoolean("verified") && result.optBoolean("profileSaved")) {
                     "Mobile verification completed, but the profile number was not saved."
                 }
@@ -272,9 +315,10 @@ class AuthService(context: Context) {
         }
     }
 
-    /** Saves the remaining public profile fields after both contacts are verified. */
+    /** Saves the profile after email verification; mobile may remain unverified until enabled. */
     fun saveSignupProfile(
         name: String,
+        phone: String,
         country: String,
         gender: String,
         birthday: String,
@@ -283,6 +327,9 @@ class AuthService(context: Context) {
         executor.execute {
             callback(runCatching {
                 require(name.trim().length in 2..80) { "Enter your full name." }
+                require(phone.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
+                    "Enter a valid mobile number with country code."
+                }
                 require(country.trim().isNotBlank()) { "Enter your country." }
                 require(gender.trim().isNotBlank()) { "Select your gender." }
                 val parsedBirthday = runCatching {
@@ -299,23 +346,22 @@ class AuthService(context: Context) {
                 require(userId.isNotBlank() && user.optString("email_confirmed_at").isNotBlank()) {
                     "Verify your email address before saving your profile."
                 }
-                require(user.optString("phone_confirmed_at").isNotBlank()) {
-                    "Verify your mobile number before saving your profile."
-                }
                 val payload = JSONObject()
                     .put("id", userId)
                     .put("display_name", name.trim())
+                    .put("mobile_number", phone)
+                    .put("mobile_verified", false)
                     .put("country", country.trim())
                     .put("gender", gender.trim())
                     .put("updated_at", java.time.Instant.now().toString())
                 payload.put("birthday", parsedBirthday.toString())
                 val response = signupProfileUpsert(payload, access)
                 require(response.length() == 1 &&
-                    response.optJSONObject(0)?.optString("display_name") == name.trim()) {
-                    "Supabase did not confirm that the profile was saved."
+                    response.optJSONObject(0)?.optString("display_name") == name.trim() &&
+                    response.optJSONObject(0)?.optString("mobile_number") == phone &&
+                    !response.optJSONObject(0)?.optBoolean("mobile_verified", true)!!) {
+                    "Supabase did not confirm that the profile and unverified mobile number were saved."
                 }
-                // Save the authenticated session only after both contacts and
-                // the required profile fields have been verified and persisted.
                 tokenStore.saveSession(pending.accessToken, pending.refreshToken)
                 pendingSignupSession = null
                 Unit
@@ -816,12 +862,21 @@ class AuthService(context: Context) {
         }
     }
 
-    private fun signupMobileRequest(action: String, phone: String, code: String? = null): JSONObject {
+    private fun signupMobileRequest(
+        action: String,
+        phone: String,
+        code: String? = null,
+        channel: String = "sms"
+    ): JSONObject {
         require(action == "send" || action == "verify") { "Invalid signup verification action." }
+        require(channel == "sms" || channel == "whatsapp") { "Invalid signup verification channel." }
         val access = pendingSignupSession?.accessToken
             ?: accessTokenForApiBlocking()
             ?: error("Verify your email address and sign in before mobile verification.")
-        val payload = JSONObject().put("action", action).put("phone", phone)
+        val payload = JSONObject()
+            .put("action", action)
+            .put("phone", phone)
+            .put("channel", channel)
         if (!code.isNullOrBlank()) payload.put("code", code)
         val connection = URL(config.baseUrl.trim().trimEnd('/') + "/functions/v1/signup-mobile-verification")
             .openConnection() as HttpURLConnection
@@ -1075,6 +1130,11 @@ class AuthService(context: Context) {
         }
     }
 }
+
+data class SignupOtpChannels(
+    val smsEnabled: Boolean,
+    val whatsappEnabled: Boolean
+)
 
 data class AuthSession(
     val accessToken: String,
