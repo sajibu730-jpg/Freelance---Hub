@@ -224,7 +224,7 @@ LaunchedEffect(signup, signupStep, mobile, mobileCountryCode) {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 if (mobileCountryCode + mobile == target) {
                     result.onSuccess { mobileDuplicate = it }
-                        .onFailure { mobileCheckError = it.message ?: "মোবাইল নম্বর যাচাই করা যাচ্ছে না।" }
+                        .onFailure { mobileCheckError = it.message ?: "Unable to verify this mobile number. Please try again later." }
                 }
             }
         }
@@ -483,7 +483,7 @@ Surface(
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     )
                     if (signup && signupStep == 0 && name.isNotBlank() && !Validation.text(name, 2, 80)) {
-                        Text("পূর্ণ নাম কমপক্ষে ২ অক্ষরের হতে হবে।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text("Full name must be at least 2 characters long.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
 
                     Spacer(Modifier.height(14.dp))
@@ -698,7 +698,7 @@ Surface(
                         Text("Enter a valid mobile number for the selected country.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                     if ((signupStep == 0 || signupStep == 2) && mobileDuplicate == true) {
-                        Text("এই মোবাইল নম্বরটি আগে ব্যবহার করা হয়েছে। নতুন অ্যাকাউন্ট খুলতে অন্য নম্বর ব্যবহার করুন।", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text("This mobile number is already in use. Please use a different number to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     } else if ((signupStep == 0 || signupStep == 2) && mobileCheckError.isNotBlank()) {
                         Text(mobileCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
