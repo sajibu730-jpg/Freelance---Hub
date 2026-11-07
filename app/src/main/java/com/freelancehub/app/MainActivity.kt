@@ -153,6 +153,7 @@ fun LoginScreen(
     var busy by remember { mutableStateOf(false) }
 var openingSignup by remember { mutableStateOf(false) }
 var passwordVisible by remember { mutableStateOf(false) }
+var rememberMe by remember { mutableStateOf(true) }
 var resetBusy by remember { mutableStateOf(false) }
 var resetMessage by remember { mutableStateOf("") }
 var showRecoveryOptions by remember { mutableStateOf(false) }
@@ -991,8 +992,24 @@ Surface(
                 if (!signup) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f).clickable { rememberMe = !rememberMe }
+                        ) {
+                            Checkbox(
+                                checked = rememberMe,
+                                onCheckedChange = { rememberMe = it },
+                                modifier = Modifier.size(34.dp),
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = androidx.compose.ui.graphics.Color(0xFF0868E8)
+                                )
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("Remember me", style = MaterialTheme.typography.labelMedium, color = navy)
+                        }
                         TextButton(
                             enabled = !resetBusy,
                             onClick = {
@@ -1001,9 +1018,10 @@ Surface(
                                 screenContext.startActivity(
                                     Intent(screenContext, ForgotPasswordActivity::class.java)
                                 )
-                            }
+                            },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                         ) {
-                            Text("Forgot password?")
+                            Text("Forgot password?", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
