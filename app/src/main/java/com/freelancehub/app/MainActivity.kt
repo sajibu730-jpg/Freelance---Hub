@@ -140,6 +140,9 @@ fun LoginScreen(
     var country by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("") }
     var birthday by remember { mutableStateOf("") }
+    var showProfileCountryPicker by remember { mutableStateOf(false) }
+    var showGenderPicker by remember { mutableStateOf(false) }
+    var showBirthdayPicker by remember { mutableStateOf(false) }
     var signupSession by remember { mutableStateOf<com.freelancehub.app.auth.AuthSession?>(null) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -875,14 +878,124 @@ Surface(
                         )
                         Spacer(Modifier.height(8.dp))
                     }
-                    OutlinedTextField(value = country, onValueChange = { country = it },
-                        label = { Text("Country") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedButton(
+                        onClick = { signupCountrySearch = ""; showProfileCountryPicker = true },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Text(if (country.isBlank()) "Select Country" else country)
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(value = gender, onValueChange = { gender = it },
-                        label = { Text("Gender") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedButton(
+                        onClick = { showGenderPicker = true },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Text(if (gender.isBlank()) "Select Gender" else gender)
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show gender options")
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(value = birthday, onValueChange = { birthday = it },
-                        label = { Text("Birthday (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedButton(
+                        onClick = { showBirthdayPicker = true },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Text(if (birthday.isBlank()) "Select Birthday" else birthday)
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = "Open birthday calendar")
+                        }
+                    }
+
+                    if (showProfileCountryPicker) {
+                        val profileCountries = CountryCallingCodes.all.filter {
+                            it.first.contains(signupCountrySearch, ignoreCase = true) ||
+                                it.second.contains(signupCountrySearch.trim())
+                        }
+                        AlertDialog(
+                            onDismissRequest = { showProfileCountryPicker = false; signupCountrySearch = "" },
+                            title = { Text("Choose your country") },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = signupCountrySearch,
+                                        onValueChange = { signupCountrySearch = it },
+                                        label = { Text("Search country") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                                        items(profileCountries) { item ->
+                                            TextButton(
+                                                onClick = {
+                                                    country = item.first
+                                                    showProfileCountryPicker = false
+                                                    signupCountrySearch = ""
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) { Text(item.first, modifier = Modifier.fillMaxWidth()) }
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showProfileCountryPicker = false }) { Text("Close") }
+                            }
+                        )
+                    }
+                    if (showGenderPicker) {
+                        AlertDialog(
+                            onDismissRequest = { showGenderPicker = false },
+                            title = { Text("Choose gender") },
+                            text = {
+                                Column {
+                                    listOf("Male", "Female", "Other", "Prefer not to say").forEach { option ->
+                                        TextButton(
+                                            onClick = { gender = option; showGenderPicker = false },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text(option, modifier = Modifier.fillMaxWidth()) }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showGenderPicker = false }) { Text("Close") }
+                            }
+                        )
+                    }
+                    if (showBirthdayPicker) {
+                        val initialBirthday = runCatching {
+                            java.time.LocalDate.parse(birthday).atStartOfDay(java.time.ZoneOffset.UTC)
+                                .toInstant().toEpochMilli()
+                        }.getOrNull()
+                        val datePickerState = rememberDatePickerState(
+                            initialSelectedDateMillis = initialBirthday,
+                            yearRange = 1900..java.time.LocalDate.now().year
+                        )
+                        DatePickerDialog(
+                            onDismissRequest = { showBirthdayPicker = false },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    datePickerState.selectedDateMillis?.let { millis ->
+                                        birthday = java.time.Instant.ofEpochMilli(millis)
+                                            .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                                    }
+                                    showBirthdayPicker = false
+                                }) { Text("Select") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") }
+                            }
+                        ) {
+                            DatePicker(state = datePickerState, showModeToggle = false)
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(6.dp))
