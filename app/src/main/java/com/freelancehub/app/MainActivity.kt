@@ -40,6 +40,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
     override fun onCreate(b:Bundle?){
@@ -258,12 +259,30 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
             .background(
                 androidx.compose.ui.graphics.Brush.verticalGradient(
                     colors = listOf(
-                        androidx.compose.ui.graphics.Color(0xFFEAF3FF),
-                        androidx.compose.ui.graphics.Color(0xFFF8FBFF),
-                        androidx.compose.ui.graphics.Color(0xFFDCEEFF)
+                        androidx.compose.ui.graphics.Color(0xFFF5F9FF),
+                        androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+                        androidx.compose.ui.graphics.Color(0xFFE5F1FF)
                     )
                 )
             )
+            .drawBehind {
+                val waveOne = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.78f)
+                    cubicTo(size.width * 0.22f, size.height * 0.70f, size.width * 0.48f, size.height * 0.88f, size.width, size.height * 0.75f)
+                    lineTo(size.width, size.height)
+                    lineTo(0f, size.height)
+                    close()
+                }
+                val waveTwo = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.88f)
+                    cubicTo(size.width * 0.28f, size.height * 0.78f, size.width * 0.62f, size.height * 0.98f, size.width, size.height * 0.86f)
+                    lineTo(size.width, size.height)
+                    lineTo(0f, size.height)
+                    close()
+                }
+                drawPath(waveOne, androidx.compose.ui.graphics.Color(0xFFEAF4FF))
+                drawPath(waveTwo, androidx.compose.ui.graphics.Color(0xFFDCEEFF).copy(alpha = 0.78f))
+            }
             .verticalScroll(loginScrollState)        .padding(
     horizontal = 0.dp,
     vertical = if (keyboardOpen) 10.dp else 0.dp
@@ -293,12 +312,39 @@ Surface(
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(
                     colors = listOf(
-                        androidx.compose.ui.graphics.Color(0xFF061B49),
-                        androidx.compose.ui.graphics.Color(0xFF073B83),
-                        androidx.compose.ui.graphics.Color(0xFF075CB8)
+                        androidx.compose.ui.graphics.Color(0xFF041746),
+                        androidx.compose.ui.graphics.Color(0xFF06377A),
+                        androidx.compose.ui.graphics.Color(0xFF075DB8)
                     )
                 )
             )
+            .drawBehind {
+                val dotColor = androidx.compose.ui.graphics.Color(0xFF4BBEFF).copy(alpha = 0.34f)
+                val centerX = size.width - 54.dp.toPx()
+                val centerY = 78.dp.toPx()
+                val radius = 64.dp.toPx()
+                for (row in -7..7) {
+                    for (column in -7..7) {
+                        val dx = column * 7.2.dp.toPx()
+                        val dy = row * 7.2.dp.toPx()
+                        if (dx * dx + dy * dy < radius * radius) {
+                            drawCircle(
+                                color = dotColor,
+                                radius = 1.15.dp.toPx(),
+                                center = androidx.compose.ui.geometry.Offset(centerX + dx, centerY + dy)
+                            )
+                        }
+                    }
+                }
+                val lowerWave = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.78f)
+                    cubicTo(size.width * 0.30f, size.height * 0.98f, size.width * 0.66f, size.height * 0.78f, size.width, size.height * 0.88f)
+                    lineTo(size.width, size.height)
+                    lineTo(0f, size.height)
+                    close()
+                }
+                drawPath(lowerWave, androidx.compose.ui.graphics.Color(0xFF0A63BC).copy(alpha = 0.36f))
+            }
             .padding(start = 26.dp, end = 20.dp, top = 28.dp, bottom = 30.dp)
     ) {
         Icon(
@@ -319,9 +365,9 @@ Surface(
                         cubicTo(15f, 17f, 10f, 22f, 10f, 29f); close()
                     }
                     val lower = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(10f, 29f); cubicTo(14f, 22f, 20f, 21f, 28f, 21f); lineTo(43f, 21f)
-                        cubicTo(41f, 29f, 35f, 34f, 27f, 34f); lineTo(22f, 34f)
-                        cubicTo(17f, 34f, 14f, 38f, 14f, 44f); cubicTo(7f, 42f, 4f, 36f, 10f, 29f); close()
+                        moveTo(10f, 30f); cubicTo(14f, 23f, 20f, 22f, 29f, 22f); lineTo(45f, 22f)
+                        cubicTo(42f, 31f, 35f, 36f, 27f, 36f); lineTo(22f, 36f)
+                        cubicTo(17f, 36f, 14f, 40f, 14f, 46f); cubicTo(7f, 44f, 4f, 37f, 10f, 30f); close()
                     }
                     val logoBrush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF20D7F2), androidx.compose.ui.graphics.Color(0xFF078DEB)))
                     withTransform({ scale(size.width / 48f, size.height / 48f, pivot = androidx.compose.ui.geometry.Offset.Zero) }) {
@@ -331,10 +377,18 @@ Surface(
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(
-                        "Freelance Hub",
+                        text = androidx.compose.ui.text.buildAnnotatedString {
+                            append("Freelance ")
+                            pushStyle(
+                                androidx.compose.ui.text.SpanStyle(
+                                    color = androidx.compose.ui.graphics.Color(0xFF83E9FF)
+                                )
+                            )
+                            append("Hub")
+                            pop()
+                        },
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = androidx.compose.ui.graphics.Color.White
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
                     Text(
                         "Your work. Your world. Your future.",
