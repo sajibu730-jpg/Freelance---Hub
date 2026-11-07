@@ -58,6 +58,10 @@ class MainActivity:ComponentActivity(){
 @Composable fun FreelanceHubApp(repo:AppRepository){
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
+    val signupScope = rememberCoroutineScope()
+    val signupAccount = remember(auth) {
+        RemoteAccountRepository(SecureApiClient(RuntimeBackendConfig.current()), auth::accessTokenForApiBlocking)
+    }
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
     LaunchedEffect(Unit) {
@@ -79,12 +83,30 @@ class MainActivity:ComponentActivity(){
             CircularProgressIndicator()
         }
     } else if(!loggedIn){
-        LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
-            val old=repo.profile()
-            repo.initializeAccountRole(session.role)
-            repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
-            repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
-            loggedIn=true
+        LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session, profilePhotoUri, coverPhotoUri ->
+            signupScope.launch {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        profilePhotoUri?.let { uri ->
+                            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                ?: error("Unable to read profile photo.")
+                            val type = context.contentResolver.getType(uri) ?: "image/jpeg"
+                            signupAccount.updateProfilePhoto(bytes, type)
+                        }
+                        coverPhotoUri?.let { uri ->
+                            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                ?: error("Unable to read cover photo.")
+                            val type = context.contentResolver.getType(uri) ?: "image/jpeg"
+                            signupAccount.updateCoverPhoto(bytes, type)
+                        }
+                    }
+                }
+                val old=repo.profile()
+                repo.initializeAccountRole(session.role)
+                repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
+                repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
+                loggedIn=true
+            }
         }){email,name,password,role,isSignup,setError->
             auth.authenticate(isSignup,name,email,password,role){result->
                 android.os.Handler(android.os.Looper.getMainLooper()).post{
