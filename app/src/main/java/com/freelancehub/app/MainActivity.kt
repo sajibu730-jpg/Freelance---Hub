@@ -500,6 +500,7 @@ Surface(
                         }
                     }
 
+                    if (signupStep == 0) {
                     Spacer(Modifier.height(18.dp))
 
                     Spacer(Modifier.height(10.dp))
