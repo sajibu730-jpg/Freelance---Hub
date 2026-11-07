@@ -437,30 +437,38 @@ Surface(
 
                     Spacer(Modifier.height(18.dp))
 
-                    Text(
-                        text = "PERSONAL INFO  •  ACCOUNT DETAILS  •  VERIFICATION",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = blue
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
+                    val activeSignupStage = when (signupStep) {
+                        0 -> 0
+                        4 -> 1
+                        else -> 2
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        repeat(3) { index ->
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(4.dp),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-                                color = if (index == 0) blue else light
-                            ) {}
+                        listOf("Personal Info", "Account Details", "Verification").forEachIndexed { index, label ->
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                            ) {
+                                Surface(
+                                    shape = androidx.compose.foundation.shape.CircleShape,
+                                    color = if (index <= activeSignupStage) androidx.compose.ui.graphics.Color(0xFF0868E8) else androidx.compose.ui.graphics.Color(0xFFF2F6FC),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (index <= activeSignupStage) androidx.compose.ui.graphics.Color(0xFF0868E8) else androidx.compose.ui.graphics.Color(0xFF9BAFC9)),
+                                    modifier = Modifier.size(25.dp)
+                                ) {
+                                    Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                        Text("${index + 1}", color = if (index <= activeSignupStage) white else navy, style = MaterialTheme.typography.labelSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    }
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(label, color = if (index == activeSignupStage) navy else androidx.compose.ui.graphics.Color(0xFF71839D), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            }
                         }
                     }
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(18.dp))
 
                     OutlinedTextField(
                         value = name,
