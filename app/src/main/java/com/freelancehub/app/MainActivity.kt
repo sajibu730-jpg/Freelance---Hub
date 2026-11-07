@@ -1226,10 +1226,11 @@ Surface(
                     }),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(15.dp),
+                        .height(50.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = blue
+                        containerColor = androidx.compose.ui.graphics.Color(0xFF0868E8),
+                        disabledContainerColor = androidx.compose.ui.graphics.Color(0xFF9BBCE8)
                     )
                 ) {
                     if (busy) {
@@ -1239,16 +1240,23 @@ Surface(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text(
-                            text = if (!signup) "Sign In" else when (signupStep) {
-                                0 -> "Create account & send email code"
-                                1 -> "Verify email code"
-                                2 -> "Send mobile SMS code"
-                                3 -> "Verify mobile code"
-                                else -> "Save profile & finish signup"
-                            },
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = if (!signup) "Sign In" else when (signupStep) {
+                                    0 -> "Next Step"
+                                    1 -> "Verify Email"
+                                    2 -> "Send Verification Code"
+                                    3 -> "Verify Mobile"
+                                    else -> "Complete Sign Up"
+                                },
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
                     }
                 }
 
