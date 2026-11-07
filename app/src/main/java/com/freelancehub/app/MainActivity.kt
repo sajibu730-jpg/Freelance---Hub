@@ -38,6 +38,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.draw.clip
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
@@ -594,7 +595,7 @@ Surface(
                         emailDuplicate = null
                         emailCheckError = ""
                     },
-                    enabled = !signup || signupStep == 0,
+                    enabled = !signup || signupStep == 5,
                     label = { Text(if (signup) "Email Address" else "Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
