@@ -481,11 +481,23 @@ Surface(
                     Spacer(Modifier.height(18.dp))
 
                     if (signupStep == 0) {
-                    OutlinedButton(
-                        onClick = { profilePhotoPicker.launch("image/*") },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                    ) { Text(if (profilePhotoUri == null) "Add Profile Photo (Optional now)" else "Profile Photo Selected") }
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(84.dp).clickable { profilePhotoPicker.launch("image/*") },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = androidx.compose.ui.graphics.Color(0xFFE4F0FF)
+                        ) {
+                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = blue, modifier = Modifier.size(34.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(if (profilePhotoUri == null) "Add Profile Photo" else "Profile Photo Selected", color = blue, style = MaterialTheme.typography.labelLarge)
+                        Text("(Optional now)", color = dark, style = MaterialTheme.typography.labelSmall)
+                    }
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = name,
@@ -712,6 +724,29 @@ Surface(
                         Checkbox(checked = rulesAccepted, onCheckedChange = { rulesAccepted = it })
                         Text("I agree to the Rules & Guidelines", style = MaterialTheme.typography.bodySmall, color = navy)
                     }
+                    Spacer(Modifier.height(16.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier.width(142.dp).height(76.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            color = androidx.compose.ui.graphics.Color(0xFF0B2C62)
+                        ) {
+                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Text("F", color = androidx.compose.ui.graphics.Color(0xFF18B9F5), style = MaterialTheme.typography.headlineLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
+                        }
+                        Surface(
+                            modifier = Modifier.width(174.dp).height(8.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp),
+                            color = androidx.compose.ui.graphics.Color(0xFF9EB9DC)
+                        ) {}
+                        Spacer(Modifier.height(8.dp))
+                        Text("Work Globally, Grow Freely", color = navy, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text("Your skills. Our platform. A better future.", color = dark, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
 
                 }
@@ -877,14 +912,6 @@ Surface(
                 }
                 if (signup && signupStep == 0) {
                     Spacer(Modifier.height(12.dp))
-                    if (!signupMobileVerified) {
-                        Text(
-                            "Mobile verification is currently turned off. Your number will be saved as unverified.",
-                            color = MaterialTheme.colorScheme.secondary,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Spacer(Modifier.height(8.dp))
-                    }
                     OutlinedButton(
                         onClick = { signupCountrySearch = ""; showProfileCountryPicker = true },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
