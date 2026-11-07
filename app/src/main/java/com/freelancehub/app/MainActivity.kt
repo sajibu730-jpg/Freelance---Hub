@@ -105,7 +105,7 @@ class MainActivity:ComponentActivity(){
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     authConfigured: Boolean,
@@ -2026,15 +2026,8 @@ fun RemoteHomeScreen(
                         onClick = onMatching,
                         modifier = Modifier.fillMaxWidth(),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
-                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
-                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
-                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
-                        focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1768C9),
-                        cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
-                    )
-                ) {
+                    colors = ButtonDefaults.outlinedButtonColors()
+                    ) {
                         Text(
                             if (role == UserRole.CLIENT)
                                 "Explore Marketplace"
