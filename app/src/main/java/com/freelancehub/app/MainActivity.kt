@@ -258,14 +258,15 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
         modifier = Modifier
             .fillMaxSize()
             .background(
-    androidx.compose.ui.graphics.Brush.verticalGradient(
-        colors = listOf(
-            androidx.compose.ui.graphics.Color(0xFFDCE8FF),
-            androidx.compose.ui.graphics.Color(0xFFF7F9FF)
-        )
-    )
-)
- .verticalScroll(loginScrollState)        .padding(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        androidx.compose.ui.graphics.Color(0xFFEAF3FF),
+                        androidx.compose.ui.graphics.Color(0xFFF8FBFF),
+                        androidx.compose.ui.graphics.Color(0xFFDCEEFF)
+                    )
+                )
+            )
+            .verticalScroll(loginScrollState)        .padding(
     horizontal = 0.dp,
     vertical = if (keyboardOpen) 10.dp else 0.dp
 ),
