@@ -436,6 +436,7 @@ Surface(
                             1 -> "We’ve sent an 8-digit code to your email address."
                             2, 3 -> "Enter the 8-digit code sent to your mobile number."
                             4 -> "Add your personal information to complete your profile."
+                            0 -> "Now, set up your account details."
                             else -> "Let’s get started! Fill in your personal information."
                         },
                         style = MaterialTheme.typography.bodyMedium,
