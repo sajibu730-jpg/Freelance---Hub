@@ -928,16 +928,21 @@ Surface(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showBirthdayPicker = true },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (birthday.isBlank()) "Select your birthday" else birthday, modifier = Modifier.weight(1f), color = navy)
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Birthday", color = navy, style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.width(10.dp))
+                        OutlinedButton(
+                            onClick = { showBirthdayPicker = true },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(if (birthday.isBlank()) "Select your birthday" else birthday, modifier = Modifier.weight(1f), color = navy, maxLines = 1)
                             Icon(Icons.Filled.CalendarMonth, contentDescription = "Open birthday calendar")
                         }
                     }
