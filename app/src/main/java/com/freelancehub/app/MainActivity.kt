@@ -144,10 +144,15 @@ fun LoginScreen(
     var showGenderPicker by remember { mutableStateOf(false) }
     var showBirthdayPicker by remember { mutableStateOf(false) }
     var signupSession by remember { mutableStateOf<com.freelancehub.app.auth.AuthSession?>(null) }
+    var profilePhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var coverPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { profilePhotoUri = it }
+    val coverPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { coverPhotoUri = it }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var confirmPass by remember { mutableStateOf("") }
+    var rulesAccepted by remember { mutableStateOf(false) }
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -475,6 +480,13 @@ Surface(
 
                     Spacer(Modifier.height(18.dp))
 
+                    if (signupStep == 0) {
+                    OutlinedButton(
+                        onClick = { profilePhotoPicker.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    ) { Text(if (profilePhotoUri == null) "Add Profile Photo (Optional now)" else "Profile Photo Selected") }
+                    Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
@@ -536,6 +548,7 @@ Surface(
                         )
                     }
 
+                    }
                     Spacer(Modifier.height(14.dp))
                 } else {
                     Text(
@@ -565,6 +578,7 @@ Surface(
                     Spacer(Modifier.height(12.dp))
                 }
 
+                if (!signup || signupStep == 1) {
                 // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
@@ -690,8 +704,17 @@ Surface(
                     if (confirmPass.isNotBlank() && pass != confirmPass) {
                         Text("The passwords do not match.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable { rulesAccepted = !rulesAccepted }
+                    ) {
+                        Checkbox(checked = rulesAccepted, onCheckedChange = { rulesAccepted = it })
+                        Text("I agree to the Rules & Guidelines", style = MaterialTheme.typography.bodySmall, color = navy)
+                    }
                 }
 
+                }
                 if (signup && signupStep == 0) {
                     Spacer(Modifier.height(12.dp))
                     Row(
@@ -807,6 +830,29 @@ Surface(
                         },
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
                     ) { Text("Already started signup? Resend Code") }
+                }
+                if (signup && signupStep == 3) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Add a cover photo to make your profile stand out.", color = dark, style = MaterialTheme.typography.bodyMedium)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().height(132.dp).clickable { coverPhotoPicker.launch("image/*") },
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFEAF3FF),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFB9D5F5))
+                    ) {
+                        Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                Icon(Icons.Filled.AddAPhoto, contentDescription = null, tint = blue, modifier = Modifier.size(34.dp))
+                                Text(if (coverPhotoUri == null) "Upload Cover Photo" else "Cover Photo Selected", color = navy)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { profilePhotoPicker.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    ) { Text(if (profilePhotoUri == null) "Upload Profile Photo" else "Change Profile Photo") }
                 }
                 if (signup && signupStep == 2) {
                     Spacer(Modifier.height(12.dp))
@@ -1159,7 +1205,7 @@ Surface(
                                                     signupSession = authService.pendingSignupSessionSnapshot()
                                                     signupStep = 2
                                                 } else {
-                                                    signupStep = 1
+                                                    signupStep = 2
                                                 }
                                             }.onFailure {
                                                     val message = it.message ?: "Could not create account."
@@ -1203,7 +1249,7 @@ Surface(
                             emailCheckError.isBlank() && mobileCheckError.isBlank() &&
                             country.isNotBlank() && gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
-                        1 -> emailDuplicate == false && emailCheckError.isBlank()
+                        1 -> emailDuplicate == false && emailCheckError.isBlank() && rulesAccepted
                         2 -> emailOtp.length == 8
                         3 -> true
                         else -> false
@@ -1264,6 +1310,9 @@ Surface(
                                 signupStep = 0
                                 emailOtp = ""
                                 mobileOtp = ""
+                                rulesAccepted = false
+                                profilePhotoUri = null
+                                coverPhotoUri = null
                                 mobile = ""
                                 mobileCountryCode = "+971"
                                 mobileCountryName = "United Arab Emirates"
