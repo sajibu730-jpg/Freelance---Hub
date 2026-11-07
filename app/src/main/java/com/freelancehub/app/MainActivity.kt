@@ -502,7 +502,25 @@ Surface(
 
                     if (signupStep == 0) {
                     Spacer(Modifier.height(18.dp))
-
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(82.dp).clickable { profilePhotoPicker.launch("image/*") },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = androidx.compose.ui.graphics.Color(0xFFE3F0FF),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFD0E4FA))
+                        ) {
+                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Icon(Icons.Filled.AddAPhoto, contentDescription = "Add profile photo", tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(34.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(if (profilePhotoUri == null) "Add Profile Photo" else "Profile Photo Selected", color = navy, style = MaterialTheme.typography.labelLarge, modifier = Modifier.clickable { profilePhotoPicker.launch("image/*") })
+                        Text("(Optional now)", color = dark, style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.height(12.dp))
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = name,
@@ -528,41 +546,24 @@ Surface(
                         Text("Full name must be at least 2 characters long.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
 
-                    Spacer(Modifier.height(14.dp))
-
-                    Text(
-                        text = "I want to join as",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = navy
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        FilterChip(
-                            selected = role == UserRole.FREELANCER,
-                            onClick = { role = UserRole.FREELANCER },
-                            enabled = signupStep == 0,
-                            label = { Text("Freelancer") },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Work, contentDescription = null)
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        FilterChip(
-                            selected = role == UserRole.CLIENT,
-                            onClick = { role = UserRole.CLIENT },
-                            enabled = signupStep == 0,
-                            label = { Text("Client") },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Business, contentDescription = null)
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
+                    Spacer(Modifier.height(10.dp))
+                    var roleMenuExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(
+                            onClick = { roleMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
+                        ) {
+                            Icon(if (role == UserRole.FREELANCER) Icons.Filled.Work else Icons.Filled.Business, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                            Spacer(Modifier.width(12.dp))
+                            Text(if (role == UserRole.FREELANCER) "Freelancer" else "Client", color = navy, modifier = Modifier.weight(1f))
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose account type")
+                        }
+                        DropdownMenu(expanded = roleMenuExpanded, onDismissRequest = { roleMenuExpanded = false }) {
+                            DropdownMenuItem(text = { Text("Freelancer") }, onClick = { role = UserRole.FREELANCER; roleMenuExpanded = false })
+                            DropdownMenuItem(text = { Text("Client") }, onClick = { role = UserRole.CLIENT; roleMenuExpanded = false })
+                        }
                     }
 
                     }
