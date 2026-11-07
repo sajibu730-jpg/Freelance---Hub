@@ -1291,90 +1291,95 @@ Surface(
 
                 Spacer(Modifier.height(14.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment =
-                        androidx.compose.ui.Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (signup) {
-                            "Already have an account?"
-                        } else {
-                            "New to Freelance Hub?"
+                if (!signup) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFE0E9F5))
+                        Text("  OR  ", color = androidx.compose.ui.graphics.Color(0xFF7587A2), style = MaterialTheme.typography.labelSmall)
+                        HorizontalDivider(Modifier.weight(1f), color = androidx.compose.ui.graphics.Color(0xFFE0E9F5))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable(enabled = !openingSignup) {
+                            openingSignup = true
+                            scope.launch {
+                                delay(350)
+                                signup = true
+                                signupStep = 0
+                                emailOtp = ""
+                                mobileOtp = ""
+                                mobile = ""
+                                mobileCountryCode = "+971"
+                                mobileCountryName = "United Arab Emirates"
+                                country = ""
+                                gender = ""
+                                birthday = ""
+                                signupSession = null
+                                error = ""
+                                busy = false
+                                openingSignup = false
+                            }
                         },
-                        color = dark,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-
-                    
-TextButton(
-    enabled = !openingSignup,
-    onClick = {
-        if (signup) {
-            authService.discardPendingSignupSession()
-            signup = false
-            signupStep = 0
-            name = ""
-            email = ""
-            pass = ""
-                            confirmPass = ""
-            mobile = ""
-            mobileCountryCode = "+971"
-            mobileCountryName = "United Arab Emirates"
-            emailOtp = ""
-            mobileOtp = ""
-            country = ""
-            gender = ""
-            birthday = ""
-            signupSession = null
-            role = UserRole.FREELANCER
-            error = ""
-            busy = false
-        } else if (!openingSignup) {
-            openingSignup = true
-            scope.launch {
-                delay(2200)
-                signup = true
-                signupStep = 0
-                emailOtp = ""
-                mobileOtp = ""
-                mobile = ""
-                mobileCountryCode = "+971"
-                mobileCountryName = "United Arab Emirates"
-                country = ""
-                gender = ""
-                birthday = ""
-                signupSession = null
-                error = ""
-                busy = false
-                openingSignup = false
-            }
-        }
-    }
-) {
-    Row(
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        if (openingSignup) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(16.dp),
-                strokeWidth = 2.dp,
-                color = blue
-            )
-            Spacer(Modifier.width(8.dp))
-            Text("Opening account setup…", color = blue)
-        } else {
-            Text(
-                text = if (signup) "Sign in" else "Create a new account",
-                color = blue
-            )
-        }
-    }
-}
-
-
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFEAF3FF),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFD7E8FC))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color(0xFFD4E8FF),
+                                modifier = Modifier.size(42.dp)
+                            ) {
+                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Create a new account", color = androidx.compose.ui.graphics.Color(0xFF1455A5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                                Text("Join our global community", color = androidx.compose.ui.graphics.Color(0xFF637B9B), style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (openingSignup) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            else Icon(Icons.Filled.ArrowForward, contentDescription = "Create account", tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text("Already have an account?", color = dark, style = MaterialTheme.typography.bodySmall)
+                        TextButton(
+                            enabled = !openingSignup,
+                            onClick = {
+                                authService.discardPendingSignupSession()
+                                signup = false
+                                signupStep = 0
+                                name = ""
+                                email = ""
+                                pass = ""
+                                confirmPass = ""
+                                mobile = ""
+                                mobileCountryCode = "+971"
+                                mobileCountryName = "United Arab Emirates"
+                                emailOtp = ""
+                                mobileOtp = ""
+                                country = ""
+                                gender = ""
+                                birthday = ""
+                                signupSession = null
+                                role = UserRole.FREELANCER
+                                error = ""
+                                busy = false
+                            }
+                        ) { Text("Sign in", color = androidx.compose.ui.graphics.Color(0xFF0868E8)) }
+                    }
                 }
 
                 HorizontalDivider(
