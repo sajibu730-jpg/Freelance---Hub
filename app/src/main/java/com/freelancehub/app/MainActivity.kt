@@ -410,7 +410,12 @@ Surface(
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Create New Account",
+                        text = when (signupStep) {
+                            1 -> "Verify Your Email"
+                            2, 3 -> "Verify Your Mobile"
+                            4 -> "Complete Your Profile"
+                            else -> "Create New Account"
+                        },
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy
                     )
@@ -418,7 +423,12 @@ Surface(
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = if (signupStep == 4) "Complete your personal information." else "Let’s get started! Fill in your account details.",
+                        text = when (signupStep) {
+                            1 -> "We’ve sent an 8-digit code to your email address."
+                            2, 3 -> "Enter the 8-digit code sent to your mobile number."
+                            4 -> "Add your personal information to complete your profile."
+                            else -> "Let’s get started! Fill in your personal information."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
                     )
