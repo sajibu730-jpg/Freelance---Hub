@@ -58,6 +58,10 @@ class MainActivity:ComponentActivity(){
 @Composable fun FreelanceHubApp(repo:AppRepository){
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
+    val signupScope = rememberCoroutineScope()
+    val signupAccount = remember(auth) {
+        RemoteAccountRepository(SecureApiClient(RuntimeBackendConfig.current()), auth::accessTokenForApiBlocking)
+    }
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
     LaunchedEffect(Unit) {
@@ -79,12 +83,30 @@ class MainActivity:ComponentActivity(){
             CircularProgressIndicator()
         }
     } else if(!loggedIn){
-        LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
-            val old=repo.profile()
-            repo.initializeAccountRole(session.role)
-            repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
-            repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
-            loggedIn=true
+        LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session, profilePhotoUri, coverPhotoUri ->
+            signupScope.launch {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        profilePhotoUri?.let { uri ->
+                            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                ?: error("Unable to read profile photo.")
+                            val type = context.contentResolver.getType(uri) ?: "image/jpeg"
+                            signupAccount.updateProfilePhoto(bytes, type)
+                        }
+                        coverPhotoUri?.let { uri ->
+                            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                ?: error("Unable to read cover photo.")
+                            val type = context.contentResolver.getType(uri) ?: "image/jpeg"
+                            signupAccount.updateCoverPhoto(bytes, type)
+                        }
+                    }
+                }
+                val old=repo.profile()
+                repo.initializeAccountRole(session.role)
+                repo.saveProfile(old.copy(email=session.email,name=session.name,role=session.role))
+                repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
+                loggedIn=true
+            }
         }){email,name,password,role,isSignup,setError->
             auth.authenticate(isSignup,name,email,password,role){result->
                 android.os.Handler(android.os.Looper.getMainLooper()).post{
@@ -104,12 +126,12 @@ class MainActivity:ComponentActivity(){
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     authConfigured: Boolean,
     authService: AuthService,
-    onSignupComplete: (com.freelancehub.app.auth.AuthSession) -> Unit,
+    onSignupComplete: (com.freelancehub.app.auth.AuthSession, Uri?, Uri?) -> Unit,
     onLogin: (
         String,
         String,
@@ -144,10 +166,15 @@ fun LoginScreen(
     var showGenderPicker by remember { mutableStateOf(false) }
     var showBirthdayPicker by remember { mutableStateOf(false) }
     var signupSession by remember { mutableStateOf<com.freelancehub.app.auth.AuthSession?>(null) }
+    var profilePhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var coverPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { profilePhotoUri = it }
+    val coverPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { coverPhotoUri = it }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var confirmPass by remember { mutableStateOf("") }
+    var rulesAccepted by remember { mutableStateOf(false) }
     var role by remember { mutableStateOf(UserRole.FREELANCER) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -175,11 +202,11 @@ fun loadSignupOtpSettings() {
                 signupWhatsAppOtpEnabled = channels.whatsappEnabled
                 signupOtpSettingsLoaded = true
                 mobileOtpChannel = if (channels.whatsappEnabled && !channels.smsEnabled) "whatsapp" else "sms"
-                signupStep = if (channels.smsEnabled || channels.whatsappEnabled) 2 else 4
+                signupStep = 3
             }.onFailure {
                 signupOtpSettingsLoaded = false
-                signupStep = 2
-                error = it.message ?: "Could not load mobile verification settings. Tap Retry to continue."
+                signupStep = 3
+                error = ""
             }
         }
     }
@@ -192,8 +219,8 @@ LaunchedEffect(signup) {
 }
 
 LaunchedEffect(signup, signupStep, email) {
-    if (!signup || signupStep != 0 || !Validation.email(email)) {
-        if (!signup || signupStep == 0) {
+    if (!signup || signupStep != 1 || !Validation.email(email)) {
+        if (!signup || signupStep == 1) {
             emailDuplicate = null
             emailCheckError = ""
         }
@@ -205,7 +232,7 @@ LaunchedEffect(signup, signupStep, email) {
     delay(600)
     authService.checkSignupIdentifier("email", checkedEmail) { result ->
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            if (signup && signupStep == 0 && email.trim().equals(checkedEmail, ignoreCase = true)) {
+            if (signup && signupStep == 1 && email.trim().equals(checkedEmail, ignoreCase = true)) {
                 result.onSuccess {
                     emailDuplicate = it
                     emailCheckError = ""
@@ -219,7 +246,7 @@ LaunchedEffect(signup, signupStep, email) {
 }
 LaunchedEffect(signup, signupStep, mobile, mobileCountryCode) {
     val target = mobileCountryCode + mobile
-    if (signup && (signupStep == 0 || signupStep == 2) &&
+    if (signup && signupStep == 0 &&
         target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
         mobileDuplicate = null
         mobileCheckError = ""
@@ -250,10 +277,15 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
     val keyboardOpen = WindowInsets.isImeVisible
 
-    val valid = authConfigured &&
-        Validation.email(email) &&
-        Validation.password(pass) &&
-        (!signup || (Validation.text(name, 2, 80) && pass == confirmPass))
+    val valid = authConfigured && if (!signup) {
+        Validation.email(email) && Validation.password(pass)
+    } else when (signupStep) {
+        0 -> Validation.text(name, 2, 80)
+        1 -> Validation.email(email) && Validation.password(pass) && pass == confirmPass
+        2 -> Validation.email(email)
+        3 -> true
+        else -> false
+    }
 
     Column(
         modifier = Modifier
@@ -413,9 +445,9 @@ Surface(
 
                     Text(
                         text = when (signupStep) {
-                            1 -> "Verify Your Email"
-                            2, 3 -> "Verify Your Mobile"
-                            4 -> "Complete Your Profile"
+                            1 -> "Create New Account"
+                            2 -> "Verify Your Email"
+                            3 -> "Complete Your Profile"
                             else -> "Create New Account"
                         },
                         style = MaterialTheme.typography.headlineSmall,
@@ -426,9 +458,9 @@ Surface(
 
                     Text(
                         text = when (signupStep) {
-                            1 -> "We’ve sent an 8-digit code to your email address."
-                            2, 3 -> "Enter the 8-digit code sent to your mobile number."
-                            4 -> "Add your personal information to complete your profile."
+                            1 -> "Now, set up your account details."
+                            2 -> "We’ve sent an 8-digit code to your email address."
+                            3 -> "Add a cover photo to make your profile stand out."
                             else -> "Let’s get started! Fill in your personal information."
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -439,7 +471,7 @@ Surface(
 
                     val activeSignupStage = when (signupStep) {
                         0 -> 0
-                        4 -> 1
+                        1 -> 1
                         else -> 2
                     }
                     Row(
@@ -470,6 +502,25 @@ Surface(
 
                     Spacer(Modifier.height(18.dp))
 
+                    if (signupStep == 0) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(84.dp).clickable { profilePhotoPicker.launch("image/*") },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = androidx.compose.ui.graphics.Color(0xFFE4F0FF)
+                        ) {
+                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = blue, modifier = Modifier.size(34.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(if (profilePhotoUri == null) "Add Profile Photo" else "Profile Photo Selected", color = blue, style = MaterialTheme.typography.labelLarge)
+                        Text("(Optional now)", color = dark, style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
@@ -531,6 +582,7 @@ Surface(
                         )
                     }
 
+                    }
                     Spacer(Modifier.height(14.dp))
                 } else {
                     Text(
@@ -560,6 +612,7 @@ Surface(
                     Spacer(Modifier.height(12.dp))
                 }
 
+                if (!signup || signupStep == 1) {
                 // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
@@ -568,7 +621,7 @@ Surface(
                         emailDuplicate = null
                         emailCheckError = ""
                     },
-                    enabled = !signup || signupStep == 0,
+                    enabled = !signup || signupStep == 1,
                     label = { Text(if (signup) "Email Address" else "Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
@@ -585,12 +638,12 @@ Surface(
                         cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
                     )
                 )
-                if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
+                if (signup && signupStep == 1 && email.isNotBlank() && !Validation.email(email)) {
                     Text("Please enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                if (signup && signupStep == 0 && emailDuplicate == true) {
+                if (signup && signupStep == 1 && emailDuplicate == true) {
                     Text("This email address is already in use. Please use a different email address to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                } else if (signup && signupStep == 0 && emailCheckError.isNotBlank()) {
+                } else if (signup && signupStep == 1 && emailCheckError.isNotBlank()) {
                     Text(emailCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
@@ -600,7 +653,7 @@ Surface(
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
-                    enabled = !signup || signupStep == 0,
+                    enabled = !signup || signupStep == 1,
                     label = { Text("Password") },
                     leadingIcon = {
                         Icon(Icons.Filled.Lock, contentDescription = null)
@@ -658,10 +711,10 @@ Surface(
                     )
                 )
 
-                if (signup && signupStep == 0 && pass.isNotBlank() && !Validation.password(pass)) {
+                if (signup && signupStep == 1 && pass.isNotBlank() && !Validation.password(pass)) {
                     Text("Password must be at least 8 characters long and include at least 1 English letter and 1 number.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                if (signup && signupStep == 0) {
+                if (signup && signupStep == 1) {
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = confirmPass,
@@ -685,9 +738,41 @@ Surface(
                     if (confirmPass.isNotBlank() && pass != confirmPass) {
                         Text("The passwords do not match.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable { rulesAccepted = !rulesAccepted }
+                    ) {
+                        Checkbox(checked = rulesAccepted, onCheckedChange = { rulesAccepted = it })
+                        Text("I agree to the Rules & Guidelines", style = MaterialTheme.typography.bodySmall, color = navy)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier.width(142.dp).height(76.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            color = androidx.compose.ui.graphics.Color(0xFF0B2C62)
+                        ) {
+                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Text("F", color = androidx.compose.ui.graphics.Color(0xFF18B9F5), style = MaterialTheme.typography.headlineLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
+                        }
+                        Surface(
+                            modifier = Modifier.width(174.dp).height(8.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp),
+                            color = androidx.compose.ui.graphics.Color(0xFF9EB9DC)
+                        ) {}
+                        Spacer(Modifier.height(8.dp))
+                        Text("Work Globally, Grow Freely", color = navy, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text("Your skills. Our platform. A better future.", color = dark, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
 
-                if (signup && (signupStep == 0 || signupStep == 2)) {
+                }
+                if (signup && signupStep == 0) {
                     Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -784,26 +869,30 @@ Surface(
                         }
                     )
                 }
-                if (signup && signupStep == 0) {
-                    TextButton(
-                        enabled = !busy && email.contains("@"),
-                        onClick = {
-                            busy = true
-                            error = ""
-                            authService.resendSignupEmailOtp(email) { result ->
-                                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                    busy = false
-                                    result.onSuccess {
-                                        signupStep = 1
-                                        error = "A new verification code has been requested. Check your inbox and spam folder."
-                                    }.onFailure { error = it.message ?: "Could not resend email code." }
-                                }
+                if (signup && signupStep == 3) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Add a cover photo to make your profile stand out.", color = dark, style = MaterialTheme.typography.bodyMedium)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().height(132.dp).clickable { coverPhotoPicker.launch("image/*") },
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                        color = androidx.compose.ui.graphics.Color(0xFFEAF3FF),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFB9D5F5))
+                    ) {
+                        Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                Icon(Icons.Filled.AddAPhoto, contentDescription = null, tint = blue, modifier = Modifier.size(34.dp))
+                                Text(if (coverPhotoUri == null) "Upload Cover Photo" else "Cover Photo Selected", color = navy)
                             }
-                        },
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
-                    ) { Text("Already started signup? Resend Code") }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { profilePhotoPicker.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    ) { Text(if (profilePhotoUri == null) "Upload Profile Photo" else "Change Profile Photo") }
                 }
-                if (signup && signupStep == 1) {
+                if (signup && signupStep == 2) {
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(value = emailOtp, onValueChange = { emailOtp = it.filter(Char::isDigit).take(8) },
                         label = { Text("8-digit email verification code") }, singleLine = true,
@@ -824,89 +913,8 @@ Surface(
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
                     ) { Text("Resend Code") }
                 }
-                if (signup && signupStep == 2 && !signupOtpSettingsLoaded) {
-                    TextButton(
-                        enabled = !busy,
-                        onClick = { loadSignupOtpSettings() },
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
-                    ) { Text("Retry verification settings") }
-                }
-                if (signup && signupStep == 2 && signupOtpSettingsLoaded &&
-                    signupSmsOtpEnabled && signupWhatsAppOtpEnabled) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Choose where to receive your verification code.", style = MaterialTheme.typography.bodySmall)
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Row(
-                            modifier = Modifier.weight(1f).clickable { mobileOtpChannel = "whatsapp" },
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = mobileOtpChannel == "whatsapp",
-                                onClick = { mobileOtpChannel = "whatsapp" }
-                            )
-                            Text("WhatsApp")
-                        }
-                        Row(
-                            modifier = Modifier.weight(1f).clickable { mobileOtpChannel = "sms" },
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = mobileOtpChannel == "sms",
-                                onClick = { mobileOtpChannel = "sms" }
-                            )
-                            Text("SMS")
-                        }
-                    }
-                }
-                if (signup && signupStep == 3) {
+                if (signup && signupStep == 0) {
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = mobileOtp,
-                        onValueChange = { mobileOtp = it.filter(Char::isDigit).take(8) },
-                        label = { Text(if (mobileOtpChannel == "whatsapp") "8-digit WhatsApp verification code" else "8-digit SMS verification code") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    TextButton(
-                        enabled = !busy && mobileDuplicate == false && mobileCheckError.isBlank(),
-                        onClick = {
-                            busy = true
-                            error = ""
-                            authService.sendSignupMobileOtp(mobileCountryCode + mobile, mobileOtpChannel) { result ->
-                                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                    busy = false
-                                    result.onSuccess {
-                                        error = if (mobileOtpChannel == "whatsapp") {
-                                            "A new WhatsApp verification code has been requested."
-                                        } else {
-                                            "A new SMS verification code has been requested."
-                                        }
-                                    }.onFailure { error = it.message ?: "Could not resend verification code." }
-                                }
-                            }
-                        },
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
-                    ) { Text(if (mobileOtpChannel == "whatsapp") "Resend WhatsApp Code" else "Resend SMS Code") }
-                    TextButton(
-                        enabled = !busy,
-                        onClick = {
-                            signupStep = 2
-                            mobileOtp = ""
-                            error = ""
-                        },
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
-                    ) { Text("Change mobile number") }
-                }
-                if (signup && signupStep == 4) {
-                    Spacer(Modifier.height(12.dp))
-                    if (!signupMobileVerified) {
-                        Text(
-                            "Mobile verification is currently turned off. Your number will be saved as unverified.",
-                            color = MaterialTheme.colorScheme.secondary,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Spacer(Modifier.height(8.dp))
-                    }
                     OutlinedButton(
                         onClick = { signupCountrySearch = ""; showProfileCountryPicker = true },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -1215,15 +1223,19 @@ Surface(
                             } else {
                                 val main = android.os.Handler(android.os.Looper.getMainLooper())
                                 when (signupStep) {
-                                    0 -> authService.createSignupAccount(name, email, pass, role) { result ->
+                                    0 -> {
+                                        signupStep = 1
+                                        busy = false
+                                    }
+                                    1 -> authService.createSignupAccount(name, email, pass, role) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess { outcome ->
                                                 if (outcome.startsWith("VERIFIED:")) {
                                                     signupSession = authService.pendingSignupSessionSnapshot()
-                                                    loadSignupOtpSettings()
+                                                    signupStep = 2
                                                 } else {
-                                                    signupStep = 1
+                                                    signupStep = 2
                                                 }
                                             }.onFailure {
                                                     val message = it.message ?: "Could not create account."
@@ -1237,45 +1249,21 @@ Surface(
                                                 }
                                         }
                                     }
-                                    1 -> authService.verifySignupEmail(email, emailOtp) { result ->
+                                    2 -> authService.verifySignupEmail(email, emailOtp) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess { session ->
                                                 signupSession = session
-                                                loadSignupOtpSettings()
+                                                signupStep = 3
                                             }.onFailure { error = it.message ?: "Email verification failed." }
                                         }
                                     }
-                                    2 -> {
-                                        if (!signupOtpSettingsLoaded ||
-                                            (!signupSmsOtpEnabled && !signupWhatsAppOtpEnabled)) {
-                                            busy = false
-                                            error = "Mobile verification settings are not ready. Please retry."
-                                        } else {
-                                            authService.sendSignupMobileOtp(mobileCountryCode + mobile, mobileOtpChannel) { result ->
-                                                main.post {
-                                                    busy = false
-                                                    result.onSuccess { signupStep = 3 }
-                                                        .onFailure { error = it.message ?: "Could not send verification code." }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    3 -> authService.verifySignupMobileOtp(mobileCountryCode + mobile, mobileOtp, mobileOtpChannel) { result ->
-                                        main.post {
-                                            busy = false
-                                            result.onSuccess {
-                                                signupMobileVerified = true
-                                                signupStep = 4
-                                            }.onFailure { error = it.message ?: "Mobile verification failed." }
-                                        }
-                                    }
-                                    4 -> authService.saveSignupProfile(name, mobileCountryCode + mobile, country, gender, birthday) { result ->
+                                    3 -> authService.saveSignupProfile(name, mobileCountryCode + mobile, country, gender, birthday) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess {
                                                 val session = signupSession
-                                                if (session != null) onSignupComplete(session)
+                                                if (session != null) onSignupComplete(session, profilePhotoUri, coverPhotoUri)
                                                 else error = "Profile saved, but the login session is missing. Please sign in."
                                             }.onFailure { error = it.message ?: "Could not save profile." }
                                         }
@@ -1287,16 +1275,13 @@ Surface(
                     enabled = valid && !busy && (!signup || when (signupStep) {
                         0 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
                             (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) &&
-                            emailDuplicate == false && mobileDuplicate == false &&
-                            emailCheckError.isBlank() && mobileCheckError.isBlank()
-                        1 -> emailOtp.length == 8
-                        2 -> signupOtpSettingsLoaded &&
-                            (signupSmsOtpEnabled || signupWhatsAppOtpEnabled) &&
-                            mobileCountryCode.isNotBlank() && mobile.isNotBlank() &&
-                            mobileDuplicate == false && mobileCheckError.isBlank()
-                        3 -> mobileOtp.length == 8
-                        4 -> country.isNotBlank() && gender.isNotBlank() &&
+                            mobileDuplicate == false &&
+                            emailCheckError.isBlank() && mobileCheckError.isBlank() &&
+                            country.isNotBlank() && gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
+                        1 -> emailDuplicate == false && emailCheckError.isBlank() && rulesAccepted
+                        2 -> emailOtp.length == 8
+                        3 -> true
                         else -> false
                     }),
                     modifier = Modifier
@@ -1324,9 +1309,8 @@ Surface(
                             Text(
                                 text = if (!signup) "Sign In" else when (signupStep) {
                                     0 -> "Next Step"
-                                    1 -> "Verify Email"
-                                    2 -> "Send Verification Code"
-                                    3 -> "Verify Mobile"
+                                    1 -> "Next Step"
+                                    2 -> "Verify Email"
                                     else -> "Complete Sign Up"
                                 },
                                 style = MaterialTheme.typography.titleMedium
@@ -1356,6 +1340,9 @@ Surface(
                                 signupStep = 0
                                 emailOtp = ""
                                 mobileOtp = ""
+                                rulesAccepted = false
+                                profilePhotoUri = null
+                                coverPhotoUri = null
                                 mobile = ""
                                 mobileCountryCode = "+971"
                                 mobileCountryName = "United Arab Emirates"
@@ -1948,15 +1935,8 @@ fun RemoteHomeScreen(
                         onClick = onMatching,
                         modifier = Modifier.fillMaxWidth(),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
-                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
-                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
-                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
-                        focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1768C9),
-                        cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
-                    )
-                ) {
+                    colors = ButtonDefaults.outlinedButtonColors()
+                    ) {
                         Text(
                             if (role == UserRole.CLIENT)
                                 "Explore Marketplace"
