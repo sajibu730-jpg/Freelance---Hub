@@ -120,7 +120,7 @@ fun LoginScreen(
     ) -> Unit
 ) {
     var signup by remember { mutableStateOf(false) }
-    var signupStep by remember { mutableIntStateOf(0) }
+    var signupStep by remember { mutableIntStateOf(5) }
     var mobile by remember { mutableStateOf("") }
     var mobileCountryCode by remember { mutableStateOf("+971") }
     var mobileCountryName by remember { mutableStateOf("United Arab Emirates") }
@@ -219,7 +219,7 @@ LaunchedEffect(signup, signupStep, email) {
 }
 LaunchedEffect(signup, signupStep, mobile, mobileCountryCode) {
     val target = mobileCountryCode + mobile
-    if (signup && (signupStep == 0 || signupStep == 2) &&
+    if (signup && (signupStep == 5 || signupStep == 2) &&
         target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
         mobileDuplicate = null
         mobileCheckError = ""
@@ -250,10 +250,13 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
     val keyboardOpen = WindowInsets.isImeVisible
 
-    val valid = authConfigured &&
-        Validation.email(email) &&
-        Validation.password(pass) &&
-        (!signup || (Validation.text(name, 2, 80) && pass == confirmPass))
+    val valid = authConfigured && if (!signup) {
+        Validation.email(email) && Validation.password(pass)
+    } else when (signupStep) {
+        5 -> Validation.text(name, 2, 80)
+        0 -> Validation.email(email) && Validation.password(pass) && pass == confirmPass
+        else -> true
+    }
 
     Column(
         modifier = Modifier
@@ -315,12 +318,20 @@ Surface(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
             ) {
-                Text(
-                    "F",
-                    color = androidx.compose.ui.graphics.Color(0xFF16C8F4),
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
-                )
+                androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 48.dp, height = 48.dp)) {
+                    val upper = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(5f, 23f); cubicTo(5f, 12f, 14f, 4f, 25f, 4f); lineTo(45f, 4f)
+                        cubicTo(43f, 12f, 36f, 17f, 28f, 17f); lineTo(22f, 17f)
+                        cubicTo(15f, 17f, 10f, 22f, 10f, 29f); close()
+                    }
+                    val lower = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(10f, 29f); cubicTo(14f, 22f, 20f, 21f, 28f, 21f); lineTo(43f, 21f)
+                        cubicTo(41f, 29f, 35f, 34f, 27f, 34f); lineTo(22f, 34f)
+                        cubicTo(17f, 34f, 14f, 38f, 14f, 44f); cubicTo(7f, 42f, 4f, 36f, 10f, 29f); close()
+                    }
+                    val logoBrush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF20D7F2), androidx.compose.ui.graphics.Color(0xFF078DEB)))
+                    drawPath(upper, logoBrush); drawPath(lower, logoBrush)
+                }
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(
@@ -438,8 +449,9 @@ Surface(
                     Spacer(Modifier.height(18.dp))
 
                     val activeSignupStage = when (signupStep) {
-                        0 -> 0
-                        4 -> 1
+                        5 -> 0
+                        0 -> 1
+                        4 -> 2
                         else -> 2
                     }
                     Row(
@@ -470,7 +482,21 @@ Surface(
 
                     Spacer(Modifier.height(18.dp))
 
-                    OutlinedTextField(
+                    if (signup && signupStep == 5) {
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            Surface(shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFE5F1FF), modifier = Modifier.size(82.dp)) {
+                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(34.dp))
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text("Add Profile Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                            Text("(Optional now)", color = dark, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Spacer(Modifier.height(14.dp))
+                    }
+
+                    if (!signup || signupStep == 5) OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
                         enabled = !signup || signupStep == 0,
@@ -496,7 +522,7 @@ Surface(
 
                     Spacer(Modifier.height(14.dp))
 
-                    Text(
+                    if (signup && signupStep == 5) Text(
                         text = "I want to join as",
                         style = MaterialTheme.typography.titleMedium,
                         color = navy
@@ -504,7 +530,7 @@ Surface(
 
                     Spacer(Modifier.height(8.dp))
 
-                    Row(
+                    if (signup && signupStep == 5) Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -560,6 +586,7 @@ Surface(
                     Spacer(Modifier.height(12.dp))
                 }
 
+                if (!signup || signupStep != 5) {
                 // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
@@ -687,7 +714,8 @@ Surface(
                     }
                 }
 
-                if (signup && (signupStep == 0 || signupStep == 2)) {
+                }
+                if (signup && (signupStep == 5 || signupStep == 2)) {
                     Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -897,6 +925,35 @@ Surface(
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
                     ) { Text("Change mobile number") }
                 }
+                if (signup && signupStep == 5) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = { signupCountrySearch = ""; showProfileCountryPicker = true }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Public, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9)); Spacer(Modifier.width(12.dp))
+                            Text(if (country.isBlank()) "Select your country" else country, modifier = Modifier.weight(1f), color = navy); Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { showGenderPicker = true }, modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (gender.isBlank()) "Gender" else gender, maxLines = 1) }
+                        OutlinedButton(onClick = { showBirthdayPicker = true }, modifier = Modifier.weight(1.35f).height(48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) { Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text(if (birthday.isBlank()) "Birthday" else birthday, maxLines = 1) }
+                    }
+                    if (showProfileCountryPicker) {
+                        val profileCountries = CountryCallingCodes.all.filter { it.first.contains(signupCountrySearch, ignoreCase = true) || it.second.contains(signupCountrySearch.trim()) }
+                        AlertDialog(onDismissRequest = { showProfileCountryPicker = false; signupCountrySearch = "" }, title = { Text("Choose your country") }, text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(value = signupCountrySearch, onValueChange = { signupCountrySearch = it }, label = { Text("Search country") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                LazyColumn(Modifier.heightIn(max = 360.dp)) { items(profileCountries) { item -> TextButton(onClick = { country = item.first; showProfileCountryPicker = false; signupCountrySearch = "" }, modifier = Modifier.fillMaxWidth()) { Text(item.first, modifier = Modifier.fillMaxWidth()) } } }
+                            }
+                        }, confirmButton = { TextButton(onClick = { showProfileCountryPicker = false }) { Text("Close") } })
+                    }
+                    if (showGenderPicker) AlertDialog(onDismissRequest = { showGenderPicker = false }, title = { Text("Choose gender") }, text = { Column { listOf("Male", "Female", "Other", "Prefer not to say").forEach { option -> TextButton(onClick = { gender = option; showGenderPicker = false }, modifier = Modifier.fillMaxWidth()) { Text(option, modifier = Modifier.fillMaxWidth()) } } } }, confirmButton = { TextButton(onClick = { showGenderPicker = false }) { Text("Close") } })
+                    if (showBirthdayPicker) {
+                        val datePickerState = rememberDatePickerState(yearRange = 1900..java.time.LocalDate.now().year)
+                        DatePickerDialog(onDismissRequest = { showBirthdayPicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { millis -> birthday = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString() }; showBirthdayPicker = false }) { Text("Select") } }, dismissButton = { TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState, showModeToggle = false) }
+                    }
+                }
+
                 if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
                     if (!signupMobileVerified) {
@@ -1205,6 +1262,7 @@ Surface(
                 Button(
                     onClick = {
                         if (valid && !busy) {
+                            if (signup && signupStep == 5) { signupStep = 0; error = "" } else {
                             busy = true
                             error = ""
                             if (!signup) {
@@ -1282,13 +1340,14 @@ Surface(
                                     }
                                 }
                             }
+                            }
                         }
                     },
                     enabled = valid && !busy && (!signup || when (signupStep) {
-                        0 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
-                            (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) &&
-                            emailDuplicate == false && mobileDuplicate == false &&
-                            emailCheckError.isBlank() && mobileCheckError.isBlank()
+                        5 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
+                            (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) && mobileDuplicate == false && mobileCheckError.isBlank() && country.isNotBlank() && gender.isNotBlank() &&
+                            runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
+                        0 -> emailDuplicate == false && emailCheckError.isBlank()
                         1 -> emailOtp.length == 8
                         2 -> signupOtpSettingsLoaded &&
                             (signupSmsOtpEnabled || signupWhatsAppOtpEnabled) &&
@@ -1323,7 +1382,7 @@ Surface(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = if (!signup) "Sign In" else when (signupStep) {
-                                    0 -> "Next Step"
+                                    5, 0 -> "Next Step"
                                     1 -> "Verify Email"
                                     2 -> "Send Verification Code"
                                     3 -> "Verify Mobile"
@@ -1353,7 +1412,7 @@ Surface(
                             scope.launch {
                                 delay(350)
                                 signup = true
-                                signupStep = 0
+                                signupStep = 5
                                 emailOtp = ""
                                 mobileOtp = ""
                                 mobile = ""
