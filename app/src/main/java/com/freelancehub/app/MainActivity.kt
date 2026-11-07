@@ -109,7 +109,7 @@ class MainActivity:ComponentActivity(){
 fun LoginScreen(
     authConfigured: Boolean,
     authService: AuthService,
-    onSignupComplete: (com.freelancehub.app.auth.AuthSession) -> Unit,
+    onSignupComplete: (com.freelancehub.app.auth.AuthSession, Uri?, Uri?) -> Unit,
     onLogin: (
         String,
         String,
@@ -1241,7 +1241,7 @@ Surface(
                                             busy = false
                                             result.onSuccess {
                                                 val session = signupSession
-                                                if (session != null) onSignupComplete(session)
+                                                if (session != null) onSignupComplete(session, profilePhotoUri, coverPhotoUri)
                                                 else error = "Profile saved, but the login session is missing. Please sign in."
                                             }.onFailure { error = it.message ?: "Could not save profile." }
                                         }
