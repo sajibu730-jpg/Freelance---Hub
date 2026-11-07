@@ -370,10 +370,12 @@ Surface(
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 34.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
             color = white,
-            shadowElevation = 5.dp
+            shadowElevation = 7.dp
         ) {
             Column(
                 modifier = Modifier.padding(22.dp)
