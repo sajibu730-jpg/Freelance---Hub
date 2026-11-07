@@ -481,7 +481,15 @@ Surface(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1768C9),
+                        cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
                     )
+                )
                     if (signup && signupStep == 0 && name.isNotBlank() && !Validation.text(name, 2, 80)) {
                         Text("Full name must be at least 2 characters long.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
@@ -568,6 +576,14 @@ Surface(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1768C9),
+                        cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
+                    )
                 )
                 if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
                     Text("Please enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -632,6 +648,14 @@ Surface(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1768C9),
+                        cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
+                    )
                 )
 
                 if (signup && signupStep == 0 && pass.isNotBlank() && !Validation.password(pass)) {
@@ -649,7 +673,15 @@ Surface(
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1768C9),
+                        cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
                     )
+                )
                     if (confirmPass.isNotBlank() && pass != confirmPass) {
                         Text("The passwords do not match.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
@@ -1910,7 +1942,15 @@ fun RemoteHomeScreen(
                         onClick = onMatching,
                         modifier = Modifier.fillMaxWidth(),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                    ) {
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
+                        focusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color(0xFFF7FAFF),
+                        focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF1768C9),
+                        cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
+                    )
+                ) {
                         Text(
                             if (role == UserRole.CLIENT)
                                 "Explore Marketplace"
