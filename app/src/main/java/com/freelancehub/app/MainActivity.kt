@@ -499,8 +499,8 @@ Surface(
                     if (!signup || signupStep == 5) OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        enabled = !signup || signupStep == 0,
-                        label = { Text("Full name") },
+                        enabled = !signup || signupStep == 5,
+                        label = { Text("Full Name") },
                         leadingIcon = {
                             Icon(Icons.Filled.Person, contentDescription = null)
                         },
@@ -516,7 +516,7 @@ Surface(
                         cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
                     )
                 )
-                    if (signup && signupStep == 0 && name.isNotBlank() && !Validation.text(name, 2, 80)) {
+                    if (signup && signupStep == 5 && name.isNotBlank() && !Validation.text(name, 2, 80)) {
                         Text("Full name must be at least 2 characters long.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
 
@@ -537,7 +537,7 @@ Surface(
                         FilterChip(
                             selected = role == UserRole.FREELANCER,
                             onClick = { role = UserRole.FREELANCER },
-                            enabled = signupStep == 0,
+                            enabled = signupStep == 5,
                             label = { Text("Freelancer") },
                             leadingIcon = {
                                 Icon(Icons.Filled.Work, contentDescription = null)
@@ -548,7 +548,7 @@ Surface(
                         FilterChip(
                             selected = role == UserRole.CLIENT,
                             onClick = { role = UserRole.CLIENT },
-                            enabled = signupStep == 0,
+                            enabled = signupStep == 5,
                             label = { Text("Client") },
                             leadingIcon = {
                                 Icon(Icons.Filled.Business, contentDescription = null)
@@ -715,6 +715,17 @@ Surface(
                 }
 
                 }
+                if (signup && signupStep == 5) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = { signupCountrySearch = ""; showProfileCountryPicker = true }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Public, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9)); Spacer(Modifier.width(12.dp))
+                            Text(if (country.isBlank()) "Select your country" else country, modifier = Modifier.weight(1f), color = navy); Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+
                 if (signup && (signupStep == 5 || signupStep == 2)) {
                     Spacer(Modifier.height(12.dp))
                     Row(
@@ -757,9 +768,9 @@ Surface(
                         !(mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                         Text("Enter a valid mobile number for the selected country.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
-                    if ((signupStep == 0 || signupStep == 2) && mobileDuplicate == true) {
+                    if ((signupStep == 5 || signupStep == 2) && mobileDuplicate == true) {
                         Text("This mobile number is already in use. Please use a different number to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    } else if ((signupStep == 0 || signupStep == 2) && mobileCheckError.isNotBlank()) {
+                    } else if ((signupStep == 5 || signupStep == 2) && mobileCheckError.isNotBlank()) {
                         Text(mobileCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -926,17 +937,24 @@ Surface(
                     ) { Text("Change mobile number") }
                 }
                 if (signup && signupStep == 5) {
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedButton(onClick = { signupCountrySearch = ""; showProfileCountryPicker = true }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Public, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9)); Spacer(Modifier.width(12.dp))
-                            Text(if (country.isBlank()) "Select your country" else country, modifier = Modifier.weight(1f), color = navy); Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text("Gender", color = navy, style = MaterialTheme.typography.labelMedium)
+                        listOf("Male", "Female", "Other").forEach { option ->
+                            Row(Modifier.weight(1f).clickable { gender = option }, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                RadioButton(selected = gender == option, onClick = { gender = option }, modifier = Modifier.size(28.dp))
+                                Text(option, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { showGenderPicker = true }, modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (gender.isBlank()) "Gender" else gender, maxLines = 1) }
-                        OutlinedButton(onClick = { showBirthdayPicker = true }, modifier = Modifier.weight(1.35f).height(48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) { Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(5.dp)); Text(if (birthday.isBlank()) "Birthday" else birthday, maxLines = 1) }
+                    OutlinedButton(onClick = { showBirthdayPicker = true }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                        Spacer(Modifier.width(10.dp))
+                        Text("Birthday", color = navy)
+                        Spacer(Modifier.width(12.dp))
+                        Text(if (birthday.isBlank()) "Select your birthday" else birthday, color = dark, modifier = Modifier.weight(1f))
                     }
                     if (showProfileCountryPicker) {
                         val profileCountries = CountryCallingCodes.all.filter { it.first.contains(signupCountrySearch, ignoreCase = true) || it.second.contains(signupCountrySearch.trim()) }
