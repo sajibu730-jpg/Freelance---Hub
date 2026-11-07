@@ -410,7 +410,7 @@ Surface(
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Create your account",
+                        text = "Create New Account",
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy
                     )
@@ -418,7 +418,7 @@ Surface(
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "Start your journey with Freelance Hub.",
+                        text = if (signupStep == 4) "Complete your personal information." else "Let’s get started! Fill in your account details.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
                     )
@@ -426,7 +426,7 @@ Surface(
                     Spacer(Modifier.height(18.dp))
 
                     Text(
-                        text = "ACCOUNT SETUP  •  STEP 1",
+                        text = "PERSONAL INFO  •  ACCOUNT DETAILS  •  VERIFICATION",
                         style = MaterialTheme.typography.labelMedium,
                         color = blue
                     )
@@ -541,7 +541,7 @@ Surface(
                         emailCheckError = ""
                     },
                     enabled = !signup || signupStep == 0,
-                    label = { Text("Email") },
+                    label = { Text(if (signup) "Email Address" else "Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
                     },
@@ -1373,7 +1373,7 @@ TextButton(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "FREELANCE HUB  •  GLOBAL OPPORTUNITIES",
+            text = if (signup) "Your information is safe and secure." else "PROFESSIONAL OPPORTUNITIES. A GLOBAL COMMUNITY.",
             style = MaterialTheme.typography.labelSmall,
             color = androidx.compose.ui.graphics.Color(0xFF6D7D94)
         )
