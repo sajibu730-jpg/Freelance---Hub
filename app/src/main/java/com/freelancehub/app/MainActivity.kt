@@ -480,7 +480,7 @@ Surface(
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
                         unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
@@ -575,7 +575,7 @@ Surface(
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
                         unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
@@ -647,7 +647,7 @@ Surface(
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
                         unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
@@ -672,7 +672,7 @@ Surface(
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
                         unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
@@ -1947,7 +1947,7 @@ fun RemoteHomeScreen(
                     OutlinedButton(
                         onClick = onMatching,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF4B91E8),
                         unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFD5E4F5),
