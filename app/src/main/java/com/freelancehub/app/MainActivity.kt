@@ -514,7 +514,7 @@ Surface(
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "Sign in to continue to your workspace.",
+                        text = "Sign in to continue your journey.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
                     )
@@ -1362,7 +1362,7 @@ TextButton(
                     Spacer(Modifier.width(6.dp))
 
                     Text(
-                        text = "Your account credentials are protected.",
+                        text = if (signup) "Your information is safe and secure." else "Your account is authenticated through configured production backend.",
                         style = MaterialTheme.typography.bodySmall,
                         color = dark
                     )
