@@ -1245,7 +1245,7 @@ Surface(
                     enabled = valid && !busy && (!signup || when (signupStep) {
                         0 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
                             (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) &&
-                            emailDuplicate == false && mobileDuplicate == false &&
+                            mobileDuplicate == false &&
                             emailCheckError.isBlank() && mobileCheckError.isBlank() &&
                             country.isNotBlank() && gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
