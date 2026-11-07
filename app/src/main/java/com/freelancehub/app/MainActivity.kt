@@ -502,24 +502,6 @@ Surface(
 
                     Spacer(Modifier.height(18.dp))
 
-                    if (signupStep == 0) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(84.dp).clickable { profilePhotoPicker.launch("image/*") },
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            color = androidx.compose.ui.graphics.Color(0xFFE4F0FF)
-                        ) {
-                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = blue, modifier = Modifier.size(34.dp))
-                            }
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(if (profilePhotoUri == null) "Add Profile Photo" else "Profile Photo Selected", color = blue, style = MaterialTheme.typography.labelLarge)
-                        Text("(Optional now)", color = dark, style = MaterialTheme.typography.labelSmall)
-                    }
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = name,
