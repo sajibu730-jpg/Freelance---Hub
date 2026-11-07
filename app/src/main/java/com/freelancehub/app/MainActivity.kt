@@ -847,25 +847,6 @@ Surface(
                         }
                     )
                 }
-                if (signup && signupStep == 1) {
-                    TextButton(
-                        enabled = !busy && email.contains("@"),
-                        onClick = {
-                            busy = true
-                            error = ""
-                            authService.resendSignupEmailOtp(email) { result ->
-                                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                    busy = false
-                                    result.onSuccess {
-                                        signupStep = 1
-                                        error = "A new verification code has been requested. Check your inbox and spam folder."
-                                    }.onFailure { error = it.message ?: "Could not resend email code." }
-                                }
-                            }
-                        },
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
-                    ) { Text("Already started signup? Resend Code") }
-                }
                 if (signup && signupStep == 3) {
                     Spacer(Modifier.height(12.dp))
                     Text("Add a cover photo to make your profile stand out.", color = dark, style = MaterialTheme.typography.bodyMedium)
