@@ -141,6 +141,7 @@ fun LoginScreen(
     var gender by remember { mutableStateOf("") }
     var birthday by remember { mutableStateOf("") }
     var showProfileCountryPicker by remember { mutableStateOf(false) }
+    var profilePhotoBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var showGenderPicker by remember { mutableStateOf(false) }
     var showBirthdayPicker by remember { mutableStateOf(false) }
     var signupSession by remember { mutableStateOf<com.freelancehub.app.auth.AuthSession?>(null) }
@@ -161,28 +162,20 @@ var showEmailRecovery by remember { mutableStateOf(false) }
 var showMobileRecoveryInfo by remember { mutableStateOf(false) }
 var recoveryEmail by remember { mutableStateOf("") }
 val screenContext = LocalContext.current
+val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    profilePhotoBitmap = uri?.let { selected -> runCatching { screenContext.contentResolver.openInputStream(selected)?.use { BitmapFactory.decodeStream(it) } }.getOrNull() }
+}
 val resetAuthService = remember(screenContext) { AuthService(screenContext) }
 val scope = rememberCoroutineScope()
 
 fun loadSignupOtpSettings() {
-    busy = true
-    error = ""
-    authService.getSignupOtpChannels { result ->
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            busy = false
-            result.onSuccess { channels ->
-                signupSmsOtpEnabled = channels.smsEnabled
-                signupWhatsAppOtpEnabled = channels.whatsappEnabled
-                signupOtpSettingsLoaded = true
-                mobileOtpChannel = if (channels.whatsappEnabled && !channels.smsEnabled) "whatsapp" else "sms"
-                signupStep = if (channels.smsEnabled || channels.whatsappEnabled) 2 else 4
-            }.onFailure {
-                signupOtpSettingsLoaded = false
-                signupStep = 2
-                error = it.message ?: "Could not load mobile verification settings. Tap Retry to continue."
-            }
-        }
-    }
+    // Mobile verification is intentionally disabled until the paid launch phase.
+    signupSmsOtpEnabled = false
+    signupWhatsAppOtpEnabled = false
+    signupOtpSettingsLoaded = true
+    signupMobileVerified = false
+    busy = false
+    signupStep = 4
 }
 
 val loginScrollState = rememberScrollState()
@@ -330,7 +323,9 @@ Surface(
                         cubicTo(17f, 34f, 14f, 38f, 14f, 44f); cubicTo(7f, 42f, 4f, 36f, 10f, 29f); close()
                     }
                     val logoBrush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF20D7F2), androidx.compose.ui.graphics.Color(0xFF078DEB)))
-                    drawPath(upper, logoBrush); drawPath(lower, logoBrush)
+                    withTransform({ scale(size.width / 48f, size.height / 48f, pivot = androidx.compose.ui.geometry.Offset.Zero) }) {
+                        drawPath(upper, logoBrush); drawPath(lower, logoBrush)
+                    }
                 }
                 Spacer(Modifier.width(14.dp))
                 Column {
@@ -484,9 +479,13 @@ Surface(
 
                     if (signup && signupStep == 5) {
                         Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            Surface(shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFE5F1FF), modifier = Modifier.size(82.dp)) {
-                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                    Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(34.dp))
+                            Surface(shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFE5F1FF), modifier = Modifier.size(82.dp).clickable { profilePhotoPicker.launch("image/*") }) {
+                                if (profilePhotoBitmap != null) {
+                                    androidx.compose.foundation.Image(bitmap = profilePhotoBitmap!!.asImageBitmap(), contentDescription = "Selected profile photo", modifier = Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape))
+                                } else {
+                                    Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                        Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(34.dp))
+                                    }
                                 }
                             }
                             Spacer(Modifier.height(6.dp))
