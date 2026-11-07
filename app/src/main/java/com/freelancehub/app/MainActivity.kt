@@ -756,54 +756,6 @@ Surface(
                 }
 
                 }
-                if (signup && signupStep == 0) {
-                    Spacer(Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = { signupCountrySearch = ""; showSignupCountryPicker = true },
-                            modifier = Modifier.weight(1.15f).height(56.dp),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("Country code", style = MaterialTheme.typography.labelSmall, color = navy)
-                                    Text(mobileCountryName, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                                    Text(mobileCountryCode, style = MaterialTheme.typography.labelMedium, color = blue)
-                                }
-                                Icon(Icons.Filled.Search, contentDescription = "Search country")
-                            }
-                        }
-                        OutlinedTextField(
-                            value = mobile,
-                            onValueChange = {
-                                mobile = it.filter(Char::isDigit).take(14)
-                                mobileDuplicate = null
-                                mobileCheckError = ""
-                            },
-                            placeholder = { Text("Mobile Number") },
-                            singleLine = true,
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
-                            ),
-                            modifier = Modifier.weight(1.35f),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                        )
-                    }
-                    if (mobile.isNotBlank() &&
-                        !(mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
-                        Text("Enter a valid mobile number for the selected country.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                    if ((signupStep == 0 || signupStep == 2) && mobileDuplicate == true) {
-                        Text("This mobile number is already in use. Please use a different number to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    } else if ((signupStep == 0 || signupStep == 2) && mobileCheckError.isNotBlank()) {
-                        Text(mobileCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
                 if (showSignupCountryPicker) {
                     val filteredSignupCountries = CountryCallingCodes.all.filter {
                         it.first.contains(signupCountrySearch, ignoreCase = true) ||
@@ -912,18 +864,67 @@ Surface(
                             Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showGenderPicker = true },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                if (signup && signupStep == 0) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (gender.isBlank()) "Gender" else gender, modifier = Modifier.weight(1f), color = navy)
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show gender options")
+                        OutlinedButton(
+                            onClick = { signupCountrySearch = ""; showSignupCountryPicker = true },
+                            modifier = Modifier.weight(1.15f).height(56.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Country code", style = MaterialTheme.typography.labelSmall, color = navy)
+                                    Text(mobileCountryName, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                                    Text(mobileCountryCode, style = MaterialTheme.typography.labelMedium, color = blue)
+                                }
+                                Icon(Icons.Filled.Search, contentDescription = "Search country")
+                            }
+                        }
+                        OutlinedTextField(
+                            value = mobile,
+                            onValueChange = {
+                                mobile = it.filter(Char::isDigit).take(14)
+                                mobileDuplicate = null
+                                mobileCheckError = ""
+                            },
+                            placeholder = { Text("Mobile Number") },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+                            ),
+                            modifier = Modifier.weight(1.35f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                        )
+                    }
+                    if (mobile.isNotBlank() &&
+                        !(mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
+                        Text("Enter a valid mobile number for the selected country.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    if ((signupStep == 0 || signupStep == 2) && mobileDuplicate == true) {
+                        Text("This mobile number is already in use. Please use a different number to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    } else if ((signupStep == 0 || signupStep == 2) && mobileCheckError.isNotBlank()) {
+                        Text(mobileCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Gender", color = navy, style = MaterialTheme.typography.labelLarge)
+                        listOf("Male", "Female", "Other").forEach { option ->
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                RadioButton(selected = gender == option, onClick = { gender = option })
+                                Text(option, color = navy, style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
