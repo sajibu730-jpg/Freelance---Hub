@@ -928,7 +928,7 @@ Surface(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Wc, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                            Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
                             Spacer(Modifier.width(12.dp))
                             Text(if (gender.isBlank()) "Gender" else gender, modifier = Modifier.weight(1f), color = navy)
                             Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show gender options")
