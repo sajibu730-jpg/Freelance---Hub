@@ -319,40 +319,48 @@ Surface(
                 )
             )
             .drawBehind {
-                val dotColor = androidx.compose.ui.graphics.Color(0xFF4BBEFF).copy(alpha = 0.34f)
-                val centerX = size.width - 54.dp.toPx()
+                // Dotted globe: a curved, spherical dot field like the supplied login reference.
+                val dotColor = androidx.compose.ui.graphics.Color(0xFF43BFFF).copy(alpha = 0.42f)
+                val centerX = size.width - 56.dp.toPx()
                 val centerY = 78.dp.toPx()
-                val radius = 64.dp.toPx()
-                for (row in -7..7) {
-                    for (column in -7..7) {
-                        val dx = column * 7.2.dp.toPx()
-                        val dy = row * 7.2.dp.toPx()
-                        if (dx * dx + dy * dy < radius * radius) {
-                            drawCircle(
-                                color = dotColor,
-                                radius = 1.15.dp.toPx(),
-                                center = androidx.compose.ui.geometry.Offset(centerX + dx, centerY + dy)
-                            )
-                        }
+                val radius = 66.dp.toPx()
+                val step = 6.2.dp.toPx()
+                for (row in -10..10) {
+                    val normalizedY = row / 10f
+                    val y = normalizedY * radius
+                    val rowWidth = kotlin.math.sqrt((1f - normalizedY * normalizedY).coerceAtLeast(0f)) * radius
+                    val count = (rowWidth * 2f / step).toInt()
+                    for (column in -count..count) {
+                        val x = column * step
+                        val frontFactor = kotlin.math.sqrt((1f - (x / radius) * (x / radius) - normalizedY * normalizedY).coerceAtLeast(0f))
+                        val alpha = (0.18f + frontFactor * 0.38f).coerceAtMost(0.56f)
+                        drawCircle(
+                            color = dotColor.copy(alpha = alpha),
+                            radius = (0.8f + frontFactor * 0.55f).dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(centerX + x, centerY + y)
+                        )
                     }
                 }
-                val lowerWave = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, size.height * 0.78f)
-                    cubicTo(size.width * 0.30f, size.height * 0.98f, size.width * 0.66f, size.height * 0.78f, size.width, size.height * 0.88f)
+                // Layered blue sweep along the bottom edge of the header.
+                val backSweep = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.69f)
+                    cubicTo(size.width * 0.22f, size.height * 0.98f, size.width * 0.60f, size.height * 0.77f, size.width, size.height * 0.84f)
                     lineTo(size.width, size.height)
                     lineTo(0f, size.height)
                     close()
                 }
-                drawPath(lowerWave, androidx.compose.ui.graphics.Color(0xFF0A63BC).copy(alpha = 0.36f))
+                val frontSweep = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.82f)
+                    cubicTo(size.width * 0.28f, size.height * 1.02f, size.width * 0.65f, size.height * 0.82f, size.width, size.height * 0.91f)
+                    lineTo(size.width, size.height)
+                    lineTo(0f, size.height)
+                    close()
+                }
+                drawPath(backSweep, androidx.compose.ui.graphics.Color(0xFF0872D0).copy(alpha = 0.30f))
+                drawPath(frontSweep, androidx.compose.ui.graphics.Color(0xFF0A58A8).copy(alpha = 0.28f))
             }
             .padding(start = 26.dp, end = 20.dp, top = 28.dp, bottom = 30.dp)
     ) {
-        Icon(
-            imageVector = Icons.Filled.Public,
-            contentDescription = null,
-            tint = androidx.compose.ui.graphics.Color(0x334FC3FF),
-            modifier = Modifier.align(androidx.compose.ui.Alignment.CenterEnd).size(142.dp)
-        )
         Column(Modifier.fillMaxWidth()) {
             Row(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
