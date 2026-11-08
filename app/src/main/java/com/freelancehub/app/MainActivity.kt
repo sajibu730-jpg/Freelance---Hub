@@ -369,7 +369,7 @@ Surface(
                 drawPath(blueSweep, androidx.compose.ui.graphics.Color(0xFF0875D8).copy(alpha = 0.88f))
                 drawPath(lightSweep, androidx.compose.ui.graphics.Color(0xFF168CEB).copy(alpha = 0.72f))
             }
-            .padding(start = 26.dp, end = 20.dp, top = 28.dp, bottom = 30.dp)
+            .padding(start = 68.dp, end = 20.dp, top = 18.dp, bottom = 24.dp)
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(
@@ -459,7 +459,7 @@ Surface(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 46.dp)
                 .offset(y = (-16).dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
             color = androidx.compose.ui.graphics.Color(0xFFFCFDFF),
@@ -508,7 +508,8 @@ Surface(
                             else -> "Create New Account"
                         },
                         style = MaterialTheme.typography.headlineSmall,
-                        color = navy
+                        color = navy,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                     )
 
                     Spacer(Modifier.height(6.dp))
