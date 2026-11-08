@@ -312,52 +312,64 @@ Surface(
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(
                     colors = listOf(
-                        androidx.compose.ui.graphics.Color(0xFF041746),
-                        androidx.compose.ui.graphics.Color(0xFF06377A),
-                        androidx.compose.ui.graphics.Color(0xFF075DB8)
-                    )
+                        androidx.compose.ui.graphics.Color(0xFF03163F),
+                        androidx.compose.ui.graphics.Color(0xFF05285F),
+                        androidx.compose.ui.graphics.Color(0xFF063D85),
+                        androidx.compose.ui.graphics.Color(0xFF064B9B)
+                    ),
+                    start = androidx.compose.ui.geometry.Offset.Zero,
+                    end = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.72f)
                 )
             )
             .drawBehind {
-                // Dotted globe: a curved, spherical dot field like the supplied login reference.
-                val dotColor = androidx.compose.ui.graphics.Color(0xFF43BFFF).copy(alpha = 0.42f)
-                val centerX = size.width - 56.dp.toPx()
-                val centerY = 78.dp.toPx()
-                val radius = 66.dp.toPx()
-                val step = 6.2.dp.toPx()
-                for (row in -10..10) {
-                    val normalizedY = row / 10f
+                // Dotted globe on the upper-right, matching the supplied reference.
+                val dotColor = androidx.compose.ui.graphics.Color(0xFF35B9FF)
+                val centerX = size.width - 62.dp.toPx()
+                val centerY = 76.dp.toPx()
+                val radius = 76.dp.toPx()
+                val step = 5.4.dp.toPx()
+                for (row in -14..14) {
+                    val normalizedY = row / 14f
                     val y = normalizedY * radius
                     val rowWidth = kotlin.math.sqrt((1f - normalizedY * normalizedY).coerceAtLeast(0f)) * radius
                     val count = (rowWidth * 2f / step).toInt()
                     for (column in -count..count) {
                         val x = column * step
-                        val frontFactor = kotlin.math.sqrt((1f - (x / radius) * (x / radius) - normalizedY * normalizedY).coerceAtLeast(0f))
-                        val alpha = (0.18f + frontFactor * 0.38f).coerceAtMost(0.56f)
+                        val normalizedX = x / radius
+                        val frontFactor = kotlin.math.sqrt((1f - normalizedX * normalizedX - normalizedY * normalizedY).coerceAtLeast(0f))
+                        val alpha = (0.12f + frontFactor * 0.42f).coerceAtMost(0.54f)
                         drawCircle(
                             color = dotColor.copy(alpha = alpha),
-                            radius = (0.8f + frontFactor * 0.55f).dp.toPx(),
+                            radius = (0.65f + frontFactor * 0.62f).dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(centerX + x, centerY + y)
                         )
                     }
                 }
-                // Layered blue sweep along the bottom edge of the header.
-                val backSweep = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, size.height * 0.69f)
-                    cubicTo(size.width * 0.22f, size.height * 0.98f, size.width * 0.60f, size.height * 0.77f, size.width, size.height * 0.84f)
+                // Three layered blue curves form the lower edge of the header.
+                val deepSweep = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.60f)
+                    cubicTo(size.width * 0.24f, size.height * 0.91f, size.width * 0.63f, size.height * 0.66f, size.width, size.height * 0.76f)
                     lineTo(size.width, size.height)
                     lineTo(0f, size.height)
                     close()
                 }
-                val frontSweep = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, size.height * 0.82f)
-                    cubicTo(size.width * 0.28f, size.height * 1.02f, size.width * 0.65f, size.height * 0.82f, size.width, size.height * 0.91f)
+                val blueSweep = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.70f)
+                    cubicTo(size.width * 0.26f, size.height * 0.98f, size.width * 0.66f, size.height * 0.75f, size.width, size.height * 0.84f)
                     lineTo(size.width, size.height)
                     lineTo(0f, size.height)
                     close()
                 }
-                drawPath(backSweep, androidx.compose.ui.graphics.Color(0xFF0872D0).copy(alpha = 0.30f))
-                drawPath(frontSweep, androidx.compose.ui.graphics.Color(0xFF0A58A8).copy(alpha = 0.28f))
+                val lightSweep = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, size.height * 0.78f)
+                    cubicTo(size.width * 0.30f, size.height * 1.00f, size.width * 0.68f, size.height * 0.84f, size.width, size.height * 0.91f)
+                    lineTo(size.width, size.height)
+                    lineTo(0f, size.height)
+                    close()
+                }
+                drawPath(deepSweep, androidx.compose.ui.graphics.Color(0xFF061F55).copy(alpha = 0.78f))
+                drawPath(blueSweep, androidx.compose.ui.graphics.Color(0xFF0875D8).copy(alpha = 0.88f))
+                drawPath(lightSweep, androidx.compose.ui.graphics.Color(0xFF168CEB).copy(alpha = 0.72f))
             }
             .padding(start = 26.dp, end = 20.dp, top = 28.dp, bottom = 30.dp)
     ) {
@@ -449,10 +461,14 @@ Surface(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp)
+                .offset(y = (-16).dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-            color = white,
-            shadowElevation = 7.dp
+            color = androidx.compose.ui.graphics.Color(0xFFFCFDFF),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp, androidx.compose.ui.graphics.Color(0xFFD7E8FC)
+            ),
+            shadowElevation = 10.dp
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)
