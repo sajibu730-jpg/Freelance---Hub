@@ -309,6 +309,7 @@ Surface(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = if (!signup) 205.dp else 0.dp)
             .background(
                 androidx.compose.ui.graphics.Brush.horizontalGradient(
                     colors = listOf(
@@ -369,7 +370,7 @@ Surface(
                 drawPath(blueSweep, androidx.compose.ui.graphics.Color(0xFF0875D8).copy(alpha = 0.88f))
                 drawPath(lightSweep, androidx.compose.ui.graphics.Color(0xFF168CEB).copy(alpha = 0.72f))
             }
-            .padding(start = 68.dp, end = 20.dp, top = 18.dp, bottom = 24.dp)
+            .padding(start = 68.dp, end = 20.dp, top = if (!signup) 28.dp else 18.dp, bottom = if (!signup) 42.dp else 24.dp)
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(
@@ -469,7 +470,7 @@ Surface(
             shadowElevation = 10.dp
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = if (signup) 16.dp else 12.dp)
             ) {
                 if (signup) {
                     TextButton(
@@ -657,7 +658,7 @@ Surface(
                         color = dark
                     )
 
-                    Spacer(Modifier.height(22.dp))
+                    Spacer(Modifier.height(12.dp))
                 }
 
                 if (!authConfigured) {
