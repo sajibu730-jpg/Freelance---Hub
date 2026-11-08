@@ -2029,19 +2029,23 @@ fun RemoteHomeScreen(
                             )
 
                         }
-                        // Position the marketplace label independently of the brand column.
-                        // This anchors it to the exact horizontal center of the full header box.
-                        Text(
-                            "GLOBAL FREELANCE MARKETPLACE",
+                        // Center the label by its measured text width inside the full header.
+                        Box(
                             modifier = Modifier
                                 .align(androidx.compose.ui.Alignment.BottomCenter)
                                 .fillMaxWidth()
                                 .padding(bottom = 30.dp),
-                            color = androidx.compose.ui.graphics.Color(0xFFBFD5FF),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            Text(
+                                "GLOBAL FREELANCE MARKETPLACE",
+                                modifier = Modifier.wrapContentWidth(),
+                                color = androidx.compose.ui.graphics.Color(0xFFBFD5FF),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
                     }
                     Spacer(Modifier.height(4.dp))
                     Surface(
