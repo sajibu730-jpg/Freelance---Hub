@@ -2027,13 +2027,16 @@ fun RemoteHomeScreen(
                                 color = white,
                                 style = MaterialTheme.typography.bodyMedium
                             )
-                            Box(
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = androidx.compose.ui.Alignment.Center
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                             ) {
                                 Text(
                                     "GLOBAL FREELANCE MARKETPLACE",
-                                    modifier = Modifier.wrapContentWidth(),
+                                    modifier = Modifier.wrapContentWidth(
+                                        androidx.compose.ui.Alignment.CenterHorizontally
+                                    ),
                                     color = androidx.compose.ui.graphics.Color(0xFFBFD5FF),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
