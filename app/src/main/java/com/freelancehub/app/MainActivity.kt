@@ -460,6 +460,7 @@ Surface(
             if (!signup) {
                 Spacer(Modifier.height(16.dp))
                 Surface(
+                    modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
                     color = androidx.compose.ui.graphics.Color(0xFF1455A5),
                     border = androidx.compose.foundation.BorderStroke(
