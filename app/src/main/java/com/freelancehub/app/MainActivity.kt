@@ -2039,7 +2039,7 @@ fun RemoteHomeScreen(
                         ) {
                             Text(
                                 "GLOBAL FREELANCE MARKETPLACE",
-                                modifier = Modifier.wrapContentWidth(),
+                                modifier = Modifier.fillMaxWidth(),
                                 color = androidx.compose.ui.graphics.Color(0xFFBFD5FF),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
