@@ -378,7 +378,13 @@ Surface(
                 Column {
                     Text(
                         text = androidx.compose.ui.text.buildAnnotatedString {
+                            pushStyle(
+                                androidx.compose.ui.text.SpanStyle(
+                                    color = androidx.compose.ui.graphics.Color.White
+                                )
+                            )
                             append("Freelance ")
+                            pop()
                             pushStyle(
                                 androidx.compose.ui.text.SpanStyle(
                                     color = androidx.compose.ui.graphics.Color(0xFF83E9FF)
@@ -428,20 +434,20 @@ Surface(
     }
 }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
 
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 34.dp),
+                .padding(horizontal = 24.dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
             color = white,
             shadowElevation = 7.dp
         ) {
             Column(
-                modifier = Modifier.padding(22.dp)
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)
             ) {
                 if (signup) {
                     TextButton(
