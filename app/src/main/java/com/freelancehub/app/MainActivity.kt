@@ -309,7 +309,7 @@ Surface(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = if (!signup) 205.dp else 0.dp)
+            .heightIn(min = if (!signup) 258.dp else 0.dp)
             .background(
                 androidx.compose.ui.graphics.Brush.horizontalGradient(
                     colors = listOf(
@@ -323,10 +323,10 @@ Surface(
             .drawBehind {
                 // Dotted globe on the upper-right, matching the supplied reference.
                 val dotColor = androidx.compose.ui.graphics.Color(0xFF35B9FF)
-                val centerX = size.width - 62.dp.toPx()
-                val centerY = 76.dp.toPx()
-                val radius = 76.dp.toPx()
-                val step = 5.4.dp.toPx()
+                val centerX = size.width - 72.dp.toPx()
+                val centerY = 112.dp.toPx()
+                val radius = 104.dp.toPx()
+                val step = 5.0.dp.toPx()
                 for (row in -14..14) {
                     val normalizedY = row / 14f
                     val y = normalizedY * radius
@@ -336,10 +336,10 @@ Surface(
                         val x = column * step
                         val normalizedX = x / radius
                         val frontFactor = kotlin.math.sqrt((1f - normalizedX * normalizedX - normalizedY * normalizedY).coerceAtLeast(0f))
-                        val alpha = (0.12f + frontFactor * 0.42f).coerceAtMost(0.54f)
+                        val alpha = (0.16f + frontFactor * 0.52f).coerceAtMost(0.68f)
                         drawCircle(
                             color = dotColor.copy(alpha = alpha),
-                            radius = (0.65f + frontFactor * 0.62f).dp.toPx(),
+                            radius = (0.72f + frontFactor * 0.72f).dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(centerX + x, centerY + y)
                         )
                     }
@@ -370,7 +370,7 @@ Surface(
                 drawPath(blueSweep, androidx.compose.ui.graphics.Color(0xFF0875D8).copy(alpha = 0.88f))
                 drawPath(lightSweep, androidx.compose.ui.graphics.Color(0xFF168CEB).copy(alpha = 0.72f))
             }
-            .padding(start = 68.dp, end = 20.dp, top = if (!signup) 28.dp else 18.dp, bottom = if (!signup) 42.dp else 24.dp)
+            .padding(start = 68.dp, end = 20.dp, top = if (!signup) 34.dp else 18.dp, bottom = if (!signup) 52.dp else 24.dp)
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(
@@ -453,15 +453,15 @@ Surface(
     }
 }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(if (signup) 12.dp else 0.dp))
 
 
         // LOGIN OR SEPARATE SIGNUP PAGE
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 46.dp)
-                .offset(y = (-16).dp),
+                .padding(horizontal = 20.dp)
+                .offset(y = (-28).dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
             color = androidx.compose.ui.graphics.Color(0xFFFCFDFF),
             border = androidx.compose.foundation.BorderStroke(
@@ -470,7 +470,7 @@ Surface(
             shadowElevation = 10.dp
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = if (signup) 16.dp else 12.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
             ) {
                 if (signup) {
                     TextButton(
@@ -658,7 +658,7 @@ Surface(
                         color = dark
                     )
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
                 }
 
                 if (!authConfigured) {
