@@ -393,7 +393,7 @@ Surface(
                 drawPath(blueSweep, androidx.compose.ui.graphics.Color(0xFF0875D8).copy(alpha = 0.88f))
                 drawPath(lightSweep, androidx.compose.ui.graphics.Color(0xFF168CEB).copy(alpha = 0.72f))
             }
-            .padding(horizontal = 20.dp, top = if (!signup) 34.dp else 18.dp, bottom = if (!signup) 52.dp else 24.dp)
+            .padding(start = 20.dp, end = 20.dp, top = if (!signup) 34.dp else 18.dp, bottom = if (!signup) 52.dp else 24.dp)
     ) {
         Column(Modifier.fillMaxWidth()) {
             Box(Modifier.fillMaxWidth()) {
