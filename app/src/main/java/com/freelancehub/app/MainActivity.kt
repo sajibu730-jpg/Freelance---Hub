@@ -310,15 +310,13 @@ Surface(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                androidx.compose.ui.graphics.Brush.linearGradient(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
                     colors = listOf(
                         androidx.compose.ui.graphics.Color(0xFF03163F),
                         androidx.compose.ui.graphics.Color(0xFF05285F),
                         androidx.compose.ui.graphics.Color(0xFF063D85),
                         androidx.compose.ui.graphics.Color(0xFF064B9B)
-                    ),
-                    start = androidx.compose.ui.geometry.Offset.Zero,
-                    end = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.72f)
+                    )
                 )
             )
             .drawBehind {
