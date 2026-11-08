@@ -393,57 +393,69 @@ Surface(
                 drawPath(blueSweep, androidx.compose.ui.graphics.Color(0xFF0875D8).copy(alpha = 0.88f))
                 drawPath(lightSweep, androidx.compose.ui.graphics.Color(0xFF168CEB).copy(alpha = 0.72f))
             }
-            .padding(start = 68.dp, end = 20.dp, top = if (!signup) 34.dp else 18.dp, bottom = if (!signup) 52.dp else 24.dp)
+            .padding(horizontal = 20.dp, top = if (!signup) 34.dp else 18.dp, bottom = if (!signup) 52.dp else 24.dp)
     ) {
         Column(Modifier.fillMaxWidth()) {
-            Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
-            ) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 48.dp, height = 48.dp)) {
-                    val upper = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(5f, 23f); cubicTo(5f, 12f, 14f, 4f, 25f, 4f); lineTo(45f, 4f)
-                        cubicTo(43f, 12f, 36f, 17f, 28f, 17f); lineTo(22f, 17f)
-                        cubicTo(15f, 17f, 10f, 22f, 10f, 29f); close()
+            Box(Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 48.dp, height = 48.dp)) {
+                        val upper = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(5f, 23f); cubicTo(5f, 12f, 14f, 4f, 25f, 4f); lineTo(45f, 4f)
+                            cubicTo(43f, 12f, 36f, 17f, 28f, 17f); lineTo(22f, 17f)
+                            cubicTo(15f, 17f, 10f, 22f, 10f, 29f); close()
+                        }
+                        val lower = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(10f, 30f); cubicTo(14f, 23f, 20f, 22f, 29f, 22f); lineTo(45f, 22f)
+                            cubicTo(42f, 31f, 35f, 36f, 27f, 36f); lineTo(22f, 36f)
+                            cubicTo(17f, 36f, 14f, 40f, 14f, 46f); cubicTo(7f, 44f, 4f, 37f, 10f, 30f); close()
+                        }
+                        val logoBrush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF20D7F2), androidx.compose.ui.graphics.Color(0xFF078DEB)))
+                        withTransform({ scale(size.width / 48f, size.height / 48f, pivot = androidx.compose.ui.geometry.Offset.Zero) }) {
+                            drawPath(upper, logoBrush); drawPath(lower, logoBrush)
+                        }
                     }
-                    val lower = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(10f, 30f); cubicTo(14f, 23f, 20f, 22f, 29f, 22f); lineTo(45f, 22f)
-                        cubicTo(42f, 31f, 35f, 36f, 27f, 36f); lineTo(22f, 36f)
-                        cubicTo(17f, 36f, 14f, 40f, 14f, 46f); cubicTo(7f, 44f, 4f, 37f, 10f, 30f); close()
-                    }
-                    val logoBrush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF20D7F2), androidx.compose.ui.graphics.Color(0xFF078DEB)))
-                    withTransform({ scale(size.width / 48f, size.height / 48f, pivot = androidx.compose.ui.geometry.Offset.Zero) }) {
-                        drawPath(upper, logoBrush); drawPath(lower, logoBrush)
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text(
+                            text = androidx.compose.ui.text.buildAnnotatedString {
+                                pushStyle(
+                                    androidx.compose.ui.text.SpanStyle(
+                                        color = androidx.compose.ui.graphics.Color.White
+                                    )
+                                )
+                                append("Freelance ")
+                                pop()
+                                pushStyle(
+                                    androidx.compose.ui.text.SpanStyle(
+                                        color = androidx.compose.ui.graphics.Color(0xFF83E9FF)
+                                    )
+                                )
+                                append("Hub")
+                                pop()
+                            },
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                        Text(
+                            "Your work. Your world. Your future.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = androidx.compose.ui.graphics.Color(0xFFDCEBFF)
+                        )
                     }
                 }
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = androidx.compose.ui.text.buildAnnotatedString {
-                            pushStyle(
-                                androidx.compose.ui.text.SpanStyle(
-                                    color = androidx.compose.ui.graphics.Color.White
-                                )
-                            )
-                            append("Freelance ")
-                            pop()
-                            pushStyle(
-                                androidx.compose.ui.text.SpanStyle(
-                                    color = androidx.compose.ui.graphics.Color(0xFF83E9FF)
-                                )
-                            )
-                            append("Hub")
-                            pop()
-                        },
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                    )
-                    Text(
-                        "Your work. Your world. Your future.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = androidx.compose.ui.graphics.Color(0xFFDCEBFF)
-                    )
-                }
+                Icon(
+                    Icons.Filled.Public,
+                    contentDescription = "Earth globe",
+                    tint = androidx.compose.ui.graphics.Color(0xFF8DDBFF),
+                    modifier = Modifier
+                        .align(androidx.compose.ui.Alignment.CenterEnd)
+                        .padding(end = 2.dp)
+                        .size(38.dp)
+                )
             }
             if (!signup) {
                 Spacer(Modifier.height(16.dp))
