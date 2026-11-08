@@ -321,27 +321,50 @@ Surface(
                 )
             )
             .drawBehind {
-                // Dotted globe on the upper-right, matching the supplied reference.
-                val dotColor = androidx.compose.ui.graphics.Color(0xFF35B9FF)
-                val centerX = size.width - 72.dp.toPx()
-                val centerY = 112.dp.toPx()
-                val radius = 104.dp.toPx()
-                val step = 5.0.dp.toPx()
-                for (row in -14..14) {
-                    val normalizedY = row / 14f
+                // Dotted Earth globe on the upper-right, matching the supplied reference.
+                // Keep the sphere behind the existing title and header artwork.
+                val oceanDot = androidx.compose.ui.graphics.Color(0xFF42BFFF)
+                val landDot = androidx.compose.ui.graphics.Color(0xFF69D4FF)
+                val centerX = size.width - 70.dp.toPx()
+                val centerY = 106.dp.toPx()
+                val radius = 112.dp.toPx()
+                val step = 4.4.dp.toPx()
+                // Soft, rounded land silhouettes formed from the same dotted grid.
+                val landRegions = listOf(
+                    floatArrayOf(-0.48f, -0.22f, 0.22f, 0.24f), // North America
+                    floatArrayOf(-0.18f, -0.55f, 0.12f, 0.13f), // Greenland
+                    floatArrayOf(-0.24f, 0.34f, 0.105f, 0.30f), // South America
+                    floatArrayOf(0.16f, -0.16f, 0.13f, 0.12f), // Europe
+                    floatArrayOf(0.43f, -0.20f, 0.30f, 0.22f), // Asia
+                    floatArrayOf(0.25f, 0.20f, 0.16f, 0.27f), // Africa
+                    floatArrayOf(0.58f, 0.53f, 0.13f, 0.10f)  // Australia
+                )
+                for (row in -25..25) {
+                    val normalizedY = row / 25f
                     val y = normalizedY * radius
                     val rowWidth = kotlin.math.sqrt((1f - normalizedY * normalizedY).coerceAtLeast(0f)) * radius
-                    val count = (rowWidth * 2f / step).toInt()
+                    val count = (rowWidth / step).toInt()
                     for (column in -count..count) {
                         val x = column * step
                         val normalizedX = x / radius
-                        val frontFactor = kotlin.math.sqrt((1f - normalizedX * normalizedX - normalizedY * normalizedY).coerceAtLeast(0f))
-                        val alpha = (0.16f + frontFactor * 0.52f).coerceAtMost(0.68f)
-                        drawCircle(
-                            color = dotColor.copy(alpha = alpha),
-                            radius = (0.72f + frontFactor * 0.72f).dp.toPx(),
-                            center = androidx.compose.ui.geometry.Offset(centerX + x, centerY + y)
-                        )
+                        val depthSquared = 1f - normalizedX * normalizedX - normalizedY * normalizedY
+                        if (depthSquared >= 0f) {
+                            val frontFactor = kotlin.math.sqrt(depthSquared)
+                            val isLand = landRegions.any { region ->
+                                val dx = (normalizedX - region[0]) / region[2]
+                                val dy = (normalizedY - region[1]) / region[3]
+                                dx * dx + dy * dy <= 1f
+                            }
+                            val edgeFade = (frontFactor * 0.78f + 0.12f).coerceAtMost(0.82f)
+                            drawCircle(
+                                color = (if (isLand) landDot else oceanDot).copy(
+                                    alpha = if (isLand) edgeFade else edgeFade * 0.62f
+                                ),
+                                radius = (if (isLand) 0.92f else 0.68f).dp.toPx() +
+                                    frontFactor * 0.34f.dp.toPx(),
+                                center = androidx.compose.ui.geometry.Offset(centerX + x, centerY + y)
+                            )
+                        }
                     }
                 }
                 // Three layered blue curves form the lower edge of the header.
