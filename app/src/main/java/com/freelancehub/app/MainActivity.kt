@@ -1915,13 +1915,64 @@ fun RemoteHomeScreen(
                         .padding(22.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(154.dp)
+                            .drawBehind {
+                                // Dotted Earth globe sits behind the right side of the centered brand.
+                                val ocean = androidx.compose.ui.graphics.Color(0xFF42BFFF)
+                                val land = androidx.compose.ui.graphics.Color(0xFF8ADFFF)
+                                val cx = size.width - 76.dp.toPx()
+                                val cy = 76.dp.toPx()
+                                val radius = 82.dp.toPx()
+                                val step = 4.2.dp.toPx()
+                                val landShapes = listOf(
+                                    floatArrayOf(-0.48f, -0.18f, 0.24f, 0.25f),
+                                    floatArrayOf(-0.20f, -0.52f, 0.13f, 0.13f),
+                                    floatArrayOf(-0.22f, 0.34f, 0.11f, 0.29f),
+                                    floatArrayOf(0.15f, -0.16f, 0.13f, 0.12f),
+                                    floatArrayOf(0.43f, -0.18f, 0.30f, 0.22f),
+                                    floatArrayOf(0.25f, 0.20f, 0.16f, 0.27f),
+                                    floatArrayOf(0.58f, 0.53f, 0.13f, 0.10f)
+                                )
+                                for (row in -19..19) {
+                                    val ny = row / 19f
+                                    val rowRadius = kotlin.math.sqrt((1f - ny * ny).coerceAtLeast(0f)) * radius
+                                    val count = (rowRadius / step).toInt()
+                                    for (column in -count..count) {
+                                        val nx = column * step / radius
+                                        val depth = 1f - nx * nx - ny * ny
+                                        if (depth >= 0f) {
+                                            val front = kotlin.math.sqrt(depth)
+                                            val isLand = landShapes.any { shape ->
+                                                val dx = (nx - shape[0]) / shape[2]
+                                                val dy = (ny - shape[1]) / shape[3]
+                                                dx * dx + dy * dy <= 1f
+                                            }
+                                            drawCircle(
+                                                color = (if (isLand) land else ocean).copy(
+                                                    alpha = (front * 0.66f + 0.10f) * if (isLand) 0.90f else 0.52f
+                                                ),
+                                                radius = if (isLand) 1.05.dp.toPx() else 0.72.dp.toPx(),
+                                                center = androidx.compose.ui.geometry.Offset(
+                                                    cx + column * step,
+                                                    cy + ny * radius
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                drawCircle(
+                                    color = androidx.compose.ui.graphics.Color(0xFF70CFFF).copy(alpha = 0.16f),
+                                    radius = radius,
+                                    center = androidx.compose.ui.geometry.Offset(cx, cy),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx())
+                                )
+                            }
                     ) {
-                        Text("🌐  GLOBAL FREELANCE MARKETPLACE", color = androidx.compose.ui.graphics.Color(0xFFBFD5FF), style = MaterialTheme.typography.labelMedium)
-                        Box {
+                        // Keep the overflow menu at the upper-right without shifting the centered logo.
+                        Box(Modifier.align(androidx.compose.ui.Alignment.TopEnd)) {
                             IconButton(onClick = { menuExpanded = true }) {
                                 Icon(Icons.Filled.MoreVert, contentDescription = "Main menu", tint = white)
                             }
@@ -1930,18 +1981,60 @@ fun RemoteHomeScreen(
                                 DropdownMenuItem(text = { Text("Refresh home") }, leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) }, onClick = { menuExpanded = false; reload() })
                             }
                         }
+                        Column(
+                            modifier = Modifier
+                                .align(androidx.compose.ui.Alignment.Center)
+                                .fillMaxWidth(),
+                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    "F",
+                                    color = androidx.compose.ui.graphics.Color(0xFF48C8FF),
+                                    style = MaterialTheme.typography.displaySmall,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
+                                )
+                                Spacer(Modifier.width(9.dp))
+                                Box(
+                                    Modifier
+                                        .width(1.dp)
+                                        .height(34.dp)
+                                        .background(androidx.compose.ui.graphics.Color(0xFF8CCBFF).copy(alpha = 0.72f))
+                                )
+                                Spacer(Modifier.width(9.dp))
+                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    Text(
+                                        "Freelance",
+                                        color = white,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        "Hub",
+                                        color = androidx.compose.ui.graphics.Color(0xFF55D5FF),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Text(
+                                "Your work. Your world. Your future.",
+                                color = white,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                "GLOBAL FREELANCE MARKETPLACE",
+                                color = androidx.compose.ui.graphics.Color(0xFFBFD5FF),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            )
+                        }
                     }
-                    Text(
-                        "Welcome to\nFreelance Hub",
-                        color = white,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                    )
-                    Text(
-                        "Your work. Your world. Your future.",
-                        color = white,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
                     Spacer(Modifier.height(4.dp))
                     Surface(
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
