@@ -261,7 +261,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     colors = listOf(
                         androidx.compose.ui.graphics.Color(0xFFF5F9FF),
                         androidx.compose.ui.graphics.Color(0xFFFFFFFF),
-                        androidx.compose.ui.graphics.Color(0xFFE5F1FF)
+                        androidx.compose.ui.graphics.Color(0xFFDCEBFF)
                     )
                 )
             )
@@ -280,8 +280,8 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                     lineTo(0f, size.height)
                     close()
                 }
-                drawPath(waveOne, androidx.compose.ui.graphics.Color(0xFFEAF4FF))
-                drawPath(waveTwo, androidx.compose.ui.graphics.Color(0xFFDCEEFF).copy(alpha = 0.78f))
+                drawPath(waveOne, androidx.compose.ui.graphics.Color(0xFFEDF6FF))
+                drawPath(waveTwo, androidx.compose.ui.graphics.Color(0xFFB9D9FF).copy(alpha = 0.88f))
             }
             .verticalScroll(loginScrollState)        .padding(
     horizontal = 0.dp,
