@@ -486,13 +486,12 @@ Surface(
     }
 }
 
-        // Keep the branded header fixed while only the authentication form scrolls
-        // when the keyboard opens or the available screen height becomes smaller.
+        // The login card stays anchored in front of the page background.
+        // Only the form content INSIDE the card scrolls when the keyboard opens.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(loginScrollState),
+                .weight(1f),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
         ) {
         Spacer(Modifier.height(if (signup) 12.dp else 0.dp))
@@ -502,8 +501,9 @@ Surface(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .weight(1f)
                 .padding(horizontal = 20.dp)
-                .offset(y = (-28).dp),
+                .padding(top = 10.dp, bottom = 12.dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
             color = androidx.compose.ui.graphics.Color(0xFFFCFDFF),
             border = androidx.compose.foundation.BorderStroke(
@@ -512,7 +512,10 @@ Surface(
             shadowElevation = 10.dp
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(loginScrollState)
+                    .padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
             ) {
                 if (signup) {
                     TextButton(
