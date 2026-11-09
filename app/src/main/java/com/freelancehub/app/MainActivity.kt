@@ -407,22 +407,11 @@ Surface(
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 48.dp, height = 48.dp)) {
-                        val upper = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(5f, 23f); cubicTo(5f, 12f, 14f, 4f, 25f, 4f); lineTo(45f, 4f)
-                            cubicTo(43f, 12f, 36f, 17f, 28f, 17f); lineTo(22f, 17f)
-                            cubicTo(15f, 17f, 10f, 22f, 10f, 29f); close()
-                        }
-                        val lower = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(10f, 30f); cubicTo(14f, 23f, 20f, 22f, 29f, 22f); lineTo(45f, 22f)
-                            cubicTo(42f, 31f, 35f, 36f, 27f, 36f); lineTo(22f, 36f)
-                            cubicTo(17f, 36f, 14f, 40f, 14f, 46f); cubicTo(7f, 44f, 4f, 37f, 10f, 30f); close()
-                        }
-                        val logoBrush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF20D7F2), androidx.compose.ui.graphics.Color(0xFF078DEB)))
-                        withTransform({ scale(size.width / 48f, size.height / 48f, pivot = androidx.compose.ui.geometry.Offset.Zero) }) {
-                            drawPath(upper, logoBrush); drawPath(lower, logoBrush)
-                        }
-                    }
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_splash_logo),
+                        contentDescription = "Freelance Hub F globe logo",
+                        modifier = Modifier.size(width = 58.dp, height = 58.dp)
+                    )
                     Spacer(Modifier.width(14.dp))
                     Column {
                         Text(
