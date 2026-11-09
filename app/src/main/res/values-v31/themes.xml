@@ -3,10 +3,8 @@
     <style name="Theme.FreelanceHub.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#071B2E</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
-        <item name="windowSplashScreenIconBackgroundColor">#071B2E</item>
         <item name="postSplashScreenTheme">@style/Theme.FreelanceHub</item>
         <item name="android:windowSplashScreenBackground">#071B2E</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">#071B2E</item>
     </style>
 </resources>
