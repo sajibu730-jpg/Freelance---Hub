@@ -30,6 +30,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.freelancehub.app.data.*
 import com.freelancehub.app.auth.AuthService
 import com.freelancehub.app.update.PlayUpdateManager
