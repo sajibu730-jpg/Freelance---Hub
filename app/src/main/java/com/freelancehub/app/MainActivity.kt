@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -45,6 +46,7 @@ import androidx.compose.ui.draw.drawBehind
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
     override fun onCreate(b:Bundle?){
+        installSplashScreen()
         super.onCreate(b)
         playUpdateManager = PlayUpdateManager(this)
         setContent{FreelanceHubApp(AppRepository(this), onStartupReady = {})}
