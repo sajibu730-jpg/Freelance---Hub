@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FreelanceHub.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#061A49</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_blank</item>
+        <item name="windowSplashScreenIconBackgroundColor">#061A49</item>
+        <item name="postSplashScreenTheme">@style/Theme.FreelanceHub</item>
+        <item name="android:windowSplashScreenBackground">#061A49</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_blank</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#061A49</item>
+    </style>
+</resources>
