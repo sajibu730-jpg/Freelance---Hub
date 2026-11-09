@@ -295,16 +295,14 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
             }
             .verticalScroll(loginScrollState)        .padding(
     horizontal = 0.dp,
-    vertical = if (keyboardOpen) 10.dp else 0.dp
+    vertical = 0.dp
 ),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = if (keyboardOpen) {
-            Arrangement.Top
-        } else {
-            Arrangement.Center
-        }
+        // Keep the login header anchored to the top; keyboard visibility must not
+        // recenter the whole screen and shift the header artwork.
+        verticalArrangement = Arrangement.Top
     ) {
-        Spacer(Modifier.height(if (keyboardOpen) 0.dp else 8.dp))
+        Spacer(Modifier.height(8.dp))
 
         
         // FREELANCE HUB AUTH HEADER — matched to supplied reference
