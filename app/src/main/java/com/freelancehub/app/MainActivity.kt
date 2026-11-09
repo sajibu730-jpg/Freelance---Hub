@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,7 +48,7 @@ class MainActivity:ComponentActivity(){
     @Volatile private var startupReady = false
     private var startupStartedAt = 0L
     override fun onCreate(b:Bundle?){
-        val splashScreen = androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen(this)
+        val splashScreen = installSplashScreen()
         startupStartedAt = android.os.SystemClock.elapsedRealtime()
         splashScreen.setKeepOnScreenCondition {
             !startupReady || android.os.SystemClock.elapsedRealtime() - startupStartedAt < 3000L
