@@ -9,4 +9,10 @@
         <item name="android:windowActionModeOverlay">true</item>
     </style>
 
+    <style name="Theme.FreelanceHub.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#F5F9FF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.FreelanceHub</item>
+    </style>
+
 </resources>
