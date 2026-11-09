@@ -129,8 +129,11 @@ private fun StartupSplashScreen() {
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
     LaunchedEffect(Unit) {
+        val startupStartedAt = android.os.SystemClock.elapsedRealtime()
         auth.restoreSession { result ->
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val remainingSplashMillis = (2000L -
+                (android.os.SystemClock.elapsedRealtime() - startupStartedAt)).coerceAtLeast(0L)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 result.onSuccess { session ->
                     repo.initializeAccountRole(session.role)
                     repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
@@ -140,7 +143,7 @@ private fun StartupSplashScreen() {
                 }
                 sessionChecking = false
                 onStartupReady()
-            }
+            }, remainingSplashMillis)
         }
     }
     if(sessionChecking){
