@@ -11,7 +11,8 @@
 
     <style name="Theme.FreelanceHub.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#F5F9FF</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="windowSplashScreenIconBackgroundColor">#F5F9FF</item>
         <item name="postSplashScreenTheme">@style/Theme.FreelanceHub</item>
     </style>
 
