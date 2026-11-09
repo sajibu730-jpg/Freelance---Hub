@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -45,17 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
-    @Volatile private var startupReady = false
     override fun onCreate(b:Bundle?){
-        val splashScreen = installSplashScreen()
-        splashScreen.setKeepOnScreenCondition { !startupReady }
         super.onCreate(b)
         playUpdateManager = PlayUpdateManager(this)
         setContent {
-            FreelanceHubApp(
-                AppRepository(this),
-                onStartupReady = { startupReady = true }
-            )
+            FreelanceHubApp(AppRepository(this))
         }
     }
     override fun onResume(){
@@ -67,15 +60,12 @@ class MainActivity:ComponentActivity(){
         if (::playUpdateManager.isInitialized) playUpdateManager.checkForUpdate()
     }
 }
-@Composable fun FreelanceHubApp(repo:AppRepository, onStartupReady: () -> Unit){
+@Composable fun FreelanceHubApp(repo:AppRepository){
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
     LaunchedEffect(Unit) {
-        // Release the Android system splash as soon as Compose is ready.
-        // The branded Compose splash below must remain visible during session restore.
-        onStartupReady()
         val startupStartedAt = android.os.SystemClock.elapsedRealtime()
         auth.restoreSession { result ->
             val remainingSplashMillis = (2000L -
