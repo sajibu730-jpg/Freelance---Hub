@@ -91,11 +91,7 @@ class MainActivity:ComponentActivity(){
         }
     }
     if(sessionChecking){
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(androidx.compose.ui.graphics.Color(0xFF061A49))
-        )
+        ProfessionalSplashScreen()
     } else if(!loggedIn){
         LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
             val old=repo.profile()
@@ -4817,3 +4813,177 @@ private fun rankRemoteJobs(profile:RemoteAccount, jobs:List<RemoteJob>):List<Rem
 }
 
 
+
+
+@Composable
+private fun ProfessionalSplashScreen() {
+    val navy = androidx.compose.ui.graphics.Color(0xFF061A49)
+    val deepNavy = androidx.compose.ui.graphics.Color(0xFF071B2E)
+    val cyan = androidx.compose.ui.graphics.Color(0xFF22D8F4)
+    val blue = androidx.compose.ui.graphics.Color(0xFF078DEB)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        androidx.compose.ui.graphics.Color(0xFF102F63),
+                        navy,
+                        deepNavy
+                    )
+                )
+            ),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val centerX = size.width * 0.82f
+            val centerY = size.height * 0.29f
+            for (ring in 1..4) {
+                drawCircle(
+                    color = cyan.copy(alpha = 0.035f - ring * 0.005f),
+                    radius = size.minDimension * (0.12f + ring * 0.075f),
+                    center = androidx.compose.ui.geometry.Offset(centerX, centerY),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx())
+                )
+            }
+            val dotRadius = 1.5.dp.toPx()
+            for (row in 0..8) {
+                for (column in 0..8) {
+                    val dx = (column - 4) * 10.dp.toPx()
+                    val dy = (row - 4) * 10.dp.toPx()
+                    if (dx * dx + dy * dy < 43.dp.toPx() * 43.dp.toPx()) {
+                        drawCircle(
+                            color = cyan.copy(alpha = 0.12f),
+                            radius = dotRadius,
+                            center = androidx.compose.ui.geometry.Offset(
+                                centerX + dx,
+                                centerY + dy
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 28.dp),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(154.dp)
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(
+                                blue.copy(alpha = 0.28f),
+                                cyan.copy(alpha = 0.10f),
+                                androidx.compose.ui.graphics.Color.Transparent
+                            )
+                        ),
+                        shape = androidx.compose.foundation.shape.CircleShape
+                    ),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(126.dp)
+                        .background(
+                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.055f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(34.dp)
+                        )
+                        .then(
+                            Modifier.drawBehind {
+                                drawRoundRect(
+                                    color = cyan.copy(alpha = 0.35f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 1.dp.toPx()
+                                    ),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                                        34.dp.toPx()
+                                    )
+                                )
+                            }
+                        ),
+                    contentAlignment = androidx.compose.ui.Alignment.Center
+                ) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(
+                            id = com.freelancehub.app.R.drawable.ic_splash_logo
+                        ),
+                        contentDescription = "Freelance Hub F globe logo",
+                        modifier = Modifier.size(112.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(30.dp))
+
+            androidx.compose.foundation.text.BasicText(
+                text = "Freelance Hub",
+                style = androidx.compose.ui.text.TextStyle(
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 31.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    letterSpacing = 0.2.sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            androidx.compose.foundation.text.BasicText(
+                text = "Your work. Your world. Your future.",
+                style = androidx.compose.ui.text.TextStyle(
+                    color = androidx.compose.ui.graphics.Color(0xFFB9D8F5),
+                    fontSize = 14.sp,
+                    letterSpacing = 0.25.sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(27.dp))
+
+            Row(
+                modifier = Modifier
+                    .background(
+                        color = cyan.copy(alpha = 0.10f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
+                    )
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(cyan, androidx.compose.foundation.shape.CircleShape)
+                )
+                Spacer(modifier = Modifier.width(9.dp))
+                androidx.compose.foundation.text.BasicText(
+                    text = "GLOBAL FREELANCE MARKETPLACE",
+                    style = androidx.compose.ui.text.TextStyle(
+                        color = androidx.compose.ui.graphics.Color(0xFFE2F6FF),
+                        fontSize = 10.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        letterSpacing = 1.1.sp
+                    )
+                )
+            }
+        }
+
+        androidx.compose.foundation.text.BasicText(
+            text = "CONNECT  •  CREATE  •  GROW",
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.BottomCenter)
+                .padding(bottom = 28.dp),
+            style = androidx.compose.ui.text.TextStyle(
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.42f),
+                fontSize = 10.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                letterSpacing = 2.sp
+            )
+        )
+    }
+}
