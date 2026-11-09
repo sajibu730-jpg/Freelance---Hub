@@ -74,15 +74,17 @@ class MainActivity:ComponentActivity(){
     var sessionChecking by remember{mutableStateOf(true)}
     LaunchedEffect(Unit) {
         auth.restoreSession { result ->
-            result.onSuccess { session ->
-                repo.initializeAccountRole(session.role)
-                repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
-                loggedIn = true
-            }.onFailure {
-                loggedIn = false
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                result.onSuccess { session ->
+                    repo.initializeAccountRole(session.role)
+                    repo.cacheAuthenticatedProfile(session.name, session.email, session.role)
+                    loggedIn = true
+                }.onFailure {
+                    loggedIn = false
+                }
+                sessionChecking = false
+                onStartupReady()
             }
-            sessionChecking = false
-            onStartupReady()
         }
     }
     if(sessionChecking){
