@@ -44,11 +44,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
+    private var startupReady = false
     override fun onCreate(b:Bundle?){
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition { !startupReady }
         super.onCreate(b)
         playUpdateManager = PlayUpdateManager(this)
-        setContent{FreelanceHubApp(AppRepository(this))}
+        setContent{FreelanceHubApp(AppRepository(this), onStartupReady = { startupReady = true })}
     }
     override fun onResume(){
         super.onResume()
@@ -59,7 +61,7 @@ class MainActivity:ComponentActivity(){
         if (::playUpdateManager.isInitialized) playUpdateManager.checkForUpdate()
     }
 }
-@Composable fun FreelanceHubApp(repo:AppRepository){
+@Composable fun FreelanceHubApp(repo:AppRepository, onStartupReady: () -> Unit){
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
     var loggedIn by remember{mutableStateOf(false)}
@@ -75,6 +77,7 @@ class MainActivity:ComponentActivity(){
                     loggedIn = false
                 }
                 sessionChecking = false
+                onStartupReady()
             }
         }
     }
