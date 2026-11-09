@@ -73,6 +73,9 @@ class MainActivity:ComponentActivity(){
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
     LaunchedEffect(Unit) {
+        // Release the Android system splash as soon as Compose is ready.
+        // The branded Compose splash below must remain visible during session restore.
+        onStartupReady()
         val startupStartedAt = android.os.SystemClock.elapsedRealtime()
         auth.restoreSession { result ->
             val remainingSplashMillis = (2000L -
@@ -86,7 +89,6 @@ class MainActivity:ComponentActivity(){
                     loggedIn = false
                 }
                 sessionChecking = false
-                onStartupReady()
             }, remainingSplashMillis)
         }
     }
