@@ -293,7 +293,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                 drawPath(waveOne, androidx.compose.ui.graphics.Color(0xFFEDF6FF))
                 drawPath(waveTwo, androidx.compose.ui.graphics.Color(0xFFB9D9FF).copy(alpha = 0.88f))
             }
-            .verticalScroll(loginScrollState)        .padding(
+            .padding(
     horizontal = 0.dp,
     vertical = 0.dp
 ),
@@ -486,6 +486,15 @@ Surface(
     }
 }
 
+        // Keep the branded header fixed while only the authentication form scrolls
+        // when the keyboard opens or the available screen height becomes smaller.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(loginScrollState),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+        ) {
         Spacer(Modifier.height(if (signup) 12.dp else 0.dp))
 
 
@@ -1662,6 +1671,7 @@ Surface(
         )
 
         Spacer(Modifier.height(8.dp))
+        }
     }
 }
 
