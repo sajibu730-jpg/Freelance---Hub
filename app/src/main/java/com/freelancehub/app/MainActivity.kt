@@ -44,13 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
-    private var startupReady = false
     override fun onCreate(b:Bundle?){
-        val splashScreen = installSplashScreen()
-        splashScreen.setKeepOnScreenCondition { !startupReady }
+        installSplashScreen()
         super.onCreate(b)
         playUpdateManager = PlayUpdateManager(this)
-        setContent{FreelanceHubApp(AppRepository(this), onStartupReady = { startupReady = true })}
+        setContent{FreelanceHubApp(AppRepository(this), onStartupReady = {})}
     }
     override fun onResume(){
         super.onResume()
@@ -61,6 +59,69 @@ class MainActivity:ComponentActivity(){
         if (::playUpdateManager.isInitialized) playUpdateManager.checkForUpdate()
     }
 }
+@Composable
+private fun StartupSplashScreen() {
+    val context = LocalContext.current
+    DisposableEffect(Unit) {
+        val activity = context as? ComponentActivity
+        val window = activity?.window
+        if (window != null) {
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+            val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
+            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose {
+            if (window != null) {
+                androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
+                    .show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
+            }
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        androidx.compose.ui.graphics.Color(0xFF061A49),
+                        androidx.compose.ui.graphics.Color(0xFF073B83),
+                        androidx.compose.ui.graphics.Color(0xFF061A49)
+                    )
+                )
+            ),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+        ) {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_splash_logo),
+                contentDescription = "Freelance Hub F globe logo",
+                modifier = Modifier.size(208.dp)
+            )
+            Spacer(modifier = Modifier.height(22.dp))
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text(
+                    text = "Freelance",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 34.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+                Text(
+                    text = " Hub",
+                    color = androidx.compose.ui.graphics.Color(0xFF22D8F4),
+                    fontSize = 34.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
 @Composable fun FreelanceHubApp(repo:AppRepository, onStartupReady: () -> Unit){
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
@@ -82,9 +143,7 @@ class MainActivity:ComponentActivity(){
         }
     }
     if(sessionChecking){
-        Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        StartupSplashScreen()
     } else if(!loggedIn){
         LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
             val old=repo.profile()
