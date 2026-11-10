@@ -98,17 +98,10 @@ class MainActivity:ComponentActivity(){
                 .background(androidx.compose.ui.graphics.Color(0xFF071B2E)),
             contentAlignment = androidx.compose.ui.Alignment.Center
         ) {
-            Text(
-                text = "Freelance Hub",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                color = androidx.compose.ui.graphics.Color.White,
-                fontSize = 34.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                maxLines = 1,
-                softWrap = false
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_splash_logo),
+                contentDescription = "Freelance Hub",
+                modifier = Modifier.size(64.dp)
             )
         }
     } else if (!loggedIn) {
