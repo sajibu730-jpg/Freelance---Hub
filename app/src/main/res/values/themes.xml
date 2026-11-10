@@ -12,7 +12,7 @@
 
     <style name="Theme.FreelanceHub.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#071B2E</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_empty</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_wordmark</item>
         <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
         <item name="postSplashScreenTheme">@style/Theme.FreelanceHub</item>
     </style>
