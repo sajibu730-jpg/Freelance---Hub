@@ -4,15 +4,10 @@
     android:height="108dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
-
-    <!-- Strong, unmistakable F silhouette -->
-    <path
-        android:fillColor="#078DEB"
-        android:pathData="M15,13 L87,13 L79,29 L37,29 L34,43 L72,43 L64,59 L31,59 L24,88 L8,88 Z" />
-
     <path
         android:fillColor="#20CFF0"
-        android:pathData="M15,13 L87,13 L82,22 L33,22 L28,45 L67,45 L62,54 L25,54 L18,88 L8,88 Z"
-        android:fillAlpha="0.35" />
-
+        android:pathData="M25,18 H78 V32 H42 V44 H70 V58 H42 V82 H25 Z" />
+    <path
+        android:fillColor="#078DEB"
+        android:pathData="M25,18 H78 V25 H35 V50 H63 V54 H35 V82 H25 Z" />
 </vector>
