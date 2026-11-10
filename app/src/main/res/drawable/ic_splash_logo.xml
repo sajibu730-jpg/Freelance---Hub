@@ -4,10 +4,22 @@
     android:height="108dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
+
+    <!-- Main forward-leaning F silhouette -->
     <path
-        android:fillColor="#20CFF0"
-        android:pathData="M25,18 H78 V32 H42 V44 H70 V58 H42 V82 H25 Z" />
+        android:fillColor="#35D5F2"
+        android:pathData="M24,16 H79 L70,31 H43 V43 H68 L59,58 H43 V84 H24 Z" />
+
+    <!-- Deep-blue folded edge for a crisp, dimensional finish -->
     <path
-        android:fillColor="#078DEB"
-        android:pathData="M25,18 H78 V25 H35 V50 H63 V54 H35 V82 H25 Z" />
+        android:fillColor="#087FE5"
+        android:pathData="M43,16 H79 L70,31 H43 Z" />
+    <path
+        android:fillColor="#087FE5"
+        android:pathData="M43,43 H68 L59,58 H43 Z" />
+
+    <!-- Subtle inner highlight keeps the monogram legible at small sizes -->
+    <path
+        android:fillColor="#A7F2FF"
+        android:pathData="M29,21 H65 L61,27 H29 Z" />
 </vector>
