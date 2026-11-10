@@ -48,7 +48,7 @@ class MainActivity:ComponentActivity(){
     @Volatile private var startupReady = false
     override fun onCreate(b:Bundle?){
         val splashScreen = installSplashScreen()
-        splashScreen.setKeepOnScreenCondition { false }
+        splashScreen.setKeepOnScreenCondition { !startupReady }
         super.onCreate(b)
         playUpdateManager = PlayUpdateManager(this)
         setContent {
@@ -74,6 +74,9 @@ class MainActivity:ComponentActivity(){
         delay(3000L)
         startupMinimumElapsed = true
     }
+    LaunchedEffect(startupMinimumElapsed, sessionChecking) {
+        if (startupMinimumElapsed && !sessionChecking) onStartupReady()
+    }
     LaunchedEffect(Unit) {
         auth.restoreSession { result ->
             android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -85,23 +88,10 @@ class MainActivity:ComponentActivity(){
                     loggedIn = false
                 }
                 sessionChecking = false
-                onStartupReady()
             }
         }
     }
-    if(sessionChecking || !startupMinimumElapsed){
-        Box(
-            modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF071B2E)),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-        ) {
-            Text(
-                text = "Freelance Hub",
-                color = androidx.compose.ui.graphics.Color.White,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-            )
-        }
-    } else if(!loggedIn){
+    if(!sessionChecking && !loggedIn){
         LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
             val old=repo.profile()
             repo.initializeAccountRole(session.role)
@@ -119,7 +109,7 @@ class MainActivity:ComponentActivity(){
                 }
             }
         }
-    } else MainShell(repo, auth){
+    } else if (!sessionChecking && loggedIn) MainShell(repo, auth){
         auth.logout { android.os.Handler(android.os.Looper.getMainLooper()).post {
             repo.clearSession()
             loggedIn=false
