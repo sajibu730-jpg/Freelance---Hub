@@ -71,7 +71,7 @@ class MainActivity:ComponentActivity(){
     var sessionChecking by remember{mutableStateOf(true)}
     var startupMinimumElapsed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(3000L)
+        delay(2000L)
         startupMinimumElapsed = true
     }
     LaunchedEffect(startupMinimumElapsed, sessionChecking) {
