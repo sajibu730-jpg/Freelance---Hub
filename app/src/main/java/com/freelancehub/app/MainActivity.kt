@@ -521,9 +521,9 @@ Surface(
                 .fillMaxWidth()
                 // Keep the medium login panel at a fixed height and position;
                 // only its contents scroll, while the page background stays still.
-                .then(if (!signup) Modifier.height(420.dp) else Modifier.weight(1f))
+                .then(if (!signup) Modifier.height(500.dp) else Modifier.weight(1f))
                 .padding(horizontal = 20.dp)
-                .padding(top = 10.dp, bottom = 12.dp),
+                .padding(top = if (signup) 10.dp else 0.dp, bottom = 12.dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
             color = androidx.compose.ui.graphics.Color(0xFFFCFDFF),
             border = androidx.compose.foundation.BorderStroke(
@@ -534,7 +534,7 @@ Surface(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(loginScrollState)
+                    .then(if (signup) Modifier.verticalScroll(loginScrollState) else Modifier)
                     .padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
             ) {
                 if (signup) {
