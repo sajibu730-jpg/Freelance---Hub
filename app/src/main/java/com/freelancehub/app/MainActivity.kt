@@ -48,7 +48,7 @@ class MainActivity:ComponentActivity(){
     @Volatile private var startupReady = false
     override fun onCreate(b:Bundle?){
         val splashScreen = installSplashScreen()
-        splashScreen.setKeepOnScreenCondition { !startupReady }
+        splashScreen.setKeepOnScreenCondition { false }
         super.onCreate(b)
         playUpdateManager = PlayUpdateManager(this)
         setContent {
