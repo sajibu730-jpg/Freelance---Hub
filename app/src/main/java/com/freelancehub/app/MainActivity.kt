@@ -519,7 +519,9 @@ Surface(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                // Keep the medium login panel at a fixed height and position;
+                // only its contents scroll, while the page background stays still.
+                .then(if (!signup) Modifier.height(420.dp) else Modifier.weight(1f))
                 .padding(horizontal = 20.dp)
                 .padding(top = 10.dp, bottom = 12.dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
