@@ -91,7 +91,27 @@ class MainActivity:ComponentActivity(){
             }
         }
     }
-    if(!sessionChecking && !loggedIn){
+    if (sessionChecking || !startupMinimumElapsed) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color(0xFF071B2E)),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Text(
+                text = "Freelance Hub",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                color = androidx.compose.ui.graphics.Color.White,
+                fontSize = 34.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    } else if (!loggedIn) {
         LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
             val old=repo.profile()
             repo.initializeAccountRole(session.role)
@@ -109,7 +129,7 @@ class MainActivity:ComponentActivity(){
                 }
             }
         }
-    } else if (!sessionChecking && loggedIn) MainShell(repo, auth){
+    } else MainShell(repo, auth){
         auth.logout { android.os.Handler(android.os.Looper.getMainLooper()).post {
             repo.clearSession()
             loggedIn=false
