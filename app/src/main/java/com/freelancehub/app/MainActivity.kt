@@ -101,7 +101,7 @@ class MainActivity:ComponentActivity(){
             androidx.compose.foundation.Image(
                 painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_splash_logo),
                 contentDescription = "Freelance Hub",
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(40.dp)
             )
         }
     } else if (!loggedIn) {
