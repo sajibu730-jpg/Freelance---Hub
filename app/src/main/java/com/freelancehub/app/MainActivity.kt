@@ -427,31 +427,42 @@ Surface(
                 ) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_splash_logo),
-                        contentDescription = "Freelance Hub F globe logo",
-                        modifier = Modifier.size(width = 58.dp, height = 58.dp)
+                        contentDescription = "Freelance Hub F logo",
+                        modifier = Modifier.size(width = 76.dp, height = 76.dp)
                     )
                     Spacer(Modifier.width(14.dp))
                     Column {
-                        Text(
-                            text = androidx.compose.ui.text.buildAnnotatedString {
-                                pushStyle(
-                                    androidx.compose.ui.text.SpanStyle(
-                                        color = androidx.compose.ui.graphics.Color.White
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = androidx.compose.ui.text.buildAnnotatedString {
+                                    pushStyle(
+                                        androidx.compose.ui.text.SpanStyle(
+                                            color = androidx.compose.ui.graphics.Color.White
+                                        )
                                     )
-                                )
-                                append("Freelance ")
-                                pop()
-                                pushStyle(
-                                    androidx.compose.ui.text.SpanStyle(
-                                        color = androidx.compose.ui.graphics.Color(0xFF83E9FF)
+                                    append("Freelance ")
+                                    pop()
+                                    pushStyle(
+                                        androidx.compose.ui.text.SpanStyle(
+                                            color = androidx.compose.ui.graphics.Color(0xFF83E9FF)
+                                        )
                                     )
-                                )
-                                append("Hub")
-                                pop()
-                            },
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                        )
+                                    append("Hub")
+                                    pop()
+                                },
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Icon(
+                                Icons.Filled.Public,
+                                contentDescription = "Global marketplace globe",
+                                tint = androidx.compose.ui.graphics.Color(0xFF8DDBFF),
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
                         Text(
                             "Your work. Your world. Your future.",
                             style = MaterialTheme.typography.bodySmall,
@@ -459,15 +470,6 @@ Surface(
                         )
                     }
                 }
-                Icon(
-                    Icons.Filled.Public,
-                    contentDescription = "Earth globe",
-                    tint = androidx.compose.ui.graphics.Color(0xFF8DDBFF),
-                    modifier = Modifier
-                        .align(androidx.compose.ui.Alignment.CenterEnd)
-                        .padding(end = 2.dp)
-                        .size(38.dp)
-                )
             }
             if (!signup) {
                 Spacer(Modifier.height(16.dp))
