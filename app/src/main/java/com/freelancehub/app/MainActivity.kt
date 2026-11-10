@@ -526,7 +526,6 @@ Surface(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .imePadding()
                     .verticalScroll(loginScrollState)
                     .padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
             ) {
