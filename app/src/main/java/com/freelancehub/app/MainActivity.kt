@@ -46,13 +46,9 @@ import androidx.compose.ui.draw.drawBehind
 class MainActivity:ComponentActivity(){
     private lateinit var playUpdateManager: PlayUpdateManager
     @Volatile private var startupReady = false
-    private var startupStartedAt = 0L
     override fun onCreate(b:Bundle?){
         val splashScreen = installSplashScreen()
-        startupStartedAt = android.os.SystemClock.elapsedRealtime()
-        splashScreen.setKeepOnScreenCondition {
-            !startupReady || android.os.SystemClock.elapsedRealtime() - startupStartedAt < 3000L
-        }
+        splashScreen.setKeepOnScreenCondition { !startupReady }
         super.onCreate(b)
         playUpdateManager = PlayUpdateManager(this)
         setContent {
@@ -73,6 +69,11 @@ class MainActivity:ComponentActivity(){
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
+    var startupMinimumElapsed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(3000L)
+        startupMinimumElapsed = true
+    }
     LaunchedEffect(Unit) {
         auth.restoreSession { result ->
             android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -88,8 +89,18 @@ class MainActivity:ComponentActivity(){
             }
         }
     }
-    if(sessionChecking){
-        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF071B2E)))
+    if(sessionChecking || !startupMinimumElapsed){
+        Box(
+            modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF071B2E)),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Text(
+                text = "Freelance Hub",
+                color = androidx.compose.ui.graphics.Color.White,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+        }
     } else if(!loggedIn){
         LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
             val old=repo.profile()
@@ -293,9 +304,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                 drawPath(waveOne, androidx.compose.ui.graphics.Color(0xFFEDF6FF))
                 drawPath(waveTwo, androidx.compose.ui.graphics.Color(0xFFB9D9FF).copy(alpha = 0.88f))
             }
-            // Keep the header and login card anchored at the top while the keyboard
-            // only reduces the usable space at the bottom of the form.
-            .imePadding()
+            // Keep the page and login card fixed; keyboard insets are handled inside the form.
             .padding(
     horizontal = 0.dp,
     vertical = 0.dp
@@ -517,6 +526,7 @@ Surface(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .imePadding()
                     .verticalScroll(loginScrollState)
                     .padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
             ) {
