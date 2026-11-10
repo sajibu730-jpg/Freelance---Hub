@@ -293,6 +293,9 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                 drawPath(waveOne, androidx.compose.ui.graphics.Color(0xFFEDF6FF))
                 drawPath(waveTwo, androidx.compose.ui.graphics.Color(0xFFB9D9FF).copy(alpha = 0.88f))
             }
+            // Keep the header and login card anchored at the top while the keyboard
+            // only reduces the usable space at the bottom of the form.
+            .imePadding()
             .padding(
     horizontal = 0.dp,
     vertical = 0.dp
