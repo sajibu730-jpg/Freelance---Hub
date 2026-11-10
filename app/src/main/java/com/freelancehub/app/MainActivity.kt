@@ -74,8 +74,9 @@ class MainActivity:ComponentActivity(){
         delay(2000L)
         startupMinimumElapsed = true
     }
-    LaunchedEffect(startupMinimumElapsed, sessionChecking) {
-        if (startupMinimumElapsed && !sessionChecking) onStartupReady()
+    // Release the launch splash after two seconds; restore any saved session in the background.
+    LaunchedEffect(startupMinimumElapsed) {
+        if (startupMinimumElapsed) onStartupReady()
     }
     LaunchedEffect(Unit) {
         auth.restoreSession { result ->
@@ -91,7 +92,7 @@ class MainActivity:ComponentActivity(){
             }
         }
     }
-    if (sessionChecking || !startupMinimumElapsed) {
+    if (!startupMinimumElapsed) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
