@@ -583,7 +583,7 @@ Surface(
                             1 -> "Verify Your Email"
                             2, 3 -> "Verify Your Mobile"
                             4 -> "Complete Your Profile"
-                            else -> "Create New Account"
+                            else -> "Personal Information"
                         },
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy,
@@ -598,7 +598,7 @@ Surface(
                             2, 3 -> "Enter the 8-digit code sent to your mobile number."
                             4 -> "Add your personal information to complete your profile."
                             0 -> "Now, set up your account details."
-                            else -> "Let’s get started! Fill in your personal information."
+                            else -> "Tell us a little about yourself to get started."
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
@@ -617,7 +617,7 @@ Surface(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        listOf("Personal Info", "Account Details", "Verification").forEachIndexed { index, label ->
+                        listOf("Personal Information", "Account Details", "Complete Profile").forEachIndexed { index, label ->
                             Column(
                                 modifier = Modifier.weight(1f),
                                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
@@ -640,23 +640,6 @@ Surface(
 
                     Spacer(Modifier.height(18.dp))
 
-                    if (signup && signupStep == 5) {
-                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            Surface(shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFE5F1FF), modifier = Modifier.size(82.dp).clickable { profilePhotoPicker.launch("image/*") }) {
-                                if (profilePhotoBitmap != null) {
-                                    androidx.compose.foundation.Image(bitmap = profilePhotoBitmap!!.asImageBitmap(), contentDescription = "Selected profile photo", modifier = Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape))
-                                } else {
-                                    Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                        Icon(Icons.Filled.CameraAlt, contentDescription = "Add profile photo", tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(34.dp))
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            Text("Add Profile Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                            Text("(Optional now)", color = dark, style = MaterialTheme.typography.labelSmall)
-                        }
-                        Spacer(Modifier.height(14.dp))
-                    }
 
                     if (!signup || signupStep == 5) OutlinedTextField(
                         value = name,
@@ -684,42 +667,6 @@ Surface(
 
                     Spacer(Modifier.height(14.dp))
 
-                    if (signup && signupStep == 5) Text(
-                        text = "I want to join as",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = navy
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    if (signup && signupStep == 5) Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        FilterChip(
-                            selected = role == UserRole.FREELANCER,
-                            onClick = { role = UserRole.FREELANCER },
-                            enabled = signupStep == 5,
-                            label = { Text("Freelancer") },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Work, contentDescription = null)
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        FilterChip(
-                            selected = role == UserRole.CLIENT,
-                            onClick = { role = UserRole.CLIENT },
-                            enabled = signupStep == 5,
-                            label = { Text("Client") },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Business, contentDescription = null)
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(Modifier.height(14.dp))
                 } else {
                     Text(
                         text = "Welcome Back",
@@ -1099,15 +1046,17 @@ Surface(
                     ) { Text("Change mobile number") }
                 }
                 if (signup && signupStep == 5) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text("Gender", color = navy, style = MaterialTheme.typography.labelMedium)
-                        listOf("Male", "Female", "Other").forEach { option ->
-                            Row(Modifier.weight(1f).clickable { gender = option }, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                RadioButton(selected = gender == option, onClick = { gender = option }, modifier = Modifier.size(28.dp))
-                                Text(option, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                            }
+                    Text("Gender", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(7.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf("Male", "Female").forEach { option ->
+                            FilterChip(
+                                selected = gender == option,
+                                onClick = { gender = option },
+                                label = { Text(option) },
+                                modifier = Modifier.weight(1f),
+                                leadingIcon = { if (gender == option) Icon(Icons.Filled.Check, contentDescription = null) }
+                            )
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -1562,7 +1511,7 @@ Surface(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = if (!signup) "Sign In" else when (signupStep) {
-                                    5, 0 -> "Next Step"
+                                    5, 0 -> "Next"
                                     1 -> "Verify Email"
                                     2 -> "Send Verification Code"
                                     3 -> "Verify Mobile"
