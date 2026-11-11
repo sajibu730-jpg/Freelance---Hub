@@ -269,6 +269,16 @@ val teal = androidx.compose.ui.graphics.Color(0xFF14A89A)
 val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
     val keyboardOpen = WindowInsets.isImeVisible
+    val imeHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
+        WindowInsets.ime.getBottom(this).toDp()
+    }
+    val targetPanelLift = if (!signup && keyboardOpen) {
+        minOf(imeHeight * 0.45f, 170.dp)
+    } else 0.dp
+    val panelLift by androidx.compose.animation.core.animateDpAsState(
+        targetValue = targetPanelLift,
+        label = "login-panel-keyboard-lift"
+    )
 
     val valid = authConfigured && if (!signup) {
         Validation.email(email) && Validation.password(pass)
@@ -522,6 +532,9 @@ Surface(
                 // Keep the medium login panel at a fixed height and position;
                 // only its contents scroll, while the page background stays still.
                 .then(if (!signup) Modifier.height(500.dp) else Modifier.weight(1f))
+                // Lift the whole fixed login panel while the IME is visible, then
+                // animate it back to its anchored position when the keyboard closes.
+                .offset(y = -panelLift)
                 .padding(horizontal = 20.dp)
                 .padding(top = if (signup) 10.dp else 0.dp, bottom = 12.dp),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
