@@ -147,7 +147,7 @@ fun LoginScreen(
     ) -> Unit
 ) {
     var signup by remember { mutableStateOf(false) }
-    var signupStep by remember { mutableIntStateOf(5) }
+    var signupStep by remember { mutableIntStateOf(6) }
     var mobile by remember { mutableStateOf("") }
     var mobileCountryCode by remember { mutableStateOf("+971") }
     var mobileCountryName by remember { mutableStateOf("United Arab Emirates") }
@@ -212,8 +212,8 @@ LaunchedEffect(signup) {
 }
 
 LaunchedEffect(signup, signupStep, email) {
-    if (!signup || signupStep != 0 || !Validation.email(email)) {
-        if (!signup || signupStep == 0) {
+    if (!signup || signupStep != 6 || !Validation.email(email)) {
+        if (!signup || signupStep == 6) {
             emailDuplicate = null
             emailCheckError = ""
         }
@@ -225,7 +225,7 @@ LaunchedEffect(signup, signupStep, email) {
     delay(600)
     authService.checkSignupIdentifier("email", checkedEmail) { result ->
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            if (signup && signupStep == 0 && email.trim().equals(checkedEmail, ignoreCase = true)) {
+            if (signup && signupStep == 6 && email.trim().equals(checkedEmail, ignoreCase = true)) {
                 result.onSuccess {
                     emailDuplicate = it
                     emailCheckError = ""
@@ -285,8 +285,10 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     val valid = authConfigured && if (!signup) {
         Validation.email(email) && Validation.password(pass)
     } else when (signupStep) {
+        6 -> Validation.email(email)
+        1 -> emailOtp.length == 8
         5 -> Validation.text(name, 2, 80)
-        0 -> Validation.email(email) && Validation.password(pass) && pass == confirmPass
+        0 -> Validation.password(pass) && pass == confirmPass
         else -> true
     }
 
@@ -557,7 +559,7 @@ Surface(
                         onClick = {
                             authService.discardPendingSignupSession()
                             signup = false
-                            signupStep = 0
+                            signupStep = 6
                             name = ""
                             email = ""
                             pass = ""
@@ -581,13 +583,14 @@ Surface(
 
                     Spacer(Modifier.height(4.dp))
 
-                    if (signupStep == 5) {
+                    if (signupStep == 6 || signupStep == 5) {
                         Text("CREATE ACCOUNT", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, letterSpacing = 1.4.sp)
                         Spacer(Modifier.height(3.dp))
                     }
                     Text(
                         text = when (signupStep) {
-                            1 -> "Verify Your Email"
+                            6, 1 -> "Verify Your Email"
+                            0 -> "Account Details"
                             2, 3 -> "Verify Your Mobile"
                             4 -> "Complete Your Profile"
                             else -> "Personal Information"
@@ -596,7 +599,7 @@ Surface(
                         color = navy,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
-                    if (signupStep == 5) {
+                    if (signupStep == 6 || signupStep == 5) {
                         Text("Step 1 of 3", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     }
 
@@ -604,10 +607,11 @@ Surface(
 
                     Text(
                         text = when (signupStep) {
+                            6 -> "Enter your email address. We’ll send an 8-digit verification code."
                             1 -> "We’ve sent an 8-digit code to your email address."
                             2, 3 -> "Enter the 8-digit code sent to your mobile number."
                             4 -> "Add your personal information to complete your profile."
-                            0 -> "Now, set up your account details."
+                            0 -> "Set a secure password for your account."
                             else -> "Tell us a little about yourself to get started."
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -617,7 +621,7 @@ Surface(
                     Spacer(Modifier.height(18.dp))
 
                     val activeSignupStage = when (signupStep) {
-                        5 -> 0
+                        6, 1, 5 -> 0
                         0 -> 1
                         4 -> 2
                         else -> 2
@@ -715,7 +719,7 @@ Surface(
                         emailDuplicate = null
                         emailCheckError = ""
                     },
-                    enabled = !signup || signupStep == 5,
+                    enabled = !signup || signupStep == 6,
                     label = { Text(if (signup) "Email Address" else "Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
@@ -732,15 +736,16 @@ Surface(
                         cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
                     )
                 )
-                if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
+                if (signup && signupStep == 6 && email.isNotBlank() && !Validation.email(email)) {
                     Text("Please enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                if (signup && signupStep == 0 && emailDuplicate == true) {
+                if (signup && signupStep == 6 && emailDuplicate == true) {
                     Text("This email address is already in use. Please use a different email address to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                } else if (signup && signupStep == 0 && emailCheckError.isNotBlank()) {
+                } else if (signup && signupStep == 6 && emailCheckError.isNotBlank()) {
                     Text(emailCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
+                if (!signup || signupStep == 0) {
                 Spacer(Modifier.height(14.dp))
 
                 // PASSWORD FIELD — EYE AND COPY PRESERVED
@@ -832,6 +837,7 @@ Surface(
                     if (confirmPass.isNotBlank() && pass != confirmPass) {
                         Text("The passwords do not match.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
+                }
                 }
 
                 }
@@ -943,25 +949,6 @@ Surface(
                             }
                         }
                     )
-                }
-                if (signup && signupStep == 0) {
-                    TextButton(
-                        enabled = !busy && email.contains("@"),
-                        onClick = {
-                            busy = true
-                            error = ""
-                            authService.resendSignupEmailOtp(email) { result ->
-                                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                    busy = false
-                                    result.onSuccess {
-                                        signupStep = 1
-                                        error = "A new verification code has been requested. Check your inbox and spam folder."
-                                    }.onFailure { error = it.message ?: "Could not resend email code." }
-                                }
-                            }
-                        },
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.End)
-                    ) { Text("Already started signup? Resend Code") }
                 }
                 if (signup && signupStep == 1) {
                     Spacer(Modifier.height(12.dp))
@@ -1414,26 +1401,23 @@ Surface(
                             } else {
                                 val main = android.os.Handler(android.os.Looper.getMainLooper())
                                 when (signupStep) {
-                                    0 -> authService.createSignupAccount(name, email, pass, role) { result ->
+                                    6 -> authService.sendSignupEmailOtp(email) { result ->
                                         main.post {
                                             busy = false
-                                            result.onSuccess { outcome ->
-                                                if (outcome.startsWith("VERIFIED:")) {
-                                                    signupSession = authService.pendingSignupSessionSnapshot()
-                                                    loadSignupOtpSettings()
-                                                } else {
-                                                    signupStep = 1
-                                                }
-                                            }.onFailure {
-                                                    val message = it.message ?: "Could not create account."
-                                                    error = if (message.contains("EMAIL_DELIVERY_FAILED", true) || message.contains("535", true) || message.contains("username and password not accepted", true)) {
-                                                        "Unable to send the email: Gmail rejected the Supabase SMTP login credentials. OTP delivery will not work until the SMTP settings are corrected."
-                                                    } else if (message.contains("already registered", true) ||
-                                                        message.contains("already exists", true) ||
-                                                        message.contains("email_exists", true)) {
-                                                        "Signup may already have been started with this email address. If you did not receive the code, use the Resend Code option below."
-                                                    } else message
-                                                }
+                                            result.onSuccess {
+                                                signupStep = 1
+                                                emailOtp = ""
+                                                error = "An 8-digit verification code has been sent. Check your inbox and spam folder."
+                                            }.onFailure { error = it.message ?: "Could not send the email verification code." }
+                                        }
+                                    }
+                                    0 -> authService.setSignupPassword(name, pass, role) { result ->
+                                        main.post {
+                                            busy = false
+                                            result.onSuccess {
+                                                signupSession = authService.pendingSignupSessionSnapshot()
+                                                loadSignupOtpSettings()
+                                            }.onFailure { error = it.message ?: "Could not save your account password." }
                                         }
                                     }
                                     1 -> authService.verifySignupEmail(email, emailOtp) { result ->
@@ -1441,7 +1425,8 @@ Surface(
                                             busy = false
                                             result.onSuccess { session ->
                                                 signupSession = session
-                                                loadSignupOtpSettings()
+                                                signupStep = 5
+                                                error = "Email verified successfully. Continue with your account information."
                                             }.onFailure { error = it.message ?: "Email verification failed." }
                                         }
                                     }
@@ -1485,10 +1470,11 @@ Surface(
                         }
                     },
                     enabled = valid && !busy && (!signup || when (signupStep) {
+                        6 -> Validation.email(email) && emailDuplicate == false && emailCheckError.isBlank()
                         5 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
                             (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) && mobileDuplicate == false && mobileCheckError.isBlank() && country.isNotBlank() && gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
-                        0 -> emailDuplicate == false && emailCheckError.isBlank()
+                        0 -> Validation.password(pass) && pass == confirmPass
                         1 -> emailOtp.length == 8
                         2 -> signupOtpSettingsLoaded &&
                             (signupSmsOtpEnabled || signupWhatsAppOtpEnabled) &&
@@ -1523,6 +1509,7 @@ Surface(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = if (!signup) "Sign In" else when (signupStep) {
+                                    6 -> "Send Verification Code"
                                     5, 0 -> "Next"
                                     1 -> "Verify Email"
                                     2 -> "Send Verification Code"
@@ -1553,7 +1540,13 @@ Surface(
                             scope.launch {
                                 delay(350)
                                 signup = true
-                                signupStep = 5
+                                signupStep = 6
+                                email = ""
+                                name = ""
+                                pass = ""
+                                confirmPass = ""
+                                emailDuplicate = null
+                                emailCheckError = ""
                                 emailOtp = ""
                                 mobileOtp = ""
                                 mobile = ""
