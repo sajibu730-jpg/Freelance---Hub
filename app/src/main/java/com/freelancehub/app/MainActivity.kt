@@ -1532,7 +1532,7 @@ Surface(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = if (!signup) "Sign In" else when (signupStep) {
-                                    5, 0 -> "Next"
+                                    5, 6, 0, 4 -> "Next"
                                     1 -> "Verify Email"
                                     2 -> "Send Verification Code"
                                     3 -> "Verify Mobile"
@@ -1571,6 +1571,13 @@ Surface(
                                 country = ""
                                 gender = ""
                                 birthday = ""
+                                profilePhotoBitmap = null
+                                coverPhotoBitmap = null
+                                signupProfilePhotoBytes = null
+                                signupProfilePhotoType = null
+                                signupCoverPhotoBytes = null
+                                signupCoverPhotoType = null
+                                signupRulesAccepted = false
                                 signupSession = null
                                 error = ""
                                 busy = false
