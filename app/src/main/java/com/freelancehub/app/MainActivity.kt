@@ -905,17 +905,23 @@ Surface(
                     ) {
                         OutlinedButton(
                             onClick = { signupCountrySearch = ""; showSignupCountryPicker = true },
-                            modifier = Modifier.weight(1.15f).height(56.dp),
+                            modifier = Modifier.weight(0.78f).height(56.dp),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("Country code", style = MaterialTheme.typography.labelSmall, color = navy)
-                                    Text(mobileCountryName, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                                    Text(mobileCountryCode, style = MaterialTheme.typography.labelMedium, color = blue)
-                                }
-                                Icon(Icons.Filled.Search, contentDescription = "Search country")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    mobileCountryCode,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = blue,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose country code")
                             }
                         }
                         OutlinedTextField(
@@ -931,7 +937,7 @@ Surface(
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
                             ),
-                            modifier = Modifier.weight(1.35f),
+                            modifier = Modifier.weight(1.42f),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                         )
                     }
@@ -1132,7 +1138,7 @@ Surface(
                     if (showGenderPicker) AlertDialog(onDismissRequest = { showGenderPicker = false }, title = { Text("Choose gender") }, text = { Column { listOf("Male", "Female", "Other", "Prefer not to say").forEach { option -> TextButton(onClick = { gender = option; showGenderPicker = false }, modifier = Modifier.fillMaxWidth()) { Text(option, modifier = Modifier.fillMaxWidth()) } } } }, confirmButton = { TextButton(onClick = { showGenderPicker = false }) { Text("Close") } })
                     if (showBirthdayPicker) {
                         val datePickerState = rememberDatePickerState(yearRange = 1900..java.time.LocalDate.now().year)
-                        DatePickerDialog(onDismissRequest = { showBirthdayPicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { millis -> birthday = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString() }; showBirthdayPicker = false }) { Text("Select") } }, dismissButton = { TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState, showModeToggle = false) }
+                        DatePickerDialog(onDismissRequest = { showBirthdayPicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { millis -> birthday = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString() }; showBirthdayPicker = false }) { Text("Select") } }, dismissButton = { TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState, showModeToggle = true) }
                     }
                 }
 
@@ -1152,7 +1158,7 @@ Surface(
                     OutlinedButton(onClick = { showBirthdayPicker = true }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
                         Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
                         Spacer(Modifier.width(10.dp))
-                        Text(if (birthday.isBlank()) "Select your birthday" else birthday, modifier = Modifier.weight(1f))
+                        Text(if (birthday.isBlank()) "Choose date of birth" else runCatching { java.time.LocalDate.parse(birthday).format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")) }.getOrDefault(birthday), modifier = Modifier.weight(1f))
                     }
                     if (showGenderPicker) AlertDialog(
                         onDismissRequest = { showGenderPicker = false },
