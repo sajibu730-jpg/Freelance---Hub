@@ -578,6 +578,10 @@ Surface(
 
                     Spacer(Modifier.height(4.dp))
 
+                    if (signupStep == 5) {
+                        Text("CREATE ACCOUNT", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, letterSpacing = 1.4.sp)
+                        Spacer(Modifier.height(3.dp))
+                    }
                     Text(
                         text = when (signupStep) {
                             1 -> "Verify Your Email"
@@ -587,8 +591,11 @@ Surface(
                         },
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
+                    if (signupStep == 5) {
+                        Text("Step 1 of 3", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    }
 
                     Spacer(Modifier.height(6.dp))
 
@@ -645,7 +652,8 @@ Surface(
                         value = name,
                         onValueChange = { name = it },
                         enabled = !signup || signupStep == 5,
-                        label = { Text("Full Name") },
+                        label = { Text("Full Name *") },
+                        placeholder = { Text("Enter your name") },
                         leadingIcon = {
                             Icon(Icons.Filled.Person, contentDescription = null)
                         },
@@ -829,7 +837,7 @@ Surface(
                     OutlinedButton(onClick = { signupCountrySearch = ""; showProfileCountryPicker = true }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                             Icon(Icons.Filled.Public, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9)); Spacer(Modifier.width(12.dp))
-                            Text(if (country.isBlank()) "Select your country" else country, modifier = Modifier.weight(1f), color = navy); Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) { Text("Country *", color = navy, style = MaterialTheme.typography.labelSmall); Text(if (country.isBlank()) "Select your country" else country, color = if (country.isBlank()) androidx.compose.ui.graphics.Color(0xFF71839D) else navy, style = MaterialTheme.typography.bodyMedium) }; Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -864,7 +872,8 @@ Surface(
                                 mobileDuplicate = null
                                 mobileCheckError = ""
                             },
-                            placeholder = { Text("Mobile Number") },
+                            label = { Text("Mobile Number *") },
+                            placeholder = { Text("Enter mobile number") },
                             singleLine = true,
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
@@ -1046,7 +1055,7 @@ Surface(
                     ) { Text("Change mobile number") }
                 }
                 if (signup && signupStep == 5) {
-                    Text("Gender", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Text("Gender *", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     Spacer(Modifier.height(7.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         listOf("Male", "Female").forEach { option ->
@@ -1063,7 +1072,7 @@ Surface(
                     OutlinedButton(onClick = { showBirthdayPicker = true }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                         Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
                         Spacer(Modifier.width(10.dp))
-                        Text("Birthday", color = navy)
+                        Text("Birthday *", color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         Spacer(Modifier.width(12.dp))
                         Text(if (birthday.isBlank()) "Select your birthday" else birthday, color = dark, modifier = Modifier.weight(1f))
                     }
