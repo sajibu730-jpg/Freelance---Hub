@@ -138,7 +138,25 @@ class AuthService(context: Context) {
         }
     }
 
-    /** Confirms the Supabase signup email OTP and only then saves the session. */
+    /** Sends the signup email OTP before collecting any password or profile details. */
+    fun sendSignupEmailOtp(email: String, callback: (Result<Unit>) -> Unit) {
+        executor.execute {
+            callback(runCatching {
+                val target = email.trim()
+                require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
+                    "Enter a valid email address."
+                }
+                request(
+                    "POST",
+                    "/auth/v1/otp",
+                    JSONObject().put("email", target).put("create_user", true).toString()
+                )
+                Unit
+            })
+        }
+    }
+
+    /** Confirms the passwordless signup OTP and keeps the returned session pending until profile completion. */
     fun verifySignupEmail(email: String, otp: String, callback: (Result<AuthSession>) -> Unit) {
         executor.execute {
             callback(runCatching {
@@ -152,7 +170,7 @@ class AuthService(context: Context) {
                 val response = request(
                     "POST",
                     "/auth/v1/verify",
-                    JSONObject().put("type", "signup")
+                    JSONObject().put("type", "email")
                         .put("email", target)
                         .put("token", otp.trim())
                         .toString()
@@ -176,6 +194,41 @@ class AuthService(context: Context) {
         }
     }
 
+    /** Sets the password only after the email OTP has been verified successfully. */
+    fun setSignupPassword(
+        name: String,
+        password: String,
+        role: UserRole,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        executor.execute {
+            callback(runCatching {
+                require(name.trim().length in 2..80) { "Enter your full name." }
+                require(password.length >= 8) { "Use at least 8 characters for your password." }
+                val pending = pendingSignupSession
+                    ?: error("Verify your email address before setting your password.")
+                val updatedUser = request(
+                    method = "PUT",
+                    path = "/auth/v1/user",
+                    body = JSONObject()
+                        .put("password", password)
+                        .put("data", JSONObject()
+                            .put("display_name", name.trim())
+                            .put("role", role.name))
+                        .toString(),
+                    accessToken = pending.accessToken
+                )
+                pendingSignupSession = makeSession(
+                    access = pending.accessToken,
+                    refresh = pending.refreshToken,
+                    user = updatedUser,
+                    defaultRole = role
+                )
+                Unit
+            })
+        }
+    }
+
     /** Returns the in-memory session when resuming a previously verified signup. */
     fun pendingSignupSessionSnapshot(): AuthSession? = pendingSignupSession
 
@@ -189,8 +242,8 @@ class AuthService(context: Context) {
                 }
                 request(
                     "POST",
-                    "/auth/v1/resend",
-                    JSONObject().put("type", "signup").put("email", target).toString()
+                    "/auth/v1/otp",
+                    JSONObject().put("email", target).put("create_user", true).toString()
                 )
                 Unit
             })
