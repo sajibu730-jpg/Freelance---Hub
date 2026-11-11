@@ -169,6 +169,8 @@ fun LoginScreen(
     var birthday by remember { mutableStateOf("") }
     var showProfileCountryPicker by remember { mutableStateOf(false) }
     var profilePhotoBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var coverPhotoBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var agreedToGuidelines by remember { mutableStateOf(false) }
     var showGenderPicker by remember { mutableStateOf(false) }
     var showBirthdayPicker by remember { mutableStateOf(false) }
     var signupSession by remember { mutableStateOf<com.freelancehub.app.auth.AuthSession?>(null) }
@@ -191,6 +193,9 @@ var recoveryEmail by remember { mutableStateOf("") }
 val screenContext = LocalContext.current
 val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
     profilePhotoBitmap = uri?.let { selected -> runCatching { screenContext.contentResolver.openInputStream(selected)?.use { BitmapFactory.decodeStream(it) } }.getOrNull() }
+}
+val coverPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    coverPhotoBitmap = uri?.let { selected -> runCatching { screenContext.contentResolver.openInputStream(selected)?.use { BitmapFactory.decodeStream(it) } }.getOrNull() }
 }
 val resetAuthService = remember(screenContext) { AuthService(screenContext) }
 val scope = rememberCoroutineScope()
@@ -239,7 +244,7 @@ LaunchedEffect(signup, signupStep, email) {
 }
 LaunchedEffect(signup, signupStep, mobile, mobileCountryCode) {
     val target = mobileCountryCode + mobile
-    if (signup && (signupStep == 5 || signupStep == 2) &&
+    if (signup && signupStep == 4 &&
         target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
         mobileDuplicate = null
         mobileCheckError = ""
@@ -285,8 +290,11 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     val valid = authConfigured && if (!signup) {
         Validation.email(email) && Validation.password(pass)
     } else when (signupStep) {
-        5 -> Validation.text(name, 2, 80)
+        5 -> Validation.text(name, 2, 80) && country.isNotBlank()
         0 -> Validation.email(email) && Validation.password(pass) && pass == confirmPass
+        1 -> emailOtp.length == 8
+        4 -> (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) && gender.isNotBlank() && runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
+        6 -> agreedToGuidelines
         else -> true
     }
 
@@ -587,28 +595,28 @@ Surface(
                     }
                     Text(
                         text = when (signupStep) {
+                            0 -> "Account Details"
                             1 -> "Verify Your Email"
-                            2, 3 -> "Verify Your Mobile"
-                            4 -> "Complete Your Profile"
+                            4 -> "Personal Details"
+                            6 -> "Profile & Guidelines"
                             else -> "Personal Information"
                         },
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
-                    if (signupStep == 5) {
-                        Text("Step 1 of 3", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                    }
+                    Text("Step ${when (signupStep) { 5 -> 1; 0 -> 2; 1 -> 3; 4 -> 4; else -> 5 }} of 5", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
 
                     Spacer(Modifier.height(6.dp))
 
                     Text(
                         text = when (signupStep) {
-                            1 -> "We’ve sent an 8-digit code to your email address."
-                            2, 3 -> "Enter the 8-digit code sent to your mobile number."
-                            4 -> "Add your personal information to complete your profile."
-                            0 -> "Now, set up your account details."
-                            else -> "Tell us a little about yourself to get started."
+                            5 -> "Start with your full name and country."
+                            0 -> "Add your email and create a secure password."
+                            1 -> "Enter the 8-digit code sent to your email address."
+                            4 -> "Add your mobile number and personal details."
+                            6 -> "Add your profile images and agree to our community guidelines."
+                            else -> "Continue creating your Freelance Hub account."
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
@@ -619,15 +627,16 @@ Surface(
                     val activeSignupStage = when (signupStep) {
                         5 -> 0
                         0 -> 1
-                        4 -> 2
-                        else -> 2
+                        1 -> 2
+                        4 -> 3
+                        else -> 4
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        listOf("Personal Information", "Account Details", "Complete Profile").forEachIndexed { index, label ->
+                        listOf("Your Details", "Account", "Email OTP", "Personal", "Finish").forEachIndexed { index, label ->
                             Column(
                                 modifier = Modifier.weight(1f),
                                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
@@ -706,7 +715,7 @@ Surface(
                     Spacer(Modifier.height(12.dp))
                 }
 
-                if (!signup || signupStep != 5) {
+                if (!signup || signupStep == 0) {
                 // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
@@ -715,7 +724,7 @@ Surface(
                         emailDuplicate = null
                         emailCheckError = ""
                     },
-                    enabled = !signup || signupStep == 5,
+                    enabled = !signup || signupStep == 0,
                     label = { Text(if (signup) "Email Address" else "Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
@@ -846,7 +855,7 @@ Surface(
                     Spacer(Modifier.height(8.dp))
                 }
 
-                if (signup && (signupStep == 5 || signupStep == 2)) {
+                if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1057,44 +1066,6 @@ Surface(
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
                     ) { Text("Change mobile number") }
                 }
-                if (signup && signupStep == 5) {
-                    Text("Gender *", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                    Spacer(Modifier.height(7.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        listOf("Male", "Female").forEach { option ->
-                            FilterChip(
-                                selected = gender == option,
-                                onClick = { gender = option },
-                                label = { Text(option) },
-                                modifier = Modifier.weight(1f),
-                                leadingIcon = { if (gender == option) Icon(Icons.Filled.Check, contentDescription = null) }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { showBirthdayPicker = true }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
-                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                        Spacer(Modifier.width(10.dp))
-                        Text("Birthday *", color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-                        Spacer(Modifier.width(12.dp))
-                        Text(if (birthday.isBlank()) "Select your birthday" else birthday, color = dark, modifier = Modifier.weight(1f))
-                    }
-                    if (showProfileCountryPicker) {
-                        val profileCountries = CountryCallingCodes.all.filter { it.first.contains(signupCountrySearch, ignoreCase = true) || it.second.contains(signupCountrySearch.trim()) }
-                        AlertDialog(onDismissRequest = { showProfileCountryPicker = false; signupCountrySearch = "" }, title = { Text("Choose your country") }, text = {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(value = signupCountrySearch, onValueChange = { signupCountrySearch = it }, label = { Text("Search country") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                                LazyColumn(Modifier.heightIn(max = 360.dp)) { items(profileCountries) { item -> TextButton(onClick = { country = item.first; showProfileCountryPicker = false; signupCountrySearch = "" }, modifier = Modifier.fillMaxWidth()) { Text(item.first, modifier = Modifier.fillMaxWidth()) } } }
-                            }
-                        }, confirmButton = { TextButton(onClick = { showProfileCountryPicker = false }) { Text("Close") } })
-                    }
-                    if (showGenderPicker) AlertDialog(onDismissRequest = { showGenderPicker = false }, title = { Text("Choose gender") }, text = { Column { listOf("Male", "Female", "Other", "Prefer not to say").forEach { option -> TextButton(onClick = { gender = option; showGenderPicker = false }, modifier = Modifier.fillMaxWidth()) { Text(option, modifier = Modifier.fillMaxWidth()) } } } }, confirmButton = { TextButton(onClick = { showGenderPicker = false }) { Text("Close") } })
-                    if (showBirthdayPicker) {
-                        val datePickerState = rememberDatePickerState(yearRange = 1900..java.time.LocalDate.now().year)
-                        DatePickerDialog(onDismissRequest = { showBirthdayPicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { millis -> birthday = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString() }; showBirthdayPicker = false }) { Text("Select") } }, dismissButton = { TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState, showModeToggle = false) }
-                    }
-                }
-
                 if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
                     if (!signupMobileVerified) {
@@ -1105,20 +1076,6 @@ Surface(
                         )
                         Spacer(Modifier.height(8.dp))
                     }
-                    OutlinedButton(
-                        onClick = { signupCountrySearch = ""; showProfileCountryPicker = true },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Public, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (country.isBlank()) "Select your country" else country, modifier = Modifier.weight(1f), color = navy)
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
                     OutlinedButton(
                         onClick = { showGenderPicker = true },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -1228,6 +1185,34 @@ Surface(
                         ) {
                             DatePicker(state = datePickerState, showModeToggle = false)
                         }
+                    }
+                }
+
+                if (signup && signupStep == 6) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Profile Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedButton(onClick = { profilePhotoPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().height(54.dp)) {
+                        Text(if (profilePhotoBitmap == null) "Choose Profile Photo" else "Profile Photo Selected")
+                    }
+                    profilePhotoBitmap?.let { selected ->
+                        androidx.compose.foundation.Image(bitmap = selected.asImageBitmap(), contentDescription = "Selected profile photo", modifier = Modifier.size(92.dp).clip(androidx.compose.foundation.shape.CircleShape))
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Text("Cover Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedButton(onClick = { coverPhotoPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().height(54.dp)) {
+                        Text(if (coverPhotoBitmap == null) "Choose Cover Photo" else "Cover Photo Selected")
+                    }
+                    coverPhotoBitmap?.let { selected ->
+                        androidx.compose.foundation.Image(bitmap = selected.asImageBitmap(), contentDescription = "Selected cover photo", modifier = Modifier.fillMaxWidth().height(110.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)))
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Text("Rules & Guidelines", color = navy, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("Use real account details. Do not scam, harass others, copy work without permission, or share misleading content. Treat every member respectfully and follow platform rules.", color = dark, style = MaterialTheme.typography.bodySmall)
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = agreedToGuidelines, onCheckedChange = { agreedToGuidelines = it })
+                        Text("I agree to the Rules & Guidelines", color = navy, style = MaterialTheme.typography.bodySmall)
                     }
                 }
 
@@ -1403,7 +1388,9 @@ Surface(
                 Button(
                     onClick = {
                         if (valid && !busy) {
-                            if (signup && signupStep == 5) { signupStep = 0; error = "" } else {
+                            if (signup && signupStep == 5) { signupStep = 0; error = "" }
+                            else if (signup && signupStep == 4) { signupStep = 6; error = "" }
+                            else {
                             busy = true
                             error = ""
                             if (!signup) {
@@ -1469,7 +1456,11 @@ Surface(
                                             }.onFailure { error = it.message ?: "Mobile verification failed." }
                                         }
                                     }
-                                    4 -> authService.saveSignupProfile(name, mobileCountryCode + mobile, country, gender, birthday) { result ->
+                                    4 -> {
+                                        busy = false
+                                        signupStep = 6
+                                    }
+                                    6 -> authService.saveSignupProfile(name, mobileCountryCode + mobile, country, gender, birthday) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess {
@@ -1485,18 +1476,17 @@ Surface(
                         }
                     },
                     enabled = valid && !busy && (!signup || when (signupStep) {
-                        5 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
-                            (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) && mobileDuplicate == false && mobileCheckError.isBlank() && country.isNotBlank() && gender.isNotBlank() &&
-                            runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
-                        0 -> emailDuplicate == false && emailCheckError.isBlank()
+                        5 -> Validation.text(name, 2, 80) && country.isNotBlank()
+                        0 -> emailDuplicate == false && emailCheckError.isBlank() && Validation.email(email) && Validation.password(pass) && pass == confirmPass
                         1 -> emailOtp.length == 8
                         2 -> signupOtpSettingsLoaded &&
                             (signupSmsOtpEnabled || signupWhatsAppOtpEnabled) &&
                             mobileCountryCode.isNotBlank() && mobile.isNotBlank() &&
                             mobileDuplicate == false && mobileCheckError.isBlank()
                         3 -> mobileOtp.length == 8
-                        4 -> country.isNotBlank() && gender.isNotBlank() &&
+                        4 -> (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) && mobileDuplicate == false && mobileCheckError.isBlank() && gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
+                        6 -> agreedToGuidelines
                         else -> false
                     }),
                     modifier = Modifier
@@ -1523,7 +1513,7 @@ Surface(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = if (!signup) "Sign In" else when (signupStep) {
-                                    5, 0 -> "Next"
+                                    5, 0, 4 -> "Next"
                                     1 -> "Verify Email"
                                     2 -> "Send Verification Code"
                                     3 -> "Verify Mobile"
