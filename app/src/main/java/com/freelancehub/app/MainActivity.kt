@@ -285,8 +285,9 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     val valid = authConfigured && if (!signup) {
         Validation.email(email) && Validation.password(pass)
     } else when (signupStep) {
-        5 -> Validation.text(name, 2, 80)
-        0 -> Validation.email(email) && Validation.password(pass) && pass == confirmPass
+        5 -> Validation.text(name, 2, 80) && country.isNotBlank()
+        6 -> Validation.email(email)
+        0 -> Validation.password(pass) && pass == confirmPass
         else -> true
     }
 
@@ -589,15 +590,17 @@ Surface(
                         text = when (signupStep) {
                             1 -> "Verify Your Email"
                             2, 3 -> "Verify Your Mobile"
-                            4 -> "Complete Your Profile"
+                            4 -> "Personal Details"
+                            6 -> "Contact Information"
+                            0 -> "Account Security"
                             else -> "Personal Information"
                         },
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
-                    if (signupStep == 5) {
-                        Text("Step 1 of 3", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    if (signupStep in listOf(5, 6, 0, 4)) {
+                        Text("Step ${when (signupStep) { 5 -> 1; 6 -> 2; 0 -> 3; else -> 4 }} of 5", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     }
 
                     Spacer(Modifier.height(6.dp))
@@ -605,10 +608,11 @@ Surface(
                     Text(
                         text = when (signupStep) {
                             1 -> "We’ve sent an 8-digit code to your email address."
-                            2, 3 -> "Enter the 8-digit code sent to your mobile number."
-                            4 -> "Add your personal information to complete your profile."
-                            0 -> "Now, set up your account details."
-                            else -> "Tell us a little about yourself to get started."
+                            2, 3 -> "Mobile verification is currently disabled."
+                            4 -> "Add your gender and birthday to complete your personal details."
+                            6 -> "Enter your email address and mobile number."
+                            0 -> "Create a strong password for your account."
+                            else -> "Start with your name and country."
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = dark
@@ -1061,7 +1065,7 @@ Surface(
                         modifier = Modifier.align(androidx.compose.ui.Alignment.End)
                     ) { Text("Change mobile number") }
                 }
-                if (signup && signupStep == 5) {
+                if (signup && signupStep == 99) {
                     Text("Gender *", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     Spacer(Modifier.height(7.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1493,10 +1497,12 @@ Surface(
                         }
                     },
                     enabled = valid && !busy && (!signup || when (signupStep) {
-                        5 -> mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
-                            (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) && mobileDuplicate == false && mobileCheckError.isBlank() && country.isNotBlank() && gender.isNotBlank() &&
-                            runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
-                        0 -> emailDuplicate == false && emailCheckError.isBlank()
+                        5 -> Validation.text(name, 2, 80) && country.isNotBlank()
+                        6 -> emailDuplicate == false && emailCheckError.isBlank() &&
+                            mobileCountryCode.matches(Regex("""^\+[1-9][0-9]{0,3}$""")) &&
+                            (mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$""")) &&
+                            mobileDuplicate == false && mobileCheckError.isBlank()
+                        0 -> Validation.password(pass) && pass == confirmPass
                         1 -> emailOtp.length == 8
                         2 -> signupOtpSettingsLoaded &&
                             (signupSmsOtpEnabled || signupWhatsAppOtpEnabled) &&
