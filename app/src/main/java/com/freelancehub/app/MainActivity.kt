@@ -1105,138 +1105,94 @@ Surface(
 
                 if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
-                    if (!signupMobileVerified) {
-                        Text(
-                            "Mobile verification is currently turned off. Your number will be saved as unverified.",
-                            color = MaterialTheme.colorScheme.secondary,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Spacer(Modifier.height(8.dp))
+                    Text("Gender *", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedButton(onClick = { showGenderPicker = true }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                        Spacer(Modifier.width(10.dp))
+                        Text(if (gender.isBlank()) "Select your gender" else gender, modifier = Modifier.weight(1f))
+                        Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose gender")
                     }
-                    OutlinedButton(
-                        onClick = { signupCountrySearch = ""; showProfileCountryPicker = true },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Public, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (country.isBlank()) "Select your country" else country, modifier = Modifier.weight(1f), color = navy)
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
-                        }
+                    Spacer(Modifier.height(14.dp))
+                    Text("Birthday *", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedButton(onClick = { showBirthdayPicker = true }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
+                        Spacer(Modifier.width(10.dp))
+                        Text(if (birthday.isBlank()) "Select your birthday" else birthday, modifier = Modifier.weight(1f))
                     }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showGenderPicker = true },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (gender.isBlank()) "Gender" else gender, modifier = Modifier.weight(1f), color = navy)
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show gender options")
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showBirthdayPicker = true },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (birthday.isBlank()) "Select your birthday" else birthday, modifier = Modifier.weight(1f), color = navy)
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = "Open birthday calendar")
-                        }
-                    }
-
-                    if (showProfileCountryPicker) {
-                        val profileCountries = CountryCallingCodes.all.filter {
-                            it.first.contains(signupCountrySearch, ignoreCase = true) ||
-                                it.second.contains(signupCountrySearch.trim())
-                        }
-                        AlertDialog(
-                            onDismissRequest = { showProfileCountryPicker = false; signupCountrySearch = "" },
-                            title = { Text("Choose your country") },
-                            text = {
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedTextField(
-                                        value = signupCountrySearch,
-                                        onValueChange = { signupCountrySearch = it },
-                                        label = { Text("Search country") },
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                                        items(profileCountries) { item ->
-                                            TextButton(
-                                                onClick = {
-                                                    country = item.first
-                                                    showProfileCountryPicker = false
-                                                    signupCountrySearch = ""
-                                                },
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) { Text(item.first, modifier = Modifier.fillMaxWidth()) }
-                                        }
-                                    }
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showProfileCountryPicker = false }) { Text("Close") }
-                            }
-                        )
-                    }
-                    if (showGenderPicker) {
-                        AlertDialog(
-                            onDismissRequest = { showGenderPicker = false },
-                            title = { Text("Choose gender") },
-                            text = {
-                                Column {
-                                    listOf("Male", "Female", "Other", "Prefer not to say").forEach { option ->
-                                        TextButton(
-                                            onClick = { gender = option; showGenderPicker = false },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) { Text(option, modifier = Modifier.fillMaxWidth()) }
-                                    }
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showGenderPicker = false }) { Text("Close") }
-                            }
-                        )
-                    }
+                    if (showGenderPicker) AlertDialog(
+                        onDismissRequest = { showGenderPicker = false },
+                        title = { Text("Choose gender") },
+                        text = { Column { listOf("Male", "Female", "Other", "Prefer not to say").forEach { option ->
+                            TextButton(onClick = { gender = option; showGenderPicker = false }, modifier = Modifier.fillMaxWidth()) { Text(option, modifier = Modifier.fillMaxWidth()) }
+                        } } },
+                        confirmButton = { TextButton(onClick = { showGenderPicker = false }) { Text("Close") } }
+                    )
                     if (showBirthdayPicker) {
-                        val initialBirthday = runCatching {
-                            java.time.LocalDate.parse(birthday).atStartOfDay(java.time.ZoneOffset.UTC)
-                                .toInstant().toEpochMilli()
-                        }.getOrNull()
-                        val datePickerState = rememberDatePickerState(
-                            initialSelectedDateMillis = initialBirthday,
-                            yearRange = 1900..java.time.LocalDate.now().year
-                        )
+                        val initialBirthday = runCatching { java.time.LocalDate.parse(birthday).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() }.getOrNull()
+                        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialBirthday, yearRange = 1900..java.time.LocalDate.now().year)
                         DatePickerDialog(
                             onDismissRequest = { showBirthdayPicker = false },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    datePickerState.selectedDateMillis?.let { millis ->
-                                        birthday = java.time.Instant.ofEpochMilli(millis)
-                                            .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
-                                    }
-                                    showBirthdayPicker = false
-                                }) { Text("Select") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") }
+                            confirmButton = { TextButton(onClick = {
+                                datePickerState.selectedDateMillis?.let { millis -> birthday = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString() }
+                                showBirthdayPicker = false
+                            }) { Text("Select") } },
+                            dismissButton = { TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") } }
+                        ) { DatePicker(state = datePickerState, showModeToggle = false) }
+                    }
+                }
+
+                if (signup && signupStep == 7) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("Profile Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Surface(modifier = Modifier.size(88.dp), shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFFEAF1FC)) {
+                            if (profilePhotoBitmap != null) androidx.compose.foundation.Image(
+                                bitmap = profilePhotoBitmap!!.asImageBitmap(), contentDescription = "Selected profile photo",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize()
+                            ) else Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF3157D5), modifier = Modifier.size(38.dp))
                             }
-                        ) {
-                            DatePicker(state = datePickerState, showModeToggle = false)
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(if (signupProfilePhotoBytes == null) "Add a clear profile photo" else "Profile photo selected", color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                            Text("JPEG, PNG or WebP · up to 5 MB", color = dark, style = MaterialTheme.typography.bodySmall)
+                            TextButton(onClick = { profilePhotoPicker.launch("image/*") }) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = null); Spacer(Modifier.width(6.dp))
+                                Text(if (signupProfilePhotoBytes == null) "Choose photo" else "Change photo")
+                            }
                         }
                     }
+                    Spacer(Modifier.height(14.dp))
+                    Text("Cover Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Surface(modifier = Modifier.fillMaxWidth().height(112.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = androidx.compose.ui.graphics.Color(0xFFEAF1FC)) {
+                        if (coverPhotoBitmap != null) androidx.compose.foundation.Image(
+                            bitmap = coverPhotoBitmap!!.asImageBitmap(), contentDescription = "Selected cover photo",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize()
+                        ) else Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                Icon(Icons.Filled.Image, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF3157D5), modifier = Modifier.size(30.dp))
+                                Text("Add a professional cover image", color = dark, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    TextButton(onClick = { coverPhotoPicker.launch("image/*") }, modifier = Modifier.align(androidx.compose.ui.Alignment.End)) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = null); Spacer(Modifier.width(6.dp))
+                        Text(if (signupCoverPhotoBytes == null) "Choose cover photo" else "Change cover photo")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Rules & Guidelines", color = navy, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("Use accurate account information, respect other members, communicate professionally, publish genuine jobs and proposals, and never share passwords or verification codes. Fraud, harassment, spam, and prohibited content are not allowed.", color = dark, style = MaterialTheme.typography.bodySmall)
+                    Row(Modifier.fillMaxWidth().clickable { signupRulesAccepted = !signupRulesAccepted }.padding(vertical = 8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = signupRulesAccepted, onCheckedChange = { signupRulesAccepted = it })
+                        Spacer(Modifier.width(6.dp))
+                        Text("I have read and agree to the Rules & Guidelines *", color = navy, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Your mobile number will be saved as unverified. Mobile OTP is currently disabled and may be enabled later.", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(Modifier.height(6.dp))
