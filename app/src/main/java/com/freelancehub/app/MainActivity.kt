@@ -169,6 +169,12 @@ fun LoginScreen(
     var birthday by remember { mutableStateOf("") }
     var showProfileCountryPicker by remember { mutableStateOf(false) }
     var profilePhotoBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var coverPhotoBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var signupProfilePhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var signupProfilePhotoType by remember { mutableStateOf<String?>(null) }
+    var signupCoverPhotoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var signupCoverPhotoType by remember { mutableStateOf<String?>(null) }
+    var signupRulesAccepted by remember { mutableStateOf(false) }
     var showGenderPicker by remember { mutableStateOf(false) }
     var showBirthdayPicker by remember { mutableStateOf(false) }
     var signupSession by remember { mutableStateOf<com.freelancehub.app.auth.AuthSession?>(null) }
@@ -190,7 +196,30 @@ var showMobileRecoveryInfo by remember { mutableStateOf(false) }
 var recoveryEmail by remember { mutableStateOf("") }
 val screenContext = LocalContext.current
 val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-    profilePhotoBitmap = uri?.let { selected -> runCatching { screenContext.contentResolver.openInputStream(selected)?.use { BitmapFactory.decodeStream(it) } }.getOrNull() }
+    if (uri != null) {
+        val type = screenContext.contentResolver.getType(uri)?.lowercase()
+        val normalized = when (type) { "image/jpg" -> "image/jpeg"; "image/jpeg", "image/png", "image/webp" -> type; else -> null }
+        val bytes = runCatching { screenContext.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+        if (normalized != null && bytes != null && bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) {
+            signupProfilePhotoBytes = bytes
+            signupProfilePhotoType = normalized
+            profilePhotoBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            error = ""
+        } else error = "Choose a JPEG, PNG, or WebP profile photo up to 5 MB."
+    }
+}
+val coverPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    if (uri != null) {
+        val type = screenContext.contentResolver.getType(uri)?.lowercase()
+        val normalized = when (type) { "image/jpg" -> "image/jpeg"; "image/jpeg", "image/png", "image/webp" -> type; else -> null }
+        val bytes = runCatching { screenContext.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+        if (normalized != null && bytes != null && bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) {
+            signupCoverPhotoBytes = bytes
+            signupCoverPhotoType = normalized
+            coverPhotoBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            error = ""
+        } else error = "Choose a JPEG, PNG, or WebP cover photo up to 5 MB."
+    }
 }
 val resetAuthService = remember(screenContext) { AuthService(screenContext) }
 val scope = rememberCoroutineScope()
@@ -591,6 +620,7 @@ Surface(
                             1 -> "Verify Your Email"
                             2, 3 -> "Verify Your Mobile"
                             4 -> "Personal Details"
+                            7 -> "Profile Photos"
                             6 -> "Contact Information"
                             0 -> "Account Security"
                             else -> "Personal Information"
@@ -599,8 +629,8 @@ Surface(
                         color = navy,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
-                    if (signupStep in listOf(5, 6, 0, 4)) {
-                        Text("Step ${when (signupStep) { 5 -> 1; 6 -> 2; 0 -> 3; else -> 4 }} of 5", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    if (signupStep in listOf(5, 6, 0, 4, 7)) {
+                        Text("Step ${when (signupStep) { 5 -> 1; 6 -> 2; 0 -> 3; 4 -> 4; else -> 5 }} of 5", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     }
 
                     Spacer(Modifier.height(6.dp))
@@ -609,7 +639,8 @@ Surface(
                         text = when (signupStep) {
                             1 -> "We’ve sent an 8-digit code to your email address."
                             2, 3 -> "Mobile verification is currently disabled."
-                            4 -> "Add your gender and birthday to complete your personal details."
+                            4 -> "Tell us a little more about yourself."
+                            7 -> "Add your profile and cover photos, then review the community rules."
                             6 -> "Enter your email address and mobile number."
                             0 -> "Create a strong password for your account."
                             else -> "Start with your name and country."
@@ -622,16 +653,18 @@ Surface(
 
                     val activeSignupStage = when (signupStep) {
                         5 -> 0
-                        0 -> 1
-                        4 -> 2
-                        else -> 2
+                        6 -> 1
+                        0 -> 2
+                        4 -> 3
+                        7 -> 4
+                        else -> 0
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        listOf("Personal Information", "Account Details", "Complete Profile").forEachIndexed { index, label ->
+                        listOf("Personal", "Contact", "Security", "Details", "Photos").forEachIndexed { index, label ->
                             Column(
                                 modifier = Modifier.weight(1f),
                                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
@@ -1367,7 +1400,7 @@ Surface(
                 Button(
                     onClick = {
                         if (valid && !busy) {
-                            if (signup && signupStep == 5) { signupStep = 6; error = "" } else if (signup && signupStep == 6) { signupStep = 0; error = "" } else {
+                            if (signup && signupStep == 5) { signupStep = 6; error = "" } else if (signup && signupStep == 6) { signupStep = 0; error = "" } else if (signup && signupStep == 4) { signupStep = 7; error = "" } else {
                             busy = true
                             error = ""
                             if (!signup) {
@@ -1437,7 +1470,12 @@ Surface(
                                             }.onFailure { error = it.message ?: "Mobile verification failed." }
                                         }
                                     }
-                                    4 -> authService.saveSignupProfile(name, mobileCountryCode + mobile, country, gender, birthday) { result ->
+                                    4 -> { busy = false; signupStep = 7 }
+                                    7 -> authService.saveSignupProfile(
+                                        name, mobileCountryCode + mobile, country, gender, birthday,
+                                        signupProfilePhotoBytes, signupProfilePhotoType,
+                                        signupCoverPhotoBytes, signupCoverPhotoType
+                                    ) { result ->
                                         main.post {
                                             busy = false
                                             result.onSuccess {
@@ -1465,8 +1503,9 @@ Surface(
                             mobileCountryCode.isNotBlank() && mobile.isNotBlank() &&
                             mobileDuplicate == false && mobileCheckError.isBlank()
                         3 -> mobileOtp.length == 8
-                        4 -> country.isNotBlank() && gender.isNotBlank() &&
+                        4 -> gender.isNotBlank() &&
                             runCatching { java.time.LocalDate.parse(birthday.trim()) }.isSuccess
+                        7 -> signupRulesAccepted
                         else -> false
                     }),
                     modifier = Modifier
