@@ -854,6 +854,42 @@ Surface(
                     }
                     Spacer(Modifier.height(8.dp))
                 }
+                if (showProfileCountryPicker) {
+                    val profileCountries = CountryCallingCodes.all.filter {
+                        it.first.contains(signupCountrySearch, ignoreCase = true) ||
+                            it.second.contains(signupCountrySearch.trim())
+                    }
+                    AlertDialog(
+                        onDismissRequest = { showProfileCountryPicker = false; signupCountrySearch = "" },
+                        title = { Text("Choose your country") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = signupCountrySearch,
+                                    onValueChange = { signupCountrySearch = it },
+                                    label = { Text("Search country") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                                    items(profileCountries) { item ->
+                                        TextButton(
+                                            onClick = {
+                                                country = item.first
+                                                showProfileCountryPicker = false
+                                                signupCountrySearch = ""
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text(item.first, modifier = Modifier.fillMaxWidth()) }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showProfileCountryPicker = false; signupCountrySearch = "" }) { Text("Close") }
+                        }
+                    )
+                }
 
                 if (signup && signupStep == 4) {
                     Spacer(Modifier.height(12.dp))
@@ -871,8 +907,7 @@ Surface(
                             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text("Country code", style = MaterialTheme.typography.labelSmall, color = navy)
-                                    Text(mobileCountryName, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                                    Text(mobileCountryCode, style = MaterialTheme.typography.labelMedium, color = blue)
+                                    Text(mobileCountryCode, style = MaterialTheme.typography.titleMedium, color = blue, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                 }
                                 Icon(Icons.Filled.Search, contentDescription = "Search country")
                             }
@@ -898,9 +933,9 @@ Surface(
                         !(mobileCountryCode + mobile).matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
                         Text("Enter a valid mobile number for the selected country.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
-                    if ((signupStep == 5 || signupStep == 2) && mobileDuplicate == true) {
+                    if (signupStep == 4 && mobileDuplicate == true) {
                         Text("This mobile number is already in use. Please use a different number to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    } else if ((signupStep == 5 || signupStep == 2) && mobileCheckError.isNotBlank()) {
+                    } else if (signupStep == 4 && mobileCheckError.isNotBlank()) {
                         Text(mobileCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
