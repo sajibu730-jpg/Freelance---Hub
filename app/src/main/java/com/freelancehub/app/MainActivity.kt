@@ -1420,7 +1420,9 @@ Surface(
                                             result.onSuccess { outcome ->
                                                 if (outcome.startsWith("VERIFIED:")) {
                                                     signupSession = authService.pendingSignupSessionSnapshot()
-                                                    loadSignupOtpSettings()
+                                                    signupMobileVerified = false
+                                                    signupStep = 4
+                                                    error = ""
                                                 } else {
                                                     signupStep = 1
                                                 }
@@ -1441,7 +1443,9 @@ Surface(
                                             busy = false
                                             result.onSuccess { session ->
                                                 signupSession = session
-                                                loadSignupOtpSettings()
+                                                signupMobileVerified = false
+                                                signupStep = 4
+                                                error = ""
                                             }.onFailure { error = it.message ?: "Email verification failed." }
                                         }
                                     }
