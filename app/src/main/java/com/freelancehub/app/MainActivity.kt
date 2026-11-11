@@ -212,8 +212,8 @@ LaunchedEffect(signup) {
 }
 
 LaunchedEffect(signup, signupStep, email) {
-    if (!signup || signupStep != 0 || !Validation.email(email)) {
-        if (!signup || signupStep == 0) {
+    if (!signup || signupStep != 6 || !Validation.email(email)) {
+        if (!signup || signupStep == 6) {
             emailDuplicate = null
             emailCheckError = ""
         }
@@ -239,7 +239,7 @@ LaunchedEffect(signup, signupStep, email) {
 }
 LaunchedEffect(signup, signupStep, mobile, mobileCountryCode) {
     val target = mobileCountryCode + mobile
-    if (signup && (signupStep == 5 || signupStep == 2) &&
+    if (signup && signupStep == 6 &&
         target.matches(Regex("""^\+[1-9][0-9]{7,14}$"""))) {
         mobileDuplicate = null
         mobileCheckError = ""
@@ -706,7 +706,8 @@ Surface(
                     Spacer(Modifier.height(12.dp))
                 }
 
-                if (!signup || signupStep != 5) {
+                if (!signup || signupStep == 6 || signupStep == 1 || signupStep == 0) {
+                if (!signup || signupStep == 6 || signupStep == 1) {
                 // EMAIL FIELD
                 OutlinedTextField(
                     value = email,
@@ -732,15 +733,17 @@ Surface(
                         cursorColor = androidx.compose.ui.graphics.Color(0xFF1768C9)
                     )
                 )
-                if (signup && signupStep == 0 && email.isNotBlank() && !Validation.email(email)) {
+                if (signup && signupStep == 6 && email.isNotBlank() && !Validation.email(email)) {
                     Text("Please enter a valid email address.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                if (signup && signupStep == 0 && emailDuplicate == true) {
+                if (signup && signupStep == 6 && emailDuplicate == true) {
                     Text("This email address is already in use. Please use a different email address to create a new account.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                } else if (signup && signupStep == 0 && emailCheckError.isNotBlank()) {
+                } else if (signup && signupStep == 6 && emailCheckError.isNotBlank()) {
                     Text(emailCheckError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
+                }
+                if (!signup || signupStep == 0) {
                 Spacer(Modifier.height(14.dp))
 
                 // PASSWORD FIELD — EYE AND COPY PRESERVED
@@ -835,6 +838,7 @@ Surface(
                 }
 
                 }
+                }
                 if (signup && signupStep == 5) {
                     Spacer(Modifier.height(12.dp))
                     OutlinedButton(onClick = { signupCountrySearch = ""; showProfileCountryPicker = true }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
@@ -846,7 +850,7 @@ Surface(
                     Spacer(Modifier.height(8.dp))
                 }
 
-                if (signup && (signupStep == 5 || signupStep == 2)) {
+                if (signup && signupStep == 6) {
                     Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1403,7 +1407,7 @@ Surface(
                 Button(
                     onClick = {
                         if (valid && !busy) {
-                            if (signup && signupStep == 5) { signupStep = 0; error = "" } else {
+                            if (signup && signupStep == 5) { signupStep = 6; error = "" } else if (signup && signupStep == 6) { signupStep = 0; error = "" } else {
                             busy = true
                             error = ""
                             if (!signup) {
