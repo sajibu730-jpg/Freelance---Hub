@@ -675,7 +675,7 @@ Surface(
                                 modifier = Modifier.fillMaxWidth().clickable { role = accountRole },
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                                 color = if (selected) androidx.compose.ui.graphics.Color(0xFFEAF3FF) else white,
-                                border = androidx.compose.foundation.BorderStroke(if (selected) 2.dp else 1.dp, if (selected) androidx.compose.ui.graphics.Color(0xFF1768C9) else androidx.compose.ui.graphics.Color(0xFFD5E4F5)
+                                border = androidx.compose.foundation.BorderStroke(if (selected) 2.dp else 1.dp, if (selected) androidx.compose.ui.graphics.Color(0xFF1768C9) else androidx.compose.ui.graphics.Color(0xFFD5E4F5))
                             ) {
                                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                     Surface(shape = androidx.compose.foundation.shape.CircleShape, color = if (selected) androidx.compose.ui.graphics.Color(0xFFD5E8FF) else androidx.compose.ui.graphics.Color(0xFFF0F5FC), modifier = Modifier.size(48.dp)) {
