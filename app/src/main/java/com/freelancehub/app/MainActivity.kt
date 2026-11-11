@@ -4860,68 +4860,106 @@ private fun GlobalGlobeMark(
     color: androidx.compose.ui.graphics.Color
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
-        val diameter = size.minDimension
-        val stroke = (diameter * 0.075f).coerceAtLeast(1.1f)
-        val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
-        val radius = diameter / 2f - stroke
-        val outline = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = stroke,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round
-        )
-        val accent = androidx.compose.ui.graphics.Brush.linearGradient(
+        val d = size.minDimension
+        val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+        val r = d * 0.465f
+        val ocean = androidx.compose.ui.graphics.Brush.linearGradient(
             colors = listOf(
-                androidx.compose.ui.graphics.Color(0xFFB9F5FF),
-                color,
-                androidx.compose.ui.graphics.Color(0xFF579CFF)
+                androidx.compose.ui.graphics.Color(0xFF62D8FF),
+                androidx.compose.ui.graphics.Color(0xFF1675D1),
+                androidx.compose.ui.graphics.Color(0xFF082F78)
             ),
-            start = androidx.compose.ui.geometry.Offset(0f, 0f),
-            end = androidx.compose.ui.geometry.Offset(size.width, size.height)
+            start = androidx.compose.ui.geometry.Offset(d * 0.12f, d * 0.08f),
+            end = androidx.compose.ui.geometry.Offset(d * 0.88f, d * 0.92f)
+        )
+        val land = androidx.compose.ui.graphics.Color(0xFFBDF7E7)
+        val edge = androidx.compose.ui.graphics.Color(0xFFDDF8FF)
+        val ring = androidx.compose.ui.graphics.drawscope.Stroke(
+            width = (d * 0.045f).coerceAtLeast(1f)
         )
 
-        // A crisp, balanced globe silhouette with refined latitude/longitude details.
-        drawCircle(brush = accent, radius = radius, center = center, style = outline)
+        // Blue ocean sphere.
+        drawCircle(brush = ocean, radius = r, center = c)
 
+        // Draw simplified, recognizable continent silhouettes inside the sphere.
+        fun continent(points: List<Pair<Float, Float>>) {
+            val p = androidx.compose.ui.graphics.Path()
+            points.forEachIndexed { index, point ->
+                val x = c.x + (point.first - 0.5f) * d * 0.88f
+                val y = c.y + (point.second - 0.5f) * d * 0.88f
+                if (index == 0) p.moveTo(x, y) else p.lineTo(x, y)
+            }
+            p.close()
+            drawPath(
+                path = p,
+                color = land,
+                style = androidx.compose.ui.graphics.drawscope.Fill
+            )
+        }
+
+        // North America.
+        continent(listOf(
+            0.13f to 0.25f, 0.20f to 0.17f, 0.31f to 0.16f, 0.37f to 0.22f,
+            0.34f to 0.29f, 0.29f to 0.32f, 0.27f to 0.40f, 0.22f to 0.43f,
+            0.18f to 0.36f, 0.14f to 0.34f
+        ))
+        // South America.
+        continent(listOf(
+            0.30f to 0.45f, 0.37f to 0.47f, 0.39f to 0.55f, 0.36f to 0.64f,
+            0.34f to 0.76f, 0.30f to 0.84f, 0.27f to 0.73f, 0.28f to 0.62f,
+            0.25f to 0.53f
+        ))
+        // Europe and Asia.
+        continent(listOf(
+            0.43f to 0.25f, 0.49f to 0.20f, 0.57f to 0.21f, 0.62f to 0.17f,
+            0.73f to 0.20f, 0.83f to 0.26f, 0.87f to 0.34f, 0.79f to 0.39f,
+            0.72f to 0.36f, 0.68f to 0.43f, 0.60f to 0.39f, 0.55f to 0.34f,
+            0.49f to 0.36f, 0.45f to 0.32f
+        ))
+        // Africa.
+        continent(listOf(
+            0.48f to 0.40f, 0.58f to 0.40f, 0.64f to 0.48f, 0.61f to 0.59f,
+            0.56f to 0.71f, 0.51f to 0.68f, 0.47f to 0.57f, 0.45f to 0.47f
+        ))
+        // Australia and nearby islands.
+        continent(listOf(
+            0.74f to 0.66f, 0.82f to 0.64f, 0.86f to 0.70f, 0.82f to 0.77f,
+            0.75f to 0.76f, 0.71f to 0.71f
+        ))
+
+        // Subtle curved latitude/longitude details, kept behind the bright rim.
+        val grid = androidx.compose.ui.graphics.Color(0x66D8F7FF)
         drawOval(
-            brush = accent,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                center.x - diameter * 0.235f,
-                center.y - diameter * 0.455f
-            ),
-            size = androidx.compose.ui.geometry.Size(diameter * 0.47f, diameter * 0.91f),
-            style = outline
+            color = grid,
+            topLeft = androidx.compose.ui.geometry.Offset(c.x - d * 0.17f, c.y - r),
+            size = androidx.compose.ui.geometry.Size(d * 0.34f, r * 2f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = d * 0.018f)
         )
-
         drawLine(
-            brush = accent,
-            start = androidx.compose.ui.geometry.Offset(center.x - radius * 0.94f, center.y),
-            end = androidx.compose.ui.geometry.Offset(center.x + radius * 0.94f, center.y),
-            strokeWidth = stroke,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round
+            color = grid,
+            start = androidx.compose.ui.geometry.Offset(c.x - r * 0.94f, c.y),
+            end = androidx.compose.ui.geometry.Offset(c.x + r * 0.94f, c.y),
+            strokeWidth = d * 0.018f
         )
 
-        drawArc(
-            brush = accent,
-            startAngle = 0f,
-            sweepAngle = 180f,
-            useCenter = false,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                center.x - radius * 0.91f,
-                center.y - diameter * 0.245f
-            ),
-            size = androidx.compose.ui.geometry.Size(radius * 1.82f, diameter * 0.49f),
-            style = outline
+        // Crisp outer rim and a small specular highlight.
+        drawCircle(
+            color = edge,
+            radius = r,
+            center = c,
+            style = ring
         )
         drawArc(
-            brush = accent,
-            startAngle = 180f,
-            sweepAngle = 180f,
+            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f),
+            startAngle = 205f,
+            sweepAngle = 72f,
             useCenter = false,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                center.x - radius * 0.91f,
-                center.y - diameter * 0.245f
-            ),
-            size = androidx.compose.ui.geometry.Size(radius * 1.82f, diameter * 0.49f),
-            style = outline
+            topLeft = androidx.compose.ui.geometry.Offset(c.x - r, c.y - r),
+            size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                width = d * 0.035f,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
         )
     }
 }
