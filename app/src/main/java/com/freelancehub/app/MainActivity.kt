@@ -225,7 +225,7 @@ LaunchedEffect(signup, signupStep, email) {
     delay(600)
     authService.checkSignupIdentifier("email", checkedEmail) { result ->
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            if (signup && signupStep == 0 && email.trim().equals(checkedEmail, ignoreCase = true)) {
+            if (signup && signupStep == 6 && email.trim().equals(checkedEmail, ignoreCase = true)) {
                 result.onSuccess {
                     emailDuplicate = it
                     emailCheckError = ""
