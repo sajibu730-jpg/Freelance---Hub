@@ -138,7 +138,7 @@ class AuthService(context: Context) {
         }
     }
 
-    /** Sends the signup email OTP before collecting any password or profile details. */
+    /** Creates an email-pending signup using a private temporary password so the existing Signup Confirmation OTP template is reused. */
     fun sendSignupEmailOtp(email: String, callback: (Result<Unit>) -> Unit) {
         executor.execute {
             callback(runCatching {
@@ -146,11 +146,20 @@ class AuthService(context: Context) {
                 require(target.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                     "Enter a valid email address."
                 }
-                request(
+                // The user does not see or enter this value. It is replaced after email OTP verification.
+                val temporaryPassword = java.util.UUID.randomUUID().toString() + "Aa1!"
+                val response = request(
                     "POST",
-                    "/auth/v1/otp",
-                    JSONObject().put("email", target).put("create_user", true).toString()
+                    "/auth/v1/signup",
+                    JSONObject()
+                        .put("email", target)
+                        .put("password", temporaryPassword)
+                        .toString()
                 )
+                val user = response.optJSONObject("user") ?: response
+                require(user.optString("id").isNotBlank()) {
+                    "Supabase did not start signup. Check the email address and try again."
+                }
                 Unit
             })
         }
@@ -170,7 +179,7 @@ class AuthService(context: Context) {
                 val response = request(
                     "POST",
                     "/auth/v1/verify",
-                    JSONObject().put("type", "email")
+                    JSONObject().put("type", "signup")
                         .put("email", target)
                         .put("token", otp.trim())
                         .toString()
@@ -242,8 +251,8 @@ class AuthService(context: Context) {
                 }
                 request(
                     "POST",
-                    "/auth/v1/otp",
-                    JSONObject().put("email", target).put("create_user", true).toString()
+                    "/auth/v1/resend",
+                    JSONObject().put("type", "signup").put("email", target).toString()
                 )
                 Unit
             })
