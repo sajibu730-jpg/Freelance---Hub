@@ -147,7 +147,7 @@ fun LoginScreen(
     ) -> Unit
 ) {
     var signup by remember { mutableStateOf(false) }
-    var signupStep by remember { mutableIntStateOf(5) }
+    var signupStep by remember { mutableIntStateOf(7) }
     var mobile by remember { mutableStateOf("") }
     var mobileCountryCode by remember { mutableStateOf("+971") }
     var mobileCountryName by remember { mutableStateOf("United Arab Emirates") }
@@ -290,6 +290,7 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
     val valid = authConfigured && if (!signup) {
         Validation.email(email) && Validation.password(pass)
     } else when (signupStep) {
+        7 -> true
         5 -> Validation.text(name, 2, 80) && country.isNotBlank()
         0 -> Validation.email(email) && Validation.password(pass) && pass == confirmPass
         1 -> emailOtp.length == 8
@@ -589,33 +590,36 @@ Surface(
 
                     Spacer(Modifier.height(4.dp))
 
-                    if (signupStep == 5) {
+                    if (signupStep == 7) {
                         Text("CREATE ACCOUNT", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, letterSpacing = 1.4.sp)
                         Spacer(Modifier.height(3.dp))
                     }
                     Text(
                         text = when (signupStep) {
+                            7 -> "Choose Account Type"
+                            5 -> "Your Details"
                             0 -> "Account Details"
                             1 -> "Verify Your Email"
                             4 -> "Personal Details"
-                            6 -> "Profile & Guidelines"
+                            6 -> "Profile Photos"
                             else -> "Personal Information"
                         },
                         style = MaterialTheme.typography.headlineSmall,
                         color = navy,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
-                    Text("Step ${when (signupStep) { 5 -> 1; 0 -> 2; 1 -> 3; 4 -> 4; else -> 5 }} of 5", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Text("Step ${when (signupStep) { 7 -> 1; 5 -> 2; 0 -> 3; 1 -> 4; 4 -> 5; else -> 6 }} of 6", color = androidx.compose.ui.graphics.Color(0xFF1768C9), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
 
                     Spacer(Modifier.height(6.dp))
 
                     Text(
                         text = when (signupStep) {
+                            7 -> "Choose how you want to use Freelance Hub."
                             5 -> "Start with your full name and country."
                             0 -> "Add your email and create a secure password."
                             1 -> "Enter the 8-digit code sent to your email address."
                             4 -> "Add your mobile number and personal details."
-                            6 -> "Add your profile images and agree to our community guidelines."
+                            6 -> "Add your profile and cover photos."
                             else -> "Continue creating your Freelance Hub account."
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -625,18 +629,19 @@ Surface(
                     Spacer(Modifier.height(18.dp))
 
                     val activeSignupStage = when (signupStep) {
-                        5 -> 0
-                        0 -> 1
-                        1 -> 2
-                        4 -> 3
-                        else -> 4
+                        7 -> 0
+                        5 -> 1
+                        0 -> 2
+                        1 -> 3
+                        4 -> 4
+                        else -> 5
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        listOf("Your Details", "Account", "Email OTP", "Personal", "Finish").forEachIndexed { index, label ->
+                        listOf("Type", "Your Details", "Account", "Email OTP", "Personal", "Photos").forEachIndexed { index, label ->
                             Column(
                                 modifier = Modifier.weight(1f),
                                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
@@ -659,6 +664,37 @@ Surface(
 
                     Spacer(Modifier.height(18.dp))
 
+
+                    if (signup && signupStep == 7) {
+                        listOf(
+                            Triple(UserRole.FREELANCER, "Freelancer", "I want to offer my services and find freelance work."),
+                            Triple(UserRole.CLIENT, "Client", "I want to hire freelancers and manage projects.")
+                        ).forEach { (accountRole, title, description) ->
+                            val selected = role == accountRole
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable { role = accountRole },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                color = if (selected) androidx.compose.ui.graphics.Color(0xFFEAF3FF) else white,
+                                border = androidx.compose.foundation.BorderStroke(if (selected) 2.dp else 1.dp, if (selected) androidx.compose.ui.graphics.Color(0xFF1768C9) else androidx.compose.ui.graphics.Color(0xFFD5E4F5)
+                            ) {
+                                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    Surface(shape = androidx.compose.foundation.shape.CircleShape, color = if (selected) androidx.compose.ui.graphics.Color(0xFFD5E8FF) else androidx.compose.ui.graphics.Color(0xFFF0F5FC), modifier = Modifier.size(48.dp)) {
+                                        Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                            Icon(if (accountRole == UserRole.FREELANCER) Icons.Filled.Person else Icons.Filled.Business, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(26.dp))
+                                        }
+                                    }
+                                    Spacer(Modifier.width(13.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(title, color = navy, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                        Spacer(Modifier.height(3.dp))
+                                        Text(description, color = dark, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    RadioButton(selected = selected, onClick = { role = accountRole })
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
 
                     if (!signup || signupStep == 5) OutlinedTextField(
                         value = name,
@@ -1227,8 +1263,12 @@ Surface(
                     Spacer(Modifier.height(12.dp))
                     Text("Profile Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
-                    OutlinedButton(onClick = { profilePhotoPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().height(54.dp)) {
-                        Text(if (profilePhotoBitmap == null) "Choose Profile Photo" else "Profile Photo Selected")
+                    OutlinedButton(onClick = { profilePhotoPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().height(58.dp)) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Filled.CameraAlt, contentDescription = "Select profile photo", tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text(if (profilePhotoBitmap == null) "Choose Profile Photo" else "Change Profile Photo")
+                        }
                     }
                     profilePhotoBitmap?.let { selected ->
                         androidx.compose.foundation.Image(bitmap = selected.asImageBitmap(), contentDescription = "Selected profile photo", modifier = Modifier.size(92.dp).clip(androidx.compose.foundation.shape.CircleShape))
@@ -1236,8 +1276,12 @@ Surface(
                     Spacer(Modifier.height(14.dp))
                     Text("Cover Photo", color = navy, style = MaterialTheme.typography.labelLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
-                    OutlinedButton(onClick = { coverPhotoPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().height(54.dp)) {
-                        Text(if (coverPhotoBitmap == null) "Choose Cover Photo" else "Cover Photo Selected")
+                    OutlinedButton(onClick = { coverPhotoPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth().height(58.dp)) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Icon(Icons.Filled.CameraAlt, contentDescription = "Select cover photo", tint = androidx.compose.ui.graphics.Color(0xFF1768C9), modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text(if (coverPhotoBitmap == null) "Choose Cover Photo" else "Change Cover Photo")
+                        }
                     }
                     coverPhotoBitmap?.let { selected ->
                         androidx.compose.foundation.Image(bitmap = selected.asImageBitmap(), contentDescription = "Selected cover photo", modifier = Modifier.fillMaxWidth().height(110.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)))
@@ -1423,7 +1467,8 @@ Surface(
                 Button(
                     onClick = {
                         if (valid && !busy) {
-                            if (signup && signupStep == 5) { signupStep = 0; error = "" }
+                            if (signup && signupStep == 7) { signupStep = 5; error = "" }
+                            else if (signup && signupStep == 5) { signupStep = 0; error = "" }
                             else if (signup && signupStep == 4) { signupStep = 6; error = "" }
                             else {
                             busy = true
@@ -1511,6 +1556,7 @@ Surface(
                         }
                     },
                     enabled = valid && !busy && (!signup || when (signupStep) {
+                        7 -> true
                         5 -> Validation.text(name, 2, 80) && country.isNotBlank()
                         0 -> emailDuplicate == false && emailCheckError.isBlank() && Validation.email(email) && Validation.password(pass) && pass == confirmPass
                         1 -> emailOtp.length == 8
@@ -1548,7 +1594,7 @@ Surface(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = if (!signup) "Sign In" else when (signupStep) {
-                                    5, 0, 4 -> "Next"
+                                    7, 5, 0, 4 -> "Next"
                                     1 -> "Verify Email"
                                     2 -> "Send Verification Code"
                                     3 -> "Verify Mobile"
@@ -1578,7 +1624,7 @@ Surface(
                             scope.launch {
                                 delay(350)
                                 signup = true
-                                signupStep = 5
+                                signupStep = 7
                                 emailOtp = ""
                                 mobileOtp = ""
                                 mobile = ""
