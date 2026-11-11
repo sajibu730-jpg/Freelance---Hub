@@ -1936,8 +1936,10 @@ fun RemoteHomeScreen(
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
                                 listOf(
-                                    androidx.compose.ui.graphics.Color(0xFF102A56),
-                                    androidx.compose.ui.graphics.Color(0xFF245DD8)
+                                    androidx.compose.ui.graphics.Color(0xFF081B3B),
+                                    androidx.compose.ui.graphics.Color(0xFF174A9A),
+                                    androidx.compose.ui.graphics.Color(0xFF246BFD),
+                                    androidx.compose.ui.graphics.Color(0xFF153C82)
                                 )
                             )
                         )
@@ -1947,8 +1949,27 @@ fun RemoteHomeScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(154.dp)
+                            .height(174.dp)
                             .drawBehind {
+                                // Soft atmospheric highlights give the hero header more depth.
+                                val glowCenter = androidx.compose.ui.geometry.Offset(size.width * 0.18f, size.height * 0.18f)
+                                drawCircle(
+                                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                        colors = listOf(
+                                            androidx.compose.ui.graphics.Color(0xFF69CFFF).copy(alpha = 0.22f),
+                                            androidx.compose.ui.graphics.Color.Transparent
+                                        ),
+                                        center = glowCenter,
+                                        radius = 190.dp.toPx()
+                                    ),
+                                    radius = 190.dp.toPx(),
+                                    center = glowCenter
+                                )
+                                drawCircle(
+                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.035f),
+                                    radius = 118.dp.toPx(),
+                                    center = androidx.compose.ui.geometry.Offset(size.width * 0.96f, size.height * 0.08f)
+                                )
                                 // Dotted Earth globe sits behind the right side of the centered brand.
                                 val ocean = androidx.compose.ui.graphics.Color(0xFF42BFFF)
                                 val land = androidx.compose.ui.graphics.Color(0xFF8ADFFF)
