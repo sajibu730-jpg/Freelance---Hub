@@ -530,7 +530,7 @@ Surface(
                 .fillMaxWidth()
                 // Keep the medium login panel at a fixed height and position;
                 // only its contents scroll, while the page background stays still.
-                .then(if (!signup) Modifier.height(500.dp) else Modifier.weight(1f))
+                .then(if (!signup) Modifier.requiredHeight(500.dp) else Modifier.weight(1f))
                 // Lift the whole fixed login panel while the IME is visible, then
                 // animate it back to its anchored position when the keyboard closes.
                 .offset(y = -panelLift)
