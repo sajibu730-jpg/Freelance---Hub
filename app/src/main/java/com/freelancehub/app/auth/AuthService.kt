@@ -322,6 +322,10 @@ class AuthService(context: Context) {
         country: String,
         gender: String,
         birthday: String,
+        profilePhotoBytes: ByteArray? = null,
+        profilePhotoContentType: String? = null,
+        coverPhotoBytes: ByteArray? = null,
+        coverPhotoContentType: String? = null,
         callback: (Result<Unit>) -> Unit
     ) {
         executor.execute {
@@ -348,6 +352,50 @@ class AuthService(context: Context) {
                 }
                 val authPhoneVerified = user.optString("phone_confirmed_at").isNotBlank() &&
                     user.optString("phone").trim() == phone
+
+                fun uploadSignupImage(bucket: String, bytes: ByteArray?, contentType: String?): String? {
+                    if (bytes == null) return null
+                    require(contentType in listOf("image/jpeg", "image/png", "image/webp")) {
+                        "Choose a JPEG, PNG, or WebP image."
+                    }
+                    require(bytes.isNotEmpty() && bytes.size <= 5 * 1024 * 1024) {
+                        "Each image must be 5 MB or smaller."
+                    }
+                    val extension = when (contentType) {
+                        "image/jpeg" -> "jpg"
+                        "image/png" -> "png"
+                        else -> "webp"
+                    }
+                    val objectPath = "$userId/${java.util.UUID.randomUUID()}.$extension"
+                    val connection = URL(config.baseUrl.trim().trimEnd('/') +
+                        "/storage/v1/object/$bucket/$objectPath").openConnection() as HttpURLConnection
+                    try {
+                        connection.requestMethod = "POST"
+                        connection.connectTimeout = 15000
+                        connection.readTimeout = 25000
+                        connection.instanceFollowRedirects = false
+                        connection.setRequestProperty("apikey", config.anonKey)
+                        connection.setRequestProperty("Authorization", "Bearer $access")
+                        connection.setRequestProperty("Content-Type", contentType!!)
+                        connection.setRequestProperty("x-upsert", "false")
+                        connection.doOutput = true
+                        connection.outputStream.use { it.write(bytes) }
+                        val status = connection.responseCode
+                        val responseText = (if (status in 200..299) connection.inputStream else connection.errorStream)
+                            ?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() }.orEmpty()
+                        require(status in 200..299) {
+                            "Image upload failed (HTTP $status): ${responseText.take(240)}"
+                        }
+                    } finally {
+                        connection.disconnect()
+                    }
+                    return if (bucket == "profile-covers") {
+                        "${config.baseUrl.trimEnd('/')}/storage/v1/object/public/$bucket/$objectPath"
+                    } else objectPath
+                }
+
+                val profilePhotoPath = uploadSignupImage("profile-photos", profilePhotoBytes, profilePhotoContentType)
+                val coverPhotoUrl = uploadSignupImage("profile-covers", coverPhotoBytes, coverPhotoContentType)
                 val payload = JSONObject()
                     .put("id", userId)
                     .put("display_name", name.trim())
@@ -356,6 +404,8 @@ class AuthService(context: Context) {
                     .put("country", country.trim())
                     .put("gender", gender.trim())
                     .put("updated_at", java.time.Instant.now().toString())
+                profilePhotoPath?.let { payload.put("photo_url", it) }
+                coverPhotoUrl?.let { payload.put("cover_photo_url", it) }
                 payload.put("birthday", parsedBirthday.toString())
                 val response = signupProfileUpsert(payload, access)
                 require(response.length() == 1 &&
