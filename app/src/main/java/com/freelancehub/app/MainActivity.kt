@@ -884,6 +884,15 @@ Surface(
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) { Text("Country *", color = navy, style = MaterialTheme.typography.labelSmall); Text(if (country.isBlank()) "Select your country" else country, color = if (country.isBlank()) androidx.compose.ui.graphics.Color(0xFF71839D) else navy, style = MaterialTheme.typography.bodyMedium) }; Icon(Icons.Filled.ArrowDropDown, contentDescription = "Show all countries")
                         }
                     }
+                    if (showProfileCountryPicker) {
+                        val profileCountries = CountryCallingCodes.all.filter { it.first.contains(signupCountrySearch, ignoreCase = true) || it.second.contains(signupCountrySearch.trim()) }
+                        AlertDialog(onDismissRequest = { showProfileCountryPicker = false; signupCountrySearch = "" }, title = { Text("Choose your country") }, text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(value = signupCountrySearch, onValueChange = { signupCountrySearch = it }, label = { Text("Search country") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                LazyColumn(Modifier.heightIn(max = 360.dp)) { items(profileCountries) { item -> TextButton(onClick = { country = item.first; showProfileCountryPicker = false; signupCountrySearch = "" }, modifier = Modifier.fillMaxWidth()) { Text(item.first, modifier = Modifier.fillMaxWidth()) } } }
+                            }
+                        }, confirmButton = { TextButton(onClick = { showProfileCountryPicker = false }) { Text("Close") } })
+                    }
                     Spacer(Modifier.height(8.dp))
                 }
 
@@ -1119,15 +1128,6 @@ Surface(
                         Text("Birthday *", color = navy, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         Spacer(Modifier.width(12.dp))
                         Text(if (birthday.isBlank()) "Select your birthday" else birthday, color = dark, modifier = Modifier.weight(1f))
-                    }
-                    if (showProfileCountryPicker) {
-                        val profileCountries = CountryCallingCodes.all.filter { it.first.contains(signupCountrySearch, ignoreCase = true) || it.second.contains(signupCountrySearch.trim()) }
-                        AlertDialog(onDismissRequest = { showProfileCountryPicker = false; signupCountrySearch = "" }, title = { Text("Choose your country") }, text = {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(value = signupCountrySearch, onValueChange = { signupCountrySearch = it }, label = { Text("Search country") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                                LazyColumn(Modifier.heightIn(max = 360.dp)) { items(profileCountries) { item -> TextButton(onClick = { country = item.first; showProfileCountryPicker = false; signupCountrySearch = "" }, modifier = Modifier.fillMaxWidth()) { Text(item.first, modifier = Modifier.fillMaxWidth()) } } }
-                            }
-                        }, confirmButton = { TextButton(onClick = { showProfileCountryPicker = false }) { Text("Close") } })
                     }
                     if (showGenderPicker) AlertDialog(onDismissRequest = { showGenderPicker = false }, title = { Text("Choose gender") }, text = { Column { listOf("Male", "Female", "Other", "Prefer not to say").forEach { option -> TextButton(onClick = { gender = option; showGenderPicker = false }, modifier = Modifier.fillMaxWidth()) { Text(option, modifier = Modifier.fillMaxWidth()) } } } }, confirmButton = { TextButton(onClick = { showGenderPicker = false }) { Text("Close") } })
                     if (showBirthdayPicker) {
