@@ -268,12 +268,14 @@ val lavender = androidx.compose.ui.graphics.Color(0xFFF0EEFF)
 val teal = androidx.compose.ui.graphics.Color(0xFF14A89A)
 val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
 
-    val keyboardOpen = WindowInsets.isImeVisible
     val imeHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
         WindowInsets.ime.getBottom(this).toDp()
     }
+    // Use the measured IME inset itself as the source of truth. The previous
+    // visibility flag + capped lift left most of the login panel behind the keyboard.
+    val keyboardOpen = imeHeight > 0.dp
     val targetPanelLift = if (!signup && keyboardOpen) {
-        minOf(imeHeight * 0.45f, 170.dp)
+        (imeHeight - 20.dp).coerceAtLeast(0.dp)
     } else 0.dp
     val panelLift by androidx.compose.animation.core.animateDpAsState(
         targetValue = targetPanelLift,
@@ -467,11 +469,9 @@ Surface(
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                             )
                             Spacer(Modifier.width(10.dp))
-                            Icon(
-                                Icons.Filled.Public,
-                                contentDescription = "Global marketplace globe",
-                                tint = androidx.compose.ui.graphics.Color(0xFF8DDBFF),
-                                modifier = Modifier.size(30.dp)
+                            GlobalGlobeMark(
+                                modifier = Modifier.size(30.dp),
+                                color = androidx.compose.ui.graphics.Color(0xFF8DDBFF)
                             )
                         }
                         Text(
@@ -496,10 +496,9 @@ Surface(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Filled.Public, contentDescription = "Global marketplace",
-                            tint = androidx.compose.ui.graphics.Color(0xFFBCEBFF),
-                            modifier = Modifier.size(18.dp)
+                        GlobalGlobeMark(
+                            modifier = Modifier.size(18.dp),
+                            color = androidx.compose.ui.graphics.Color(0xFFBCEBFF)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -547,7 +546,7 @@ Surface(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (signup) Modifier.verticalScroll(loginScrollState) else Modifier)
+                    .then(if (signup || keyboardOpen) Modifier.verticalScroll(loginScrollState) else Modifier)
                     .padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
             ) {
                 if (signup) {
@@ -4851,5 +4850,58 @@ private fun rankRemoteJobs(profile:RemoteAccount, jobs:List<RemoteJob>):List<Rem
     }
     LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
         item{Text("Freelancer Profile Analysis",style=MaterialTheme.typography.headlineSmall);if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error);val p=profile;if(p==null){CircularProgressIndicator()}else{val skills=parseTokens(p.skills);val caps=parseTokens(p.capabilities);Text("Account: ${p.displayName}");Text("Skills: ${if(skills.isEmpty())"Not configured" else skills.joinToString(", ")}");Text("Capabilities: ${if(caps.isEmpty())"Not configured" else caps.joinToString(", ")}");if(skills.isEmpty()||caps.isEmpty())Text("Complete your profile with specific skills and capabilities.",color=MaterialTheme.colorScheme.error) else Text("Profile has ${skills.size} declared skill(s) and ${caps.size} capability item(s). Keep these current for better matching.")};Spacer(Modifier.height(12.dp));TextButton(onClick=back){Text("Back")}}
+    }
+}
+
+
+@Composable
+private fun GlobalGlobeMark(
+    modifier: Modifier = Modifier,
+    color: androidx.compose.ui.graphics.Color
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val diameter = size.minDimension
+        val stroke = (diameter * 0.065f).coerceAtLeast(1f)
+        val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+        val inset = stroke / 2f
+        val outline = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)
+
+        // Clean longitude and latitude lines create a compact, premium globe mark.
+        drawCircle(
+            color = color,
+            radius = diameter / 2f - inset,
+            center = center,
+            style = outline
+        )
+        drawOval(
+            color = color,
+            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.22f, center.y - diameter * 0.46f),
+            size = androidx.compose.ui.geometry.Size(diameter * 0.44f, diameter * 0.92f),
+            style = outline
+        )
+        drawOval(
+            color = color,
+            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.46f, center.y - diameter * 0.17f),
+            size = androidx.compose.ui.geometry.Size(diameter * 0.92f, diameter * 0.34f),
+            style = outline
+        )
+        drawArc(
+            color = color,
+            startAngle = 205f,
+            sweepAngle = 130f,
+            useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.43f, center.y - diameter * 0.38f),
+            size = androidx.compose.ui.geometry.Size(diameter * 0.86f, diameter * 0.58f),
+            style = outline
+        )
+        drawArc(
+            color = color,
+            startAngle = 25f,
+            sweepAngle = 130f,
+            useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.43f, center.y - diameter * 0.20f),
+            size = androidx.compose.ui.geometry.Size(diameter * 0.86f, diameter * 0.58f),
+            style = outline
+        )
     }
 }
