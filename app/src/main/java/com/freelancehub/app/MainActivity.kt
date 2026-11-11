@@ -4861,46 +4861,66 @@ private fun GlobalGlobeMark(
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val diameter = size.minDimension
-        val stroke = (diameter * 0.065f).coerceAtLeast(1f)
+        val stroke = (diameter * 0.075f).coerceAtLeast(1.1f)
         val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
-        val inset = stroke / 2f
-        val outline = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)
+        val radius = diameter / 2f - stroke
+        val outline = androidx.compose.ui.graphics.drawscope.Stroke(
+            width = stroke,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round
+        )
+        val accent = androidx.compose.ui.graphics.Brush.linearGradient(
+            colors = listOf(
+                androidx.compose.ui.graphics.Color(0xFFB9F5FF),
+                color,
+                androidx.compose.ui.graphics.Color(0xFF579CFF)
+            ),
+            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+            end = androidx.compose.ui.geometry.Offset(size.width, size.height)
+        )
 
-        // Clean longitude and latitude lines create a compact, premium globe mark.
-        drawCircle(
-            color = color,
-            radius = diameter / 2f - inset,
-            center = center,
+        // A crisp, balanced globe silhouette with refined latitude/longitude details.
+        drawCircle(brush = accent, radius = radius, center = center, style = outline)
+
+        drawOval(
+            brush = accent,
+            topLeft = androidx.compose.ui.geometry.Offset(
+                center.x - diameter * 0.235f,
+                center.y - diameter * 0.455f
+            ),
+            size = androidx.compose.ui.geometry.Size(diameter * 0.47f, diameter * 0.91f),
             style = outline
         )
-        drawOval(
-            color = color,
-            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.22f, center.y - diameter * 0.46f),
-            size = androidx.compose.ui.geometry.Size(diameter * 0.44f, diameter * 0.92f),
-            style = outline
+
+        drawLine(
+            brush = accent,
+            start = androidx.compose.ui.geometry.Offset(center.x - radius * 0.94f, center.y),
+            end = androidx.compose.ui.geometry.Offset(center.x + radius * 0.94f, center.y),
+            strokeWidth = stroke,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round
         )
-        drawOval(
-            color = color,
-            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.46f, center.y - diameter * 0.17f),
-            size = androidx.compose.ui.geometry.Size(diameter * 0.92f, diameter * 0.34f),
+
+        drawArc(
+            brush = accent,
+            startAngle = 0f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(
+                center.x - radius * 0.91f,
+                center.y - diameter * 0.245f
+            ),
+            size = androidx.compose.ui.geometry.Size(radius * 1.82f, diameter * 0.49f),
             style = outline
         )
         drawArc(
-            color = color,
-            startAngle = 205f,
-            sweepAngle = 130f,
+            brush = accent,
+            startAngle = 180f,
+            sweepAngle = 180f,
             useCenter = false,
-            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.43f, center.y - diameter * 0.38f),
-            size = androidx.compose.ui.geometry.Size(diameter * 0.86f, diameter * 0.58f),
-            style = outline
-        )
-        drawArc(
-            color = color,
-            startAngle = 25f,
-            sweepAngle = 130f,
-            useCenter = false,
-            topLeft = androidx.compose.ui.geometry.Offset(center.x - diameter * 0.43f, center.y - diameter * 0.20f),
-            size = androidx.compose.ui.geometry.Size(diameter * 0.86f, diameter * 0.58f),
+            topLeft = androidx.compose.ui.geometry.Offset(
+                center.x - radius * 0.91f,
+                center.y - diameter * 0.245f
+            ),
+            size = androidx.compose.ui.geometry.Size(radius * 1.82f, diameter * 0.49f),
             style = outline
         )
     }
