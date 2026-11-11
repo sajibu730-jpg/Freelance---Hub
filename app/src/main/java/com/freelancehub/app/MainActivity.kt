@@ -320,7 +320,9 @@ val paleBlue = androidx.compose.ui.graphics.Color(0xFFE5EEFF)
                 drawPath(waveOne, androidx.compose.ui.graphics.Color(0xFFEDF6FF))
                 drawPath(waveTwo, androidx.compose.ui.graphics.Color(0xFFB9D9FF).copy(alpha = 0.88f))
             }
-            // Keep the page and login card fixed; keyboard insets are handled inside the form.
+            // Keep the completed login layout unchanged. On signup, resize the available
+            // form area for the IME so the scrollable fields and Next button stay reachable.
+            .then(if (signup) Modifier.imePadding() else Modifier)
             .padding(
     horizontal = 0.dp,
     vertical = 0.dp
@@ -536,18 +538,19 @@ Surface(
                 .offset(y = -panelLift)
                 .padding(horizontal = 20.dp)
                 .padding(top = if (signup) 10.dp else 0.dp, bottom = 12.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-            color = androidx.compose.ui.graphics.Color(0xFFFCFDFF),
+            // Signup keeps the same content and spacing but removes the surrounding panel.
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(if (signup) 0.dp else 24.dp),
+            color = if (signup) androidx.compose.ui.graphics.Color.Transparent else androidx.compose.ui.graphics.Color(0xFFFCFDFF),
             border = androidx.compose.foundation.BorderStroke(
-                1.dp, androidx.compose.ui.graphics.Color(0xFFD7E8FC)
+                1.dp, if (signup) androidx.compose.ui.graphics.Color.Transparent else androidx.compose.ui.graphics.Color(0xFFD7E8FC)
             ),
-            shadowElevation = 10.dp
+            shadowElevation = if (signup) 0.dp else 10.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(if (signup || keyboardOpen) Modifier.verticalScroll(loginScrollState) else Modifier)
-                    .padding(horizontal = 16.dp, vertical = if (signup) 16.dp else 9.dp)
+                    .padding(horizontal = if (signup) 18.dp else 16.dp, vertical = if (signup) 12.dp else 9.dp)
             ) {
                 if (signup) {
                     TextButton(
