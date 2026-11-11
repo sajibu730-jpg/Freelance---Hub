@@ -720,8 +720,8 @@ Surface(
                         emailDuplicate = null
                         emailCheckError = ""
                     },
-                    enabled = !signup || signupStep == 5,
-                    label = { Text(if (signup) "Email Address" else "Email address") },
+                    enabled = !signup || signupStep == 6,
+                    label = { Text(if (signup) "Email Address *" else "Email address") },
                     leadingIcon = {
                         Icon(Icons.Filled.Email, contentDescription = null)
                     },
