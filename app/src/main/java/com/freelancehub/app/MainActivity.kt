@@ -1835,17 +1835,6 @@ Surface(
             auth::accessTokenForApiBlocking
         )
     }
-    val adminRepository = remember { RemoteAdminRepository(backend) }
-    val ownerAiRepository = remember { OwnerAiRepository(backend) }
-    var isOwner by remember { mutableStateOf(false) }
-    var showAdminDashboard by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        isOwner = withContext(Dispatchers.IO) {
-            runCatching {
-                adminRepository.isOwner(auth.accessTokenForApiBlocking())
-            }.getOrDefault(false)
-        }
-    }
     var tab by remember{mutableStateOf(0)}
     var editing by remember{mutableStateOf(false)}
     var showSettings by remember{mutableStateOf(false)}
@@ -1867,7 +1856,6 @@ BackHandler {
         showMatching -> showMatching = false
         showFreelancerAnalysis -> showFreelancerAnalysis = false
         showSettings -> showSettings = false
-        showAdminDashboard -> showAdminDashboard = false
         editing -> editing = false
         tab != 0 -> tab = 0
         else -> showExitDialog = true
@@ -1975,9 +1963,8 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
-            showAdminDashboard->RemoteAdminDashboardScreen(adminRepository,ownerAiRepository,auth,{showAdminDashboard=false})
             editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
-            tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,isOwner,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{showAdminDashboard=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
+            tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
@@ -1992,13 +1979,11 @@ fun RemoteHomeScreen(
     marketplace: RemoteMarketplaceRepository,
     account: RemoteAccountRepository,
     role: UserRole,
-    isOwner: Boolean,
     onWorkCheck: () -> Unit,
     onProjectAnalysis: () -> Unit,
     onMatching: () -> Unit,
     onFreelancerAnalysis: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenAdminDashboard: () -> Unit,
     onLogout: () -> Unit,
     onPostJob: () -> Unit
 ) {
@@ -2162,9 +2147,6 @@ fun RemoteHomeScreen(
                             }
                             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                                 DropdownMenuItem(text = { Text("Account settings") }, leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) }, onClick = { menuExpanded = false; onOpenSettings() })
-                                if (isOwner) {
-                                    DropdownMenuItem(text = { Text("Owner Dashboard") }, leadingIcon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) }, onClick = { menuExpanded = false; onOpenAdminDashboard() })
-                                }
                                 DropdownMenuItem(text = { Text("Refresh home") }, leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) }, onClick = { menuExpanded = false; reload() })
                             }
                         }
@@ -3482,227 +3464,6 @@ ElevatedCard(
     }
 }
 
-
-@Composable
-fun RemoteAdminDashboardScreen(
-    admin: RemoteAdminRepository,
-    ownerAi: OwnerAiRepository,
-    auth: com.freelancehub.app.auth.AuthService,
-    back: () -> Unit
-) {
-    var maintenance by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf("Freelance Hub is temporarily under maintenance. Please try again soon.") }
-    var loading by remember { mutableStateOf(true) }
-    var saving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf("") }
-    var success by remember { mutableStateOf("") }
-    var aiPrompt by remember { mutableStateOf("") }
-    var aiBusy by remember { mutableStateOf(false) }
-    var aiError by remember { mutableStateOf("") }
-    var aiMessages by remember { mutableStateOf<List<Pair<Boolean, String>>>(emptyList()) }
-    var aiProposal by remember { mutableStateOf<org.json.JSONObject?>(null) }
-    val scope = rememberCoroutineScope()
-
-    fun reload() {
-        loading = true
-        error = ""
-        scope.launch(Dispatchers.IO) {
-            val result = runCatching {
-                val token = auth.accessTokenForApiBlocking()
-                    ?: error("Your session has expired. Sign in again.")
-                admin.listConfig(token)
-            }
-            withContext(Dispatchers.Main) {
-                result.onSuccess { entries ->
-                    entries.firstOrNull { it.key == "app.maintenance.enabled" }?.let {
-                        maintenance = it.value.trim() == "true"
-                    }
-                    entries.firstOrNull { it.key == "app.maintenance.message" }?.let {
-                        message = runCatching {
-                            org.json.JSONTokener(it.value).nextValue().toString()
-                        }.getOrDefault(message)
-                    }
-                }.onFailure { error = it.message ?: "Unable to load owner settings." }
-                loading = false
-            }
-        }
-    }
-
-    fun askOwnerAi() {
-        val question = aiPrompt.trim()
-        if (question.isBlank() || aiBusy) return
-        val history = aiMessages.takeLast(6).map {
-            OwnerAiContextMessage(if (it.first) "user" else "assistant", it.second)
-        }
-        aiMessages = aiMessages + (true to question)
-        aiPrompt = ""
-        aiBusy = true
-        aiError = ""
-        scope.launch(Dispatchers.IO) {
-            val result = runCatching {
-                val token = auth.accessTokenForApiBlocking()
-                    ?: error("Your session has expired. Sign in again.")
-                ownerAi.ask(token, question, history)
-            }
-            withContext(Dispatchers.Main) {
-                result.onSuccess { answer ->
-                    aiMessages = aiMessages + (false to answer.reply)
-                    aiProposal = answer.proposalJson?.let {
-                        runCatching { org.json.JSONObject(it) }.getOrNull()
-                    }
-                }.onFailure {
-                    aiError = it.message ?: "AI assistant is unavailable."
-                }
-                aiBusy = false
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) { reload() }
-
-    Column(
-        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC))
-            .verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Text("Owner Dashboard", style = MaterialTheme.typography.headlineSmall,
-                color = androidx.compose.ui.graphics.Color(0xFF102A56),
-                modifier = Modifier.weight(1f))
-            TextButton(onClick = back) { Text("Back") }
-        }
-        Text("Remote controls for the installed Freelance Hub app. Changes apply when the app refreshes its remote configuration.")
-        if (loading) CircularProgressIndicator()
-        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-        if (success.isNotBlank()) Text(success, color = MaterialTheme.colorScheme.primary)
-        ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Maintenance Mode", style = MaterialTheme.typography.titleMedium)
-                        Text("Temporarily block normal app access", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Switch(checked = maintenance, onCheckedChange = { maintenance = it })
-                }
-                OutlinedTextField(
-                    value = message, onValueChange = { message = it },
-                    label = { Text("Maintenance message") },
-                    modifier = Modifier.fillMaxWidth(), minLines = 2
-                )
-                Button(
-                    enabled = !loading && !saving && message.isNotBlank(),
-                    onClick = {
-                        saving = true
-                        error = ""
-                        success = ""
-                        scope.launch(Dispatchers.IO) {
-                            val result = runCatching {
-                                val token = auth.accessTokenForApiBlocking()
-                                    ?: error("Your session has expired. Sign in again.")
-                                admin.saveConfig(token, "app.maintenance.enabled", maintenance.toString())
-                                admin.saveConfig(token, "app.maintenance.message", org.json.JSONObject.quote(message.trim()))
-                            }
-                            withContext(Dispatchers.Main) {
-                                result.onSuccess { success = "Remote settings saved." }
-                                    .onFailure { error = it.message ?: "Unable to save settings." }
-                                saving = false
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(if (saving) "Saving…" else "Save remote settings") }
-            }
-        }
-
-        ElevatedCard(
-            Modifier.fillMaxWidth(),
-            colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF3157D5))
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text("Owner AI Assistant", style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF102A56))
-                        Text("Powered by Gemini · Draft proposals only", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Text("Describe a new rule, system or setting in Bengali or English. AI will explain the plan and identify whether an APK or backend update is needed.")
-                aiMessages.forEach { item ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        color = if (item.first) androidx.compose.ui.graphics.Color(0xFFEAF0FF) else androidx.compose.ui.graphics.Color(0xFFF3F6FA)
-                    ) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(if (item.first) "You" else "AI Assistant", style = MaterialTheme.typography.labelMedium,
-                                color = androidx.compose.ui.graphics.Color(0xFF3157D5))
-                            Text(item.second, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-                aiProposal?.let { proposal ->
-                    Surface(
-                        Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                        color = androidx.compose.ui.graphics.Color(0xFFFFF7E6)
-                    ) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Proposed change · Not applied", style = MaterialTheme.typography.titleSmall,
-                                color = androidx.compose.ui.graphics.Color(0xFF805500))
-                            Text(proposal.optString("title", "System proposal"), style = MaterialTheme.typography.titleMedium)
-                            Text(proposal.optString("summary"))
-                            Text("Category: " + proposal.optString("category"))
-                            Text("Risk: " + proposal.optString("risk"))
-                            Text("Requires APK update: " + if (proposal.optBoolean("requires_native_update")) "Yes" else "No")
-                            Text("Requires backend work: " + if (proposal.optBoolean("requires_backend_work")) "Yes" else "No")
-                            val notes = proposal.optJSONArray("notes")
-                            if (notes != null) {
-                                for (index in 0 until notes.length()) {
-                                    Text("• " + notes.optString(index))
-                                }
-                            }
-                            Text("This is a draft only. No setting or system has been changed.",
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
-                if (aiBusy) {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Text("Gemini is preparing a proposal…")
-                    }
-                }
-                if (aiError.isNotBlank()) Text(aiError, color = MaterialTheme.colorScheme.error)
-                OutlinedTextField(
-                    value = aiPrompt,
-                    onValueChange = { aiPrompt = it },
-                    label = { Text("Tell AI what you want to build or change") },
-                    placeholder = { Text("উদাহরণ: নতুন অ্যাকাউন্ট খোলার জন্য কিছু নিয়ম চালু করতে চাই…") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    maxLines = 5
-                )
-                Button(
-                    onClick = { askOwnerAi() },
-                    enabled = aiPrompt.isNotBlank() && !aiBusy,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (aiBusy) "Thinking…" else "Ask AI Assistant")
-                }
-                Text("Security: AI cannot apply changes or deploy code. Owner approval and implementation are separate steps.",
-                    style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
-            }
-        }
-
-        OutlinedButton(onClick = { reload() }, enabled = !loading, modifier = Modifier.fillMaxWidth()) {
-            Text("Refresh settings")
-        }
-    }
-}
 
 @Composable
 fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehub.app.auth.AuthService, back: () -> Unit) {
