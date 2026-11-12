@@ -32,3 +32,12 @@ Remote settings can only change behavior already implemented in the installed ap
 - Supabase logs, Security/Performance/Health Advisors, and Edge Function deployment metadata are not part of this backend snapshot; the separate daily ChatGPT monitor continues to check those sources.
 - The monitor never changes code, database records (other than saving its own report), settings, or deployments. It does not approve or reject AI requests.
 - The scheduled invocation token is stored in Supabase Vault and is not exposed in the dashboard or Android app.
+
+## Invited Dashboard access
+
+- The primary Owner can open **Device Access** and invite a separate email account.
+- Supabase Auth sends the invitation email. The invited person accepts it, confirms the email, sets their password, and then signs in at the Owner Dashboard URL.
+- Invited accounts receive **read-only Viewer** access to System Monitoring only. They cannot access Owner AI, review/approve AI requests, or change Remote Settings.
+- The Owner can see invitation status and the last browser-reported device label, and can revoke pending or active access at any time.
+- This is account-based access, not a hardware lock: the invited account can sign in from another phone too. Revoking the invitation disables that account's Dashboard access across devices.
+- The Auth email template and SMTP delivery must be configured. For the invitation link to return directly to GitHub Pages, allowlist `https://sajibu730-jpg.github.io/Freelance---Hub/` in Supabase Authentication → URL Configuration → Redirect URLs. If it is not allowlisted, the recipient can still accept the invitation and then open the Dashboard URL manually.
