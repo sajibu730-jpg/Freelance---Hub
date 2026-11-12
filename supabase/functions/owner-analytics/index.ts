@@ -5,7 +5,8 @@ const ORIGIN = "https://sajibu730-jpg.github.io";
 const headers = { "Access-Control-Allow-Origin": ORIGIN, "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, "Content-Type": "application/json" } });
 const countStatuses = (rows: Array<{status?: string|null}>) => rows.reduce((acc: Record<string,number>, row) => { const key = row.status || "unspecified"; acc[key] = (acc[key] || 0) + 1; return acc; }, {});
-const normalizeStatus=(value:unknown)=>String(value||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");\nconst countMatching = (rows: Array<{status?:string|null}>, pattern:RegExp) => rows.filter(row=>pattern.test(normalizeStatus(row.status))).length;
+const normalizeStatus=(value:unknown)=>String(value||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");\nconst normalizeStatus=(value:unknown)=>String(value||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
+const countMatching = (rows: Array<{status?:string|null}>, pattern:RegExp) => rows.filter(row=>pattern.test(normalizeStatus(row.status))).length;
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   if (req.method !== "POST") return reply({success:false,error:"Method not allowed."},405);
