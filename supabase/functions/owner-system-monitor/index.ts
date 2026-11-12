@@ -76,10 +76,26 @@ Deno.serve(async (req: Request) => {
         .eq("user_id", userData.user.id)
         .maybeSingle();
       if (ownerError) throw ownerError;
-      authorized = owner?.role === "owner" && owner?.is_active === true;
+      const isOwner = owner?.role === "owner" && owner?.is_active === true;
+      if (isOwner) {
+        authorized = true;
+      } else if (userData.user.email_confirmed_at) {
+        const { data: invitedViewer, error: accessError } = await admin
+          .from("owner_device_access")
+          .select("id,invited_email,status,access_level")
+          .eq("invited_user_id", userData.user.id)
+          .eq("status", "active")
+          .eq("access_level", "viewer")
+          .maybeSingle();
+        if (accessError) throw accessError;
+        authorized = Boolean(
+          invitedViewer &&
+          String(userData.user.email ?? "").toLowerCase() === invitedViewer.invited_email.toLowerCase()
+        );
+      }
     }
 
-    if (!authorized) return json({ success: false, error: "Active Owner access required." }, 403);
+    if (!authorized) return json({ success: false, error: "Active Owner or invited read-only access required." }, 403);
 
     const checks: Check[] = [];
     const [ownersResult, requestsResult, configResult] = await Promise.all([
