@@ -5,7 +5,7 @@ const ORIGIN = "https://sajibu730-jpg.github.io";
 const headers = { "Access-Control-Allow-Origin": ORIGIN, "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, "Content-Type": "application/json" } });
 const countStatuses = (rows: Array<{status?: string|null}>) => rows.reduce((acc: Record<string,number>, row) => { const key = row.status || "unspecified"; acc[key] = (acc[key] || 0) + 1; return acc; }, {});
-const countMatching = (rows: Array<{status?:string|null}>, pattern:RegExp) => rows.filter(row=>pattern.test(String(row.status||"").toLowerCase())).length;
+const normalizeStatus=(value:unknown)=>String(value||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");\nconst countMatching = (rows: Array<{status?:string|null}>, pattern:RegExp) => rows.filter(row=>pattern.test(normalizeStatus(row.status))).length;
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   if (req.method !== "POST") return reply({success:false,error:"Method not allowed."},405);
@@ -67,10 +67,10 @@ Deno.serve(async (req: Request) => {
       success:true,generated_at:new Date().toISOString(),
       users:{total:authUsers.length,confirmed:authUsers.filter(u=>!!u.email_confirmed_at).length,new_7d:new7,new_30d:new30,profiles:profiles.length,missing_profiles:Math.max(0,authUsers.length-profiles.length),active_24h:uniqueActive(1),active_7d:uniqueActive(7),active_30d:uniqueActive(30),roles:roleCounts,countries:Object.entries(countryCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([country,count])=>({country,count}))},
       platforms_30d:platformCounts,
-      jobs:{total:jobs.length,open:countMatching(jobs,/open|published/),ongoing:countMatching(jobs,/in.?progress|ongoing|active/),completed:countMatching(jobs,/complete|done/),cancelled:countMatching(jobs,/cancel|closed/),statuses:countStatuses(jobs)},
-      proposals:{total:proposals.length,pending:countMatching(proposals,/pending|submitted|review/),accepted:countMatching(proposals,/accept/),rejected:countMatching(proposals,/reject/),statuses:countStatuses(proposals)},
-      contracts:{total:contracts.length,active:countMatching(contracts,/active|ongoing|in.?progress/),completed:countMatching(contracts,/complete|done/),cancelled:countMatching(contracts,/cancel/),statuses:countStatuses(contracts)},
-      work:{submissions:submissions.length,pending_review:countMatching(submissions,/submit|pending|review|queued/),approved:countMatching(submissions,/approv|complete/),statuses:countStatuses(submissions)},
+      jobs:{total:jobs.length,open:countMatching(jobs,/^(open|published)$/),ongoing:countMatching(jobs,/^(in_progress|ongoing|active)$/),completed:countMatching(jobs,/^(completed|complete|done)$/),cancelled:countMatching(jobs,/^(cancelled|canceled)$/),statuses:countStatuses(jobs)},
+      proposals:{total:proposals.length,pending:countMatching(proposals,/^(pending|submitted|under_review|in_review)$/),accepted:countMatching(proposals,/^accepted$/),rejected:countMatching(proposals,/^rejected$/),statuses:countStatuses(proposals)},
+      contracts:{total:contracts.length,active:countMatching(contracts,/^(active|ongoing|in_progress)$/),completed:countMatching(contracts,/^(completed|complete|done)$/),cancelled:countMatching(contracts,/^(cancelled|canceled)$/),statuses:countStatuses(contracts)},
+      work:{submissions:submissions.length,pending_review:countMatching(submissions,/^(submitted|pending|pending_review|under_review|in_review|queued)$/),approved:countMatching(submissions,/^(approved|completed|complete)$/),statuses:countStatuses(submissions)},
       communication:{messages:messagesR.count||0,conversations:conversationsR.count||0},
       coverage:{active_users:"Active means a signed-in account recorded activity in the selected period. Only activity recorded after tracking is installed is available.",platforms:"Android/web/iOS clients call track-platform-activity. Active-user totals deduplicate by account ID across platforms.",revenue:"Not included until a verified payment ledger is connected."}
     });
