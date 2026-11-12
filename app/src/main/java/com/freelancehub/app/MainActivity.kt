@@ -1835,6 +1835,15 @@ Surface(
             auth::accessTokenForApiBlocking
         )
     }
+    val adminRepository = remember { RemoteAdminRepository(backend) }
+    var isOwner by remember { mutableStateOf(false) }
+    var showAdminDashboard by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val token = auth.accessTokenForApiBlocking()
+        isOwner = withContext(Dispatchers.IO) {
+            runCatching { adminRepository.isOwner(token) }.getOrDefault(false)
+        }
+    }
     var tab by remember{mutableStateOf(0)}
     var editing by remember{mutableStateOf(false)}
     var showSettings by remember{mutableStateOf(false)}
@@ -1856,6 +1865,7 @@ BackHandler {
         showMatching -> showMatching = false
         showFreelancerAnalysis -> showFreelancerAnalysis = false
         showSettings -> showSettings = false
+        showAdminDashboard -> showAdminDashboard = false
         editing -> editing = false
         tab != 0 -> tab = 0
         else -> showExitDialog = true
@@ -1963,8 +1973,9 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
+            showAdminDashboard->RemoteAdminDashboardScreen(adminRepository,auth,{showAdminDashboard=false})
             editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
-            tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
+            tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,isOwner,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{showAdminDashboard=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
@@ -1979,11 +1990,13 @@ fun RemoteHomeScreen(
     marketplace: RemoteMarketplaceRepository,
     account: RemoteAccountRepository,
     role: UserRole,
+    isOwner: Boolean,
     onWorkCheck: () -> Unit,
     onProjectAnalysis: () -> Unit,
     onMatching: () -> Unit,
     onFreelancerAnalysis: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAdminDashboard: () -> Unit,
     onLogout: () -> Unit,
     onPostJob: () -> Unit
 ) {
@@ -2147,6 +2160,9 @@ fun RemoteHomeScreen(
                             }
                             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                                 DropdownMenuItem(text = { Text("Account settings") }, leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) }, onClick = { menuExpanded = false; onOpenSettings() })
+                                if (isOwner) {
+                                    DropdownMenuItem(text = { Text("Owner Dashboard") }, leadingIcon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) }, onClick = { menuExpanded = false; onOpenAdminDashboard() })
+                                }
                                 DropdownMenuItem(text = { Text("Refresh home") }, leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) }, onClick = { menuExpanded = false; reload() })
                             }
                         }
@@ -3460,6 +3476,107 @@ ElevatedCard(
                     if (p.skills.isNotBlank()) Text("Skills: ${p.skills}")
                 }
             }
+        }
+    }
+}
+
+
+@Composable
+fun RemoteAdminDashboardScreen(
+    admin: RemoteAdminRepository,
+    auth: com.freelancehub.app.auth.AuthService,
+    back: () -> Unit
+) {
+    var maintenance by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("Freelance Hub is temporarily under maintenance. Please try again soon.") }
+    var loading by remember { mutableStateOf(true) }
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    var success by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    fun reload() {
+        loading = true
+        error = ""
+        scope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                val token = auth.accessTokenForApiBlocking()
+                    ?: error("Your session has expired. Sign in again.")
+                admin.listConfig(token)
+            }
+            withContext(Dispatchers.Main) {
+                result.onSuccess { entries ->
+                    entries.firstOrNull { it.key == "app.maintenance.enabled" }?.let {
+                        maintenance = it.value.trim() == "true"
+                    }
+                    entries.firstOrNull { it.key == "app.maintenance.message" }?.let {
+                        message = runCatching {
+                            org.json.JSONTokener(it.value).nextValue().toString()
+                        }.getOrDefault(message)
+                    }
+                }.onFailure { error = it.message ?: "Unable to load owner settings." }
+                loading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { reload() }
+
+    Column(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC))
+            .verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text("Owner Dashboard", style = MaterialTheme.typography.headlineSmall,
+                color = androidx.compose.ui.graphics.Color(0xFF102A56),
+                modifier = Modifier.weight(1f))
+            TextButton(onClick = back) { Text("Back") }
+        }
+        Text("Remote controls for the installed Freelance Hub app. Changes apply when the app refreshes its remote configuration.")
+        if (loading) CircularProgressIndicator()
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+        if (success.isNotBlank()) Text(success, color = MaterialTheme.colorScheme.primary)
+        ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Maintenance Mode", style = MaterialTheme.typography.titleMedium)
+                        Text("Temporarily block normal app access", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = maintenance, onCheckedChange = { maintenance = it })
+                }
+                OutlinedTextField(
+                    value = message, onValueChange = { message = it },
+                    label = { Text("Maintenance message") },
+                    modifier = Modifier.fillMaxWidth(), minLines = 2
+                )
+                Button(
+                    enabled = !loading && !saving && message.isNotBlank(),
+                    onClick = {
+                        saving = true
+                        error = ""
+                        success = ""
+                        scope.launch(Dispatchers.IO) {
+                            val result = runCatching {
+                                val token = auth.accessTokenForApiBlocking()
+                                    ?: error("Your session has expired. Sign in again.")
+                                admin.saveConfig(token, "app.maintenance.enabled", maintenance.toString())
+                                admin.saveConfig(token, "app.maintenance.message", org.json.JSONObject.quote(message.trim()))
+                            }
+                            withContext(Dispatchers.Main) {
+                                result.onSuccess { success = "Remote settings saved." }
+                                    .onFailure { error = it.message ?: "Unable to save settings." }
+                                saving = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(if (saving) "Saving…" else "Save remote settings") }
+            }
+        }
+        OutlinedButton(onClick = { reload() }, enabled = !loading, modifier = Modifier.fillMaxWidth()) {
+            Text("Refresh settings")
         }
     }
 }
