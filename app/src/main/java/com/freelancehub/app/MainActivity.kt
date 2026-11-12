@@ -167,6 +167,9 @@ fun LoginScreen(
     var country by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("") }
     var birthday by remember { mutableStateOf("") }
+    var birthdayDayChoice by remember { mutableIntStateOf(0) }
+    var birthdayMonthChoice by remember { mutableIntStateOf(0) }
+    var birthdayYearChoice by remember { mutableIntStateOf(0) }
     var showProfileCountryPicker by remember { mutableStateOf(false) }
     var profilePhotoBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var coverPhotoBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
@@ -1162,9 +1165,9 @@ Surface(
                     }
                     Spacer(Modifier.height(8.dp))
                     val currentYear = java.time.LocalDate.now().year
-                    val selectedYear = birthday.substringBefore("-").toIntOrNull() ?: 0
-                    val selectedMonth = birthday.split("-").getOrNull(1)?.toIntOrNull() ?: 0
-                    val selectedDay = birthday.split("-").getOrNull(2)?.toIntOrNull() ?: 0
+                    val selectedYear = birthdayYearChoice
+                    val selectedMonth = birthdayMonthChoice
+                    val selectedDay = birthdayDayChoice
                     var showDayMenu by remember { mutableStateOf(false) }
                     var showMonthMenu by remember { mutableStateOf(false) }
                     var showYearMenu by remember { mutableStateOf(false) }
@@ -1180,8 +1183,8 @@ Surface(
                             DropdownMenu(expanded = showDayMenu, onDismissRequest = { showDayMenu = false }) {
                                 (1..maxBirthdayDay).forEach { day ->
                                     DropdownMenuItem(text = { Text(day.toString()) }, onClick = {
-                                        birthday = if (selectedYear > 0 && selectedMonth in 1..12) java.time.LocalDate.of(selectedYear, selectedMonth, day).toString() else birthday
-                                        if (selectedYear == 0 || selectedMonth == 0) birthday = ""
+                                        birthdayDayChoice = day
+                                        birthday = if (selectedYear > 0 && selectedMonth in 1..12) java.time.LocalDate.of(selectedYear, selectedMonth, minOf(day, java.time.YearMonth.of(selectedYear, selectedMonth).lengthOfMonth())).toString() else ""
                                         showDayMenu = false
                                     })
                                 }
@@ -1195,9 +1198,8 @@ Surface(
                             DropdownMenu(expanded = showMonthMenu, onDismissRequest = { showMonthMenu = false }) {
                                 (1..12).forEach { month ->
                                     DropdownMenuItem(text = { Text(month.toString()) }, onClick = {
-                                        val year = selectedYear
-                                        val day = selectedDay
-                                        birthday = if (year > 0 && day > 0) runCatching { java.time.LocalDate.of(year, month, minOf(day, java.time.YearMonth.of(year, month).lengthOfMonth())).toString() }.getOrDefault("") else ""
+                                        birthdayMonthChoice = month
+                                        birthday = if (selectedYear > 0 && selectedDay > 0) runCatching { java.time.LocalDate.of(selectedYear, month, minOf(selectedDay, java.time.YearMonth.of(selectedYear, month).lengthOfMonth())).toString() }.getOrDefault("") else ""
                                         showMonthMenu = false
                                     })
                                 }
@@ -1211,9 +1213,8 @@ Surface(
                             DropdownMenu(expanded = showYearMenu, onDismissRequest = { showYearMenu = false }) {
                                 (currentYear downTo 1900).forEach { year ->
                                     DropdownMenuItem(text = { Text(year.toString()) }, onClick = {
-                                        val month = selectedMonth
-                                        val day = selectedDay
-                                        birthday = if (month in 1..12 && day > 0) runCatching { java.time.LocalDate.of(year, month, minOf(day, java.time.YearMonth.of(year, month).lengthOfMonth())).toString() }.getOrDefault("") else ""
+                                        birthdayYearChoice = year
+                                        birthday = if (selectedMonth in 1..12 && selectedDay > 0) runCatching { java.time.LocalDate.of(year, selectedMonth, minOf(selectedDay, java.time.YearMonth.of(year, selectedMonth).lengthOfMonth())).toString() }.getOrDefault("") else ""
                                         showYearMenu = false
                                     })
                                 }
