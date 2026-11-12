@@ -1839,9 +1839,10 @@ Surface(
     var isOwner by remember { mutableStateOf(false) }
     var showAdminDashboard by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        val token = auth.accessTokenForApiBlocking()
         isOwner = withContext(Dispatchers.IO) {
-            runCatching { adminRepository.isOwner(token) }.getOrDefault(false)
+            runCatching {
+                adminRepository.isOwner(auth.accessTokenForApiBlocking())
+            }.getOrDefault(false)
         }
     }
     var tab by remember{mutableStateOf(0)}
