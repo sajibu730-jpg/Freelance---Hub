@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: "https://sajibu730-jpg.github.io/Freelance---Hub/",
+        redirectTo: "https://sajibu730-jpg.github.io/Freelance---Hub/?invite=1",
       });
       if (inviteError || !invited.user) {
         await admin.from("owner_device_access").delete().eq("id", pending.id);
