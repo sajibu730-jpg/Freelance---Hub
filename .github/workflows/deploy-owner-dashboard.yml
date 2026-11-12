@@ -43,4 +43,7 @@ jobs:
           grep -q "PRIVATE OWNER CONSOLE" /tmp/owner-dashboard.html
           grep -q "System Monitoring" /tmp/owner-dashboard.html
           grep -q "Run check now" /tmp/owner-dashboard.html
-          echo "Owner Dashboard is live and System Monitoring is published."
+          grep -q "Platform Overview" /tmp/owner-dashboard.html
+          grep -q "refresh-overview" /tmp/owner-dashboard.html
+          grep -q "owner-analytics" /tmp/owner-dashboard.html
+          echo "Owner Dashboard is live with System Monitoring and Overview analytics."
