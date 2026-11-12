@@ -34,16 +34,20 @@ Deno.serve(async (req: Request) => {
       }
       return output;
     };
-    const [profiles,jobs,proposals,contracts,submissions,activity,messagesR,conversationsR] = await Promise.all([
+    const [profilesAll,jobs,proposals,contracts,submissions,activityAll,adminsR,invitesR,messagesR,conversationsR] = await Promise.all([
       readAll("profiles","id,country,created_at"),
       readAll("jobs","status,created_at"),
       readAll("proposals","status,created_at"),
       readAll("contracts","status,created_at"),
       readAll("work_submissions","status,submitted_at,created_at"),
       readAll("user_platform_activity","user_id,platform,last_seen_at"),
+      admin.from("app_admins").select("user_id"),
+      admin.from("owner_device_access").select("invited_user_id").not("invited_user_id","is",null),
       admin.from("messages").select("id",{count:"exact",head:true}),
       admin.from("conversations").select("id",{count:"exact",head:true})
     ]);
+    if(adminsR.error) throw adminsR.error;
+    if(invitesR.error) throw invitesR.error;
     if(messagesR.error) throw messagesR.error;
     if(conversationsR.error) throw conversationsR.error;
 
@@ -55,18 +59,22 @@ Deno.serve(async (req: Request) => {
       if(batch.length<1000) break;
       page++;
     }
+    const excludedIds=new Set<string>([...(adminsR.data||[]).map((x:any)=>x.user_id),...(invitesR.data||[]).map((x:any)=>x.invited_user_id).filter(Boolean)]);
+    const appUsers=authUsers.filter((u:any)=>!excludedIds.has(u.id));
+    const profiles=profilesAll.filter((p:any)=>!excludedIds.has(p.id));
+    const activity=activityAll.filter((x:any)=>!excludedIds.has(x.user_id));
     const now=Date.now(),day=86400000,since=(n:number)=>now-n*day;
-    const new7=authUsers.filter(u=>u.created_at&&new Date(u.created_at).getTime()>=since(7)).length;
-    const new30=authUsers.filter(u=>u.created_at&&new Date(u.created_at).getTime()>=since(30)).length;
+    const new7=appUsers.filter(u=>u.created_at&&new Date(u.created_at).getTime()>=since(7)).length;
+    const new30=appUsers.filter(u=>u.created_at&&new Date(u.created_at).getTime()>=since(30)).length;
     const uniqueActive=(days:number)=>new Set(activity.filter((x:any)=>new Date(x.last_seen_at).getTime()>=since(days)).map((x:any)=>x.user_id)).size;
     const platformCounts:Record<string,number>={};
     for(const row of activity as any[]){if(new Date(row.last_seen_at).getTime()>=since(30))platformCounts[row.platform]=(platformCounts[row.platform]||0)+1;}
     const countryCounts:Record<string,number>={},roleCounts:Record<string,number>={};
     for(const p of profiles as any[]){const country=String(p.country||"Not set").trim()||"Not set";countryCounts[country]=(countryCounts[country]||0)+1;}
-    for(const u of authUsers as any[]){const role=String(u.user_metadata?.role||"Not set").trim().toLowerCase()||"Not set";roleCounts[role]=(roleCounts[role]||0)+1;}
+    for(const u of appUsers as any[]){const role=String(u.user_metadata?.role||"Not set").trim().toLowerCase()||"Not set";roleCounts[role]=(roleCounts[role]||0)+1;}
     return reply({
       success:true,generated_at:new Date().toISOString(),
-      users:{total:authUsers.length,confirmed:authUsers.filter(u=>!!u.email_confirmed_at).length,new_7d:new7,new_30d:new30,profiles:profiles.length,missing_profiles:Math.max(0,authUsers.length-profiles.length),active_24h:uniqueActive(1),active_7d:uniqueActive(7),active_30d:uniqueActive(30),roles:roleCounts,countries:Object.entries(countryCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([country,count])=>({country,count}))},
+      users:{total:appUsers.length,auth_total:authUsers.length,confirmed:appUsers.filter(u=>!!u.email_confirmed_at).length,new_7d:new7,new_30d:new30,profiles:profiles.length,missing_profiles:Math.max(0,authUsers.length-profiles.length),active_24h:uniqueActive(1),active_7d:uniqueActive(7),active_30d:uniqueActive(30),roles:roleCounts,countries:Object.entries(countryCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([country,count])=>({country,count}))},
       platforms_30d:platformCounts,
       jobs:{total:jobs.length,open:countMatching(jobs,/^(open|published)$/),ongoing:countMatching(jobs,/^(in_progress|ongoing|active)$/),completed:countMatching(jobs,/^(completed|complete|done)$/),cancelled:countMatching(jobs,/^(cancelled|canceled)$/),statuses:countStatuses(jobs)},
       proposals:{total:proposals.length,pending:countMatching(proposals,/^(pending|submitted|under_review|in_review)$/),accepted:countMatching(proposals,/^accepted$/),rejected:countMatching(proposals,/^rejected$/),statuses:countStatuses(proposals)},
