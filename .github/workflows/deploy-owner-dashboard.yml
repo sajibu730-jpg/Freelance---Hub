@@ -33,3 +33,12 @@ jobs:
       - name: Deploy dashboard
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify published dashboard
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors "$SITE_URL" -o /tmp/owner-dashboard.html
+          grep -q "Owner sign in" /tmp/owner-dashboard.html
+          grep -q "PRIVATE OWNER CONSOLE" /tmp/owner-dashboard.html
+          echo "Owner Dashboard is live and the expected login page is served."
