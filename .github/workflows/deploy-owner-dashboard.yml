@@ -41,4 +41,6 @@ jobs:
           curl --fail --silent --show-error --location --retry 8 --retry-delay 10 --retry-all-errors "$SITE_URL" -o /tmp/owner-dashboard.html
           grep -q "Owner sign in" /tmp/owner-dashboard.html
           grep -q "PRIVATE OWNER CONSOLE" /tmp/owner-dashboard.html
-          echo "Owner Dashboard is live and the expected login page is served."
+          grep -q "System Monitoring" /tmp/owner-dashboard.html
+          grep -q "Run check now" /tmp/owner-dashboard.html
+          echo "Owner Dashboard is live and System Monitoring is published."
