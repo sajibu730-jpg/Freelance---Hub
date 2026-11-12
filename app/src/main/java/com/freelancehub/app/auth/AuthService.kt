@@ -16,6 +16,7 @@ class AuthService(context: Context) {
     private val config: BackendConfig = RuntimeBackendConfig.current()
     private val tokenStore = TokenStore(context.applicationContext)
     private val executor = Executors.newSingleThreadExecutor()
+    private val activityExecutor = Executors.newSingleThreadExecutor()
     @Volatile private var pendingSignupSession: AuthSession? = null
 
     fun isConfigured(): Boolean =
@@ -82,6 +83,7 @@ class AuthService(context: Context) {
                 )
 
                 tokenStore.saveSession(session.accessToken, session.refreshToken)
+                recordPlatformActivity(session.accessToken, "login")
                 session
             }
 
@@ -365,6 +367,7 @@ class AuthService(context: Context) {
                     "Supabase did not confirm that the profile and mobile verification status were saved."
                 }
                 tokenStore.saveSession(pending.accessToken, pending.refreshToken)
+                recordPlatformActivity(pending.accessToken, "session_start")
                 pendingSignupSession = null
                 Unit
             })
@@ -374,6 +377,43 @@ class AuthService(context: Context) {
     fun refresh(callback: (Result<AuthSession>) -> Unit) {
         executor.execute {
             callback(runCatching { refreshBlocking() })
+        }
+    }
+
+    fun recordCurrentPlatformActivity(event: String = "app_open") {
+        val access = tokenStore.readAccessToken() ?: return
+        recordPlatformActivity(access, event)
+    }
+
+    private fun recordPlatformActivity(accessToken: String, event: String) {
+        if (!isConfigured() || accessToken.isBlank()) return
+        activityExecutor.execute {
+            var connection: HttpURLConnection? = null
+            try {
+                val endpoint = URL(config.baseUrl.trimEnd('/') + "/functions/v1/track-platform-activity")
+                connection = endpoint.openConnection() as HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+                connection.useCaches = false
+                connection.instanceFollowRedirects = false
+                connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                connection.setRequestProperty("apikey", config.anonKey)
+                connection.setRequestProperty("Authorization", "Bearer ${accessToken.trim()}")
+                connection.doOutput = true
+                val body = JSONObject()
+                    .put("platform", "android")
+                    .put("event", event.take(32))
+                    .toString()
+                    .toByteArray(StandardCharsets.UTF_8)
+                connection.outputStream.use { it.write(body) }
+                connection.responseCode
+            } catch (_: Exception) {
+                // Activity analytics must never interrupt sign-in or app usage.
+            } finally {
+                connection?.disconnect()
+            }
         }
     }
 
@@ -404,6 +444,7 @@ class AuthService(context: Context) {
             }
 
             if (result.isFailure) tokenStore.clear()
+            result.getOrNull()?.let { recordPlatformActivity(it.accessToken, "session_start") }
             callback(result)
         }
     }
