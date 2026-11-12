@@ -67,6 +67,17 @@ class MainActivity:ComponentActivity(){
 @Composable fun FreelanceHubApp(repo:AppRepository, onStartupReady:()->Unit){
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { com.freelancehub.app.auth.AuthService(context) }
+    val remoteConfigService = remember {
+        RemoteConfigService(context.applicationContext, RuntimeBackendConfig.current())
+    }
+    var remoteAppConfig by remember { mutableStateOf(RemoteAppConfig.EMPTY) }
+    LaunchedEffect(Unit) {
+        remoteConfigService.load { result ->
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                remoteAppConfig = result.getOrDefault(remoteConfigService.cached())
+            }
+        }
+    }
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
     var startupMinimumElapsed by remember { mutableStateOf(false) }
@@ -105,6 +116,13 @@ class MainActivity:ComponentActivity(){
                 modifier = Modifier.size(40.dp)
             )
         }
+    } else if (remoteAppConfig.boolean("app.maintenance.enabled", false)) {
+        MaintenanceScreen(
+            message = remoteAppConfig.string(
+                "app.maintenance.message",
+                "Freelance Hub is temporarily under maintenance. Please try again soon."
+            )
+        )
     } else if (!loggedIn) {
         LoginScreen(authConfigured=auth.isConfigured(), authService=auth, onSignupComplete={ session ->
             val old=repo.profile()
@@ -128,6 +146,40 @@ class MainActivity:ComponentActivity(){
             repo.clearSession()
             loggedIn=false
         } }
+    }
+}
+
+@Composable
+private fun MaintenanceScreen(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = androidx.compose.ui.graphics.Color(0xFF071B2E)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(28.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Freelance Hub",
+                color = androidx.compose.ui.graphics.Color.White,
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+            Text(
+                text = "We’ll be back soon",
+                color = androidx.compose.ui.graphics.Color(0xFF8CCBFF),
+                style = MaterialTheme.typography.titleLarge
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = message,
+                color = androidx.compose.ui.graphics.Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
     }
 }
 
