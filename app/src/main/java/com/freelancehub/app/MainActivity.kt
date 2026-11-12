@@ -657,7 +657,7 @@ Surface(
                                     }
                                 }
                                 Spacer(Modifier.height(4.dp))
-                                Text(label, color = if (index == activeSignupStage) navy else androidx.compose.ui.graphics.Color(0xFF71839D), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                Text(label, color = if (index == activeSignupStage) navy else androidx.compose.ui.graphics.Color(0xFF71839D), style = MaterialTheme.typography.labelSmall, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 11.sp, fontSize = 9.sp)
                             }
                         }
                     }
@@ -1161,17 +1161,63 @@ Surface(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showBirthdayPicker = true },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
-                            Spacer(Modifier.width(12.dp))
-                            Text(if (birthday.isBlank()) "Select your birthday" else birthday, modifier = Modifier.weight(1f), color = navy)
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = "Open birthday calendar")
+                    val currentYear = java.time.LocalDate.now().year
+                    val selectedYear = birthday.substringBefore("-").toIntOrNull() ?: 0
+                    val selectedMonth = birthday.split("-").getOrNull(1)?.toIntOrNull() ?: 0
+                    val selectedDay = birthday.split("-").getOrNull(2)?.toIntOrNull() ?: 0
+                    var showDayMenu by remember { mutableStateOf(false) }
+                    var showMonthMenu by remember { mutableStateOf(false) }
+                    var showYearMenu by remember { mutableStateOf(false) }
+                    val maxBirthdayDay = if (selectedYear > 0 && selectedMonth in 1..12) {
+                        java.time.YearMonth.of(selectedYear, selectedMonth).lengthOfMonth()
+                    } else 31
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.weight(1f)) {
+                            OutlinedButton(onClick = { showDayMenu = true }, modifier = Modifier.fillMaxWidth().height(50.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                                Text(if (selectedDay == 0) "তারিখ" else selectedDay.toString(), color = navy)
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose day")
+                            }
+                            DropdownMenu(expanded = showDayMenu, onDismissRequest = { showDayMenu = false }) {
+                                (1..maxBirthdayDay).forEach { day ->
+                                    DropdownMenuItem(text = { Text(day.toString()) }, onClick = {
+                                        birthday = if (selectedYear > 0 && selectedMonth in 1..12) java.time.LocalDate.of(selectedYear, selectedMonth, day).toString() else birthday
+                                        if (selectedYear == 0 || selectedMonth == 0) birthday = ""
+                                        showDayMenu = false
+                                    })
+                                }
+                            }
+                        }
+                        Box(Modifier.weight(1f)) {
+                            OutlinedButton(onClick = { showMonthMenu = true }, modifier = Modifier.fillMaxWidth().height(50.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                                Text(if (selectedMonth == 0) "মাস" else selectedMonth.toString(), color = navy)
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose month")
+                            }
+                            DropdownMenu(expanded = showMonthMenu, onDismissRequest = { showMonthMenu = false }) {
+                                (1..12).forEach { month ->
+                                    DropdownMenuItem(text = { Text(month.toString()) }, onClick = {
+                                        val year = selectedYear
+                                        val day = selectedDay
+                                        birthday = if (year > 0 && day > 0) runCatching { java.time.LocalDate.of(year, month, minOf(day, java.time.YearMonth.of(year, month).lengthOfMonth())).toString() }.getOrDefault("") else ""
+                                        showMonthMenu = false
+                                    })
+                                }
+                            }
+                        }
+                        Box(Modifier.weight(1.25f)) {
+                            OutlinedButton(onClick = { showYearMenu = true }, modifier = Modifier.fillMaxWidth().height(50.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                                Text(if (selectedYear == 0) "সাল" else selectedYear.toString(), color = navy)
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose year")
+                            }
+                            DropdownMenu(expanded = showYearMenu, onDismissRequest = { showYearMenu = false }) {
+                                (currentYear downTo 1900).forEach { year ->
+                                    DropdownMenuItem(text = { Text(year.toString()) }, onClick = {
+                                        val month = selectedMonth
+                                        val day = selectedDay
+                                        birthday = if (month in 1..12 && day > 0) runCatching { java.time.LocalDate.of(year, month, minOf(day, java.time.YearMonth.of(year, month).lengthOfMonth())).toString() }.getOrDefault("") else ""
+                                        showYearMenu = false
+                                    })
+                                }
+                            }
                         }
                     }
 
@@ -1230,33 +1276,7 @@ Surface(
                             }
                         )
                     }
-                    if (showBirthdayPicker) {
-                        val initialBirthday = runCatching {
-                            java.time.LocalDate.parse(birthday).atStartOfDay(java.time.ZoneOffset.UTC)
-                                .toInstant().toEpochMilli()
-                        }.getOrNull()
-                        val datePickerState = rememberDatePickerState(
-                            initialSelectedDateMillis = initialBirthday,
-                            yearRange = 1900..java.time.LocalDate.now().year
-                        )
-                        DatePickerDialog(
-                            onDismissRequest = { showBirthdayPicker = false },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    datePickerState.selectedDateMillis?.let { millis ->
-                                        birthday = java.time.Instant.ofEpochMilli(millis)
-                                            .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
-                                    }
-                                    showBirthdayPicker = false
-                                }) { Text("Select") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showBirthdayPicker = false }) { Text("Cancel") }
-                            }
-                        ) {
-                            DatePicker(state = datePickerState, showModeToggle = false)
-                        }
-                    }
+
                 }
 
                 if (signup && signupStep == 6) {
