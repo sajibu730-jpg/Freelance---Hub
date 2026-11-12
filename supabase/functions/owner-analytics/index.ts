@@ -5,6 +5,7 @@ const ORIGIN = "https://sajibu730-jpg.github.io";
 const headers = { "Access-Control-Allow-Origin": ORIGIN, "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, "Content-Type": "application/json" } });
 const countStatuses = (rows: Array<{status?: string|null}>) => rows.reduce((acc: Record<string,number>, row) => { const key = row.status || "unspecified"; acc[key] = (acc[key] || 0) + 1; return acc; }, {});
+const countMatching = (rows: Array<{status?:string|null}>, pattern:RegExp) => rows.filter(row=>pattern.test(String(row.status||"").toLowerCase())).length;
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   if (req.method !== "POST") return reply({success:false,error:"Method not allowed."},405);
@@ -21,39 +22,58 @@ Deno.serve(async (req: Request) => {
     if(ownerError) throw ownerError;
     if(owner?.role!=="owner"||owner?.is_active!==true) return reply({success:false,error:"Only the primary active Owner can view platform analytics."},403);
 
-    const [profilesR,jobsR,proposalsR,contractsR,submissionsR,messagesR,conversationsR,activityR] = await Promise.all([
-      admin.from("profiles").select("id,country,capabilities,created_at"),
-      admin.from("jobs").select("status,created_at"),
-      admin.from("proposals").select("status,created_at"),
-      admin.from("contracts").select("status,created_at"),
-      admin.from("work_submissions").select("status,submitted_at,created_at"),
+    const readAll=async(table:string,columns:string)=>{
+      const output:any[]=[]; let offset=0;
+      while(offset<1000000){
+        const {data,error}=await admin.from(table).select(columns).range(offset,offset+999);
+        if(error) throw error;
+        const batch=data||[]; output.push(...batch);
+        if(batch.length<1000) break;
+        offset+=1000;
+      }
+      return output;
+    };
+    const [profiles,jobs,proposals,contracts,submissions,activity,messagesR,conversationsR] = await Promise.all([
+      readAll("profiles","id,country,created_at"),
+      readAll("jobs","status,created_at"),
+      readAll("proposals","status,created_at"),
+      readAll("contracts","status,created_at"),
+      readAll("work_submissions","status,submitted_at,created_at"),
+      readAll("user_platform_activity","user_id,platform,last_seen_at"),
       admin.from("messages").select("id",{count:"exact",head:true}),
-      admin.from("conversations").select("id",{count:"exact",head:true}),
-      admin.from("user_platform_activity").select("user_id,platform,last_seen_at")
+      admin.from("conversations").select("id",{count:"exact",head:true})
     ]);
-    for(const result of [profilesR,jobsR,proposalsR,contractsR,submissionsR,messagesR,conversationsR,activityR]) if(result.error) throw result.error;
+    if(messagesR.error) throw messagesR.error;
+    if(conversationsR.error) throw conversationsR.error;
 
     const authUsers:any[]=[]; let page=1;
-    while(page<=100){
+    while(page<=1000){
       const {data,error}=await admin.auth.admin.listUsers({page,perPage:1000});
       if(error) throw error;
       const batch=data.users||[]; authUsers.push(...batch);
       if(batch.length<1000) break;
       page++;
     }
-    const now=Date.now(), day=86400000, since=(n:number)=>now-n*day;
+    const now=Date.now(),day=86400000,since=(n:number)=>now-n*day;
     const new7=authUsers.filter(u=>u.created_at&&new Date(u.created_at).getTime()>=since(7)).length;
     const new30=authUsers.filter(u=>u.created_at&&new Date(u.created_at).getTime()>=since(30)).length;
-    const uniqueActive=(days:number)=>new Set((activityR.data||[]).filter((x:any)=>new Date(x.last_seen_at).getTime()>=since(days)).map((x:any)=>x.user_id)).size;
+    const uniqueActive=(days:number)=>new Set(activity.filter((x:any)=>new Date(x.last_seen_at).getTime()>=since(days)).map((x:any)=>x.user_id)).size;
     const platformCounts:Record<string,number>={};
-    for(const row of (activityR.data||[]) as any[]){if(new Date(row.last_seen_at).getTime()>=since(30))platformCounts[row.platform]=(platformCounts[row.platform]||0)+1;}
-    const countryCounts:Record<string,number>={}, roleCounts:Record<string,number>={};
-    for(const p of (profilesR.data||[]) as any[]){
-      const country=String(p.country||"Not set").trim()||"Not set";countryCounts[country]=(countryCounts[country]||0)+1;
-      const role=String(p.capabilities||"Not set").trim().toLowerCase()||"Not set";roleCounts[role]=(roleCounts[role]||0)+1;
-    }
-    const jobs=jobsR.data||[],proposals=proposalsR.data||[],contracts=contractsR.data||[],submissions=submissionsR.data||[];
-    return reply({success:true,generated_at:new Date().toISOString(),users:{total:authUsers.length,confirmed:authUsers.filter(u=>!!u.email_confirmed_at).length,new_7d:new7,new_30d:new30,profiles:profilesR.data?.length||0,missing_profiles:Math.max(0,authUsers.length-(profilesR.data?.length||0)),active_24h:uniqueActive(1),active_7d:uniqueActive(7),active_30d:uniqueActive(30),roles:roleCounts,countries:Object.entries(countryCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([country,count])=>({country,count}))},platforms_30d:platformCounts,jobs:{total:jobs.length,statuses:countStatuses(jobs)},proposals:{total:proposals.length,statuses:countStatuses(proposals)},contracts:{total:contracts.length,statuses:countStatuses(contracts)},work:{submissions:submissions.length,statuses:countStatuses(submissions)},communication:{messages:messagesR.count||0,conversations:conversationsR.count||0},coverage:{active_users:"Only authenticated activity recorded after platform tracking is installed; older activity is unavailable.",platforms:"Android/web/iOS clients must call track-platform-activity. Counts are unique accounts across platforms for active-user totals.",revenue:"Not included until a verified payment/ledger source is connected."}});
+    for(const row of activity as any[]){if(new Date(row.last_seen_at).getTime()>=since(30))platformCounts[row.platform]=(platformCounts[row.platform]||0)+1;}
+    const countryCounts:Record<string,number>={},roleCounts:Record<string,number>={};
+    for(const p of profiles as any[]){const country=String(p.country||"Not set").trim()||"Not set";countryCounts[country]=(countryCounts[country]||0)+1;}
+    for(const u of authUsers as any[]){const role=String(u.user_metadata?.role||"Not set").trim().toLowerCase()||"Not set";roleCounts[role]=(roleCounts[role]||0)+1;}
+    return reply({
+      success:true,generated_at:new Date().toISOString(),
+      users:{total:authUsers.length,confirmed:authUsers.filter(u=>!!u.email_confirmed_at).length,new_7d:new7,new_30d:new30,profiles:profiles.length,missing_profiles:Math.max(0,authUsers.length-profiles.length),active_24h:uniqueActive(1),active_7d:uniqueActive(7),active_30d:uniqueActive(30),roles:roleCounts,countries:Object.entries(countryCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([country,count])=>({country,count}))},
+      platforms_30d:platformCounts,
+      jobs:{total:jobs.length,open:countMatching(jobs,/open|published/),ongoing:countMatching(jobs,/in.?progress|ongoing|active/),completed:countMatching(jobs,/complete|done/),cancelled:countMatching(jobs,/cancel|closed/),statuses:countStatuses(jobs)},
+      proposals:{total:proposals.length,pending:countMatching(proposals,/pending|submitted|review/),accepted:countMatching(proposals,/accept/),rejected:countMatching(proposals,/reject/),statuses:countStatuses(proposals)},
+      contracts:{total:contracts.length,active:countMatching(contracts,/active|ongoing|in.?progress/),completed:countMatching(contracts,/complete|done/),cancelled:countMatching(contracts,/cancel/),statuses:countStatuses(contracts)},
+      work:{submissions:submissions.length,pending_review:countMatching(submissions,/submit|pending|review|queued/),approved:countMatching(submissions,/approv|complete/),statuses:countStatuses(submissions)},
+      communication:{messages:messagesR.count||0,conversations:conversationsR.count||0},
+      coverage:{active_users:"Active means a signed-in account recorded activity in the selected period. Only activity recorded after tracking is installed is available.",platforms:"Android/web/iOS clients call track-platform-activity. Active-user totals deduplicate by account ID across platforms.",revenue:"Not included until a verified payment ledger is connected."}
+    });
   }catch(error){
     console.error("owner-analytics failed",error);
     return reply({success:false,error:"Analytics could not be loaded. Check the Owner Dashboard function logs."},500);
