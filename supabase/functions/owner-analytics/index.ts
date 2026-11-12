@@ -11,7 +11,7 @@ Deno.serve(async (req: Request) => {
   try {
     const url=Deno.env.get("SUPABASE_URL"), anon=Deno.env.get("SUPABASE_ANON_KEY"), service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if(!url||!anon||!service) return reply({success:false,error:"Server configuration is incomplete."},503);
-    const token=(req.headers.get("Authorization")||"").match(/^Bearer\\s+(.+)$/i)?.[1];
+    const token=(req.headers.get("Authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1];
     if(!token) return reply({success:false,error:"Owner sign-in required."},401);
     const authClient=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:userData,error:userError}=await authClient.auth.getUser(token);
