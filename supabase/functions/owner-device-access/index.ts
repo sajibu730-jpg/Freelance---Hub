@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
         return json({ success: false, error: "Your primary Owner email is already the owner account." }, 400);
       }
       const { data: existing, error: existingError } = await admin.from("owner_device_access")
-        .select("id,status").eq("owner_user_id", user.id).ilike("invited_email", email).maybeSingle();
+        .select("id,status").eq("owner_user_id", user.id).eq("invited_email", email).maybeSingle();
       if (existingError) throw existingError;
       if (existing && existing.status !== "revoked") {
         return json({ success: false, error: "An invitation or active access already exists for this email." }, 409);
