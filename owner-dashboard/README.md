@@ -41,3 +41,12 @@ Remote settings can only change behavior already implemented in the installed ap
 - The Owner can see invitation status and the last browser-reported device label, and can revoke pending or active access at any time.
 - This is account-based access, not a hardware lock: the invited account can sign in from another phone too. Revoking the invitation disables that account's Dashboard access across devices.
 - The Auth email template and SMTP delivery must be configured. For the invitation link to return directly to GitHub Pages, allowlist `https://sajibu730-jpg.github.io/Freelance---Hub/?invite=1` in Supabase Authentication → URL Configuration → Redirect URLs. If it is not allowlisted, the recipient can still accept the invitation and then open the Dashboard URL manually.
+
+
+## Platform Overview and activity analytics
+
+The Owner-only Overview panel reads aggregate statistics from the authenticated `owner-analytics` Edge Function. It reports Auth accounts separately from completed public profiles, plus jobs, proposals, contracts, work submissions, messages, conversations, country and capability breakdowns.
+
+Authenticated clients on supported platforms can call `track-platform-activity` with their user JWT and a coarse platform/event label. The Android app records sign-in, restored sessions, and foreground resumes. Future web/iOS clients should call the same function after authentication. The activity table stores one latest-activity row per user and platform; active-user totals use distinct user IDs across platforms. No message text, screen content, IP address, or hardware fingerprint is collected.
+
+Historical active-user counts are not available before tracking was installed. Revenue is intentionally omitted until a verified payment ledger is connected. Invited read-only Dashboard accounts do not receive Overview or management access.
