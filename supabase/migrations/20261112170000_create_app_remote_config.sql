@@ -63,3 +63,9 @@ create policy "Owners can delete remote config"
 
 create index if not exists app_remote_config_public_key_idx
   on public.app_remote_config (key) where is_public = true;
+
+insert into public.app_remote_config (key, value, is_public, description)
+values
+  ('app.maintenance.enabled', 'false'::jsonb, true, 'Temporarily show the maintenance screen in the Android app'),
+  ('app.maintenance.message', '"Freelance Hub is temporarily under maintenance. Please try again soon."'::jsonb, true, 'Message shown while maintenance mode is enabled')
+on conflict (key) do nothing;
