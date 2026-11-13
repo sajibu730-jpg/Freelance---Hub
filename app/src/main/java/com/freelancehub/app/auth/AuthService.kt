@@ -358,12 +358,15 @@ class AuthService(context: Context) {
                     .put("country", country.trim())
                     .put("gender", gender.trim())
                     .put("updated_at", java.time.Instant.now().toString())
+                    // This method is called only after all six mandatory signup pages succeed.
+                    .put("signup_completed_at", java.time.Instant.now().toString())
                 payload.put("birthday", parsedBirthday.toString())
                 val response = signupProfileUpsert(payload, access)
                 require(response.length() == 1 &&
                     response.optJSONObject(0)?.optString("display_name") == name.trim() &&
                     response.optJSONObject(0)?.optString("mobile_number") == phone &&
-                    response.optJSONObject(0)?.optBoolean("mobile_verified", false) == authPhoneVerified) {
+                    response.optJSONObject(0)?.optBoolean("mobile_verified", false) == authPhoneVerified &&
+                    response.optJSONObject(0)?.optString("signup_completed_at")?.isNotBlank() == true) {
                     "Supabase did not confirm that the profile and mobile verification status were saved."
                 }
                 tokenStore.saveSession(pending.accessToken, pending.refreshToken)
