@@ -26,6 +26,18 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Validate dashboard JavaScript
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("owner-dashboard/index.html").read_text(encoding="utf-8")
+          match = re.search(r'<script type="module">(.*?)</script>', html, re.S)
+          if not match:
+              raise SystemExit("Dashboard module script was not found")
+          Path("/tmp/owner-dashboard.mjs").write_text(match.group(1), encoding="utf-8")
+          PY
+          node --check /tmp/owner-dashboard.mjs
       - name: Upload dashboard
         uses: actions/upload-pages-artifact@v3
         with:
