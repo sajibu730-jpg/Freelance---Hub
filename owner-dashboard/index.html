@@ -34,7 +34,7 @@ async function continueAfterFirstFactor(user){
   const {data:factors,error:factorError}=await supabase.auth.mfa.listFactors();if(factorError)throw factorError;
   const factor=(factors?.totp||[]).find(x=>x.status==="verified");if(!factor)throw Error("Your account requires MFA, but no verified authenticator is available.");
   const {data:challenge,error:challengeError}=await supabase.auth.mfa.challenge({factorId:factor.id});if(challengeError)throw challengeError;
-  loginMfaFactorId=factor.id;loginMfaChallengeId=challenge.id;$("login-form").classList.add("hidden");$("mfa-login").classList.remove("hidden");$("mfa-login-email").textContent=user.email||"Owner account";$("mfa-login-code").value="";status("mfa-login-status","Authenticator challenge sent to your app.");return false;
+  loginMfaFactorId=factor.id;loginMfaChallengeId=challenge.id;$("login-form").classList.add("hidden");$("mfa-login").classList.remove("hidden");$("mfa-login-email").textContent=user.email||"Owner account";$("mfa-login-code").value="";status("mfa-login-status","Open your authenticator app and enter its current 6-digit code.");return false;
  }
  const access=await verifyDashboardAccess(user);$("mfa-login").classList.add("hidden");$("login-form").classList.remove("hidden");enter(user,access);return true;
 }
