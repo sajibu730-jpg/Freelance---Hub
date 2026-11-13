@@ -121,7 +121,7 @@ $("generate-recovery").addEventListener("click",async()=>{
  if(!confirm("Generate 10 new recovery codes? Any previous unused codes will stop working."))return;
  $("generate-recovery").disabled=true;status("mfa-status","Generating recovery codes…");
  try{const {data,error}=await supabase.functions.invoke("owner-security",{body:{action:"generate_recovery_codes"}});if(error)throw error;if(!data?.success)throw Error(data?.error||"Could not generate codes.");
-  lastRecoveryCodes=data.codes.join("\n");$("recovery-output").textContent=lastRecoveryCodes;$("recovery-output").classList.remove("hidden");$("copy-recovery").classList.remove("hidden");status("mfa-status","10 recovery codes generated. Save them offline now.");await loadSecurity();
+  lastRecoveryCodes=data.codes.join("\n");$("recovery-output").value=lastRecoveryCodes;$("recovery-output").classList.remove("hidden");$("copy-recovery").classList.remove("hidden");status("mfa-status","10 recovery codes generated. Save them offline now.");await loadSecurity();
  }catch(err){status("mfa-status",err.message||"Could not generate recovery codes.",true);$("generate-recovery").disabled=false}
 });
 function selectForManualCopy(fieldId){
