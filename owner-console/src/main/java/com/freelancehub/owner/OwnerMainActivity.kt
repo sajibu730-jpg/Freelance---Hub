@@ -67,8 +67,8 @@ class OwnerMainActivity : Activity() {
             }
             webChromeClient = object : WebChromeClient() {
                 override fun onProgressChanged(view: WebView, newProgress: Int) {
-                    progress.progress = newProgress
-                    progress.visibility = if (newProgress >= 100) View.GONE else View.VISIBLE
+                    this@OwnerMainActivity.progress.progress = newProgress
+                    this@OwnerMainActivity.progress.visibility = if (newProgress >= 100) View.GONE else View.VISIBLE
                 }
             }
         }
