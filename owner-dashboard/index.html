@@ -39,7 +39,7 @@ async function continueAfterFirstFactor(user){
  const access=await verifyDashboardAccess(user);$("mfa-login").classList.add("hidden");$("login-form").classList.remove("hidden");enter(user,access);return true;
 }
 $("mfa-login-submit").addEventListener("click",async()=>{
- const code=$("mfa-login-code").value.trim();if(!/^\\d{6}$/.test(code)||!loginMfaFactorId||!loginMfaChallengeId){status("mfa-login-status","Enter the current 6-digit authenticator code.",true);return}
+ const code=$("mfa-login-code").value.trim();if(!/^\d{6}$/.test(code)||!loginMfaFactorId||!loginMfaChallengeId){status("mfa-login-status","Enter the current 6-digit authenticator code.",true);return}
  $("mfa-login-submit").disabled=true;status("mfa-login-status","Verifying…");
  try{const {error}=await supabase.auth.mfa.verify({factorId:loginMfaFactorId,challengeId:loginMfaChallengeId,code});if(error)throw error;
   const {data,error:userError}=await supabase.auth.getUser();if(userError||!data.user)throw userError||Error("Could not verify the Owner session.");
