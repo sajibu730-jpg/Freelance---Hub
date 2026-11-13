@@ -45,5 +45,8 @@ jobs:
           grep -q "Run check now" /tmp/owner-dashboard.html
           grep -q "Platform Overview" /tmp/owner-dashboard.html
           grep -q "refresh-overview" /tmp/owner-dashboard.html
+          grep -q "Owner Security" /tmp/owner-dashboard.html
+          grep -q "owner-security" /tmp/owner-dashboard.html
+          grep -q "Authenticator MFA" /tmp/owner-dashboard.html
           grep -q "owner-analytics" /tmp/owner-dashboard.html
           echo "Owner Dashboard is live with System Monitoring and Overview analytics."
