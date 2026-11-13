@@ -50,3 +50,15 @@ The Owner-only Overview panel reads aggregate statistics from the authenticated 
 Authenticated clients on supported platforms can call `track-platform-activity` with their user JWT and a coarse platform/event label. The Android app records sign-in, restored sessions, and foreground resumes. Future web/iOS clients should call the same function after authentication. The activity table stores one latest-activity row per user and platform; active-user totals use distinct user IDs across platforms. No message text, screen content, IP address, or hardware fingerprint is collected.
 
 Historical active-user counts are not available before tracking was installed. Revenue is intentionally omitted until a verified payment ledger is connected. Invited read-only Dashboard accounts do not receive Overview or management access.
+
+
+## Owner Security and recovery
+
+- The Owner Dashboard includes an **Owner Security** panel for TOTP Authenticator MFA, recovery-code rotation, and registered-browser inventory.
+- Once a verified TOTP factor exists, the Dashboard sign-in flow asks for a fresh 6-digit authenticator code before showing the Owner Console.
+- Owner AI, analytics, invitation management, manual monitoring, and sensitive remote-config / report access enforce AAL2 when a verified TOTP factor exists.
+- The Owner can generate 10 one-time emergency recovery codes after completing MFA. Only SHA-256 hashes are stored; plaintext codes are returned once and must be saved offline. Codes expire after 365 days; generating a new set retires unused codes from the previous set.
+- Emergency recovery requires a signed-in Owner session plus one unused recovery code. It retires all remaining recovery codes, revokes all registered-browser records, and requests global Supabase Auth session revocation. The Owner must sign in again, enroll a new authenticator, and generate fresh recovery codes.
+- Registered browsers are an inventory and revocation record, not a hardware-backed authentication factor. Revoking a browser record alone does not revoke its active Auth session; use emergency recovery to revoke all sessions.
+- Supabase Authenticator TOTP is free to use. The Owner must scan the QR code (or enter the manual secret) and verify a live code before MFA is active.
+- Do not enable MFA until the Owner has access to an authenticator app and a safe place to store the recovery codes.
