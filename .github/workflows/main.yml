@@ -38,10 +38,16 @@ jobs:
           FREELANCE_HUB_API_URL: https://imffbmwdlenhmhxopwoq.supabase.co
           FREELANCE_HUB_PROJECT_ID: imffbmwdlenhmhxopwoq
           FREELANCE_HUB_SUPABASE_ANON_KEY: ${{ secrets.FREELANCE_HUB_SUPABASE_ANON_KEY }}
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug :owner-console:assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Freelance-Hub-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload Owner Dashboard APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Freelance-Hub-Owner-Dashboard-apk
+          path: owner-console/build/outputs/apk/debug/*.apk
