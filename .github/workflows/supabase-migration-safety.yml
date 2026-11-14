@@ -17,7 +17,9 @@ on:
       - "supabase/functions/owner-workforce-control/**"
       - "docs/drafts/owner-workforce-invitations.draft.md"
       - "docs/drafts/system-evolution-schema.draft.sql"
+      - "docs/drafts/system-evolution-approval-rpc.draft.sql"
       - "tests/system_evolution_schema_draft.assertions.sql"
+      - "tests/system_evolution_approval_rpc_draft.assertions.sql"
       - "tests/workforce_invitations_draft.assertions.sql"
       - ".github/workflows/supabase-migration-safety.yml"
 
@@ -106,6 +108,12 @@ jobs:
           CREATE ROLE authenticated NOLOGIN;
           CREATE ROLE service_role NOLOGIN BYPASSRLS;
           CREATE SCHEMA auth;
+          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $
+            SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
+          $;
+          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $
+            SELECT coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
+          $;
           CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, invited_at timestamptz, email_confirmed_at timestamptz);
           CREATE TABLE public.app_admins (user_id uuid PRIMARY KEY REFERENCES auth.users(id), role text NOT NULL, is_active boolean NOT NULL DEFAULT true);
           INSERT INTO auth.users (id) VALUES ('99999999-9999-4999-8999-999999999999');
@@ -125,6 +133,13 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f docs/drafts/system-evolution-schema.draft.sql
+
+      - name: Apply draft Owner AAL2 approval RPC to disposable PostgreSQL only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \\
+            -f docs/drafts/system-evolution-approval-rpc.draft.sql
 
       - name: Apply draft atomic workforce RPCs to disposable PostgreSQL only
         env:
@@ -146,6 +161,13 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f tests/system_evolution_schema_draft.assertions.sql
+
+      - name: Verify System Evolution Owner AAL2 approval RPC in disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \\
+            -f tests/system_evolution_approval_rpc_draft.assertions.sql
 
       - name: Verify atomic workforce RPC permissions and behavior
         env:
