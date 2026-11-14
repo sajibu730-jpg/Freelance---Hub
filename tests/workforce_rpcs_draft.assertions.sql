@@ -209,6 +209,8 @@ set role service_role;
 do $$
 declare
   v_member jsonb;
+  v_task jsonb;
+  v_task_id uuid;
   v_member_id uuid := '55555555-5555-4555-8555-555555555555';
 begin
   -- Primary Owner adds an existing Auth account to the workforce.
@@ -239,6 +241,28 @@ begin
   if v_member ->> 'role' <> 'qa' or jsonb_array_length(v_member -> 'project_scopes') <> 2 then
     raise exception 'Owner role/scope update failed.';
   end if;
+
+  -- Existing open assignments must be resolved before a role/scope change.
+  v_task := public.owner_workforce_create_task(
+    '22222222-2222-4222-8222-222222222222',
+    'freelance-hub', 'Open QA assignment', 'Must be reassigned before role change', 'general', 'normal',
+    null, 'dddddddd-dddd-4ddd-8ddd-ddddddddddd1'
+  );
+  v_task_id := (v_task ->> 'id')::uuid;
+  perform public.owner_workforce_assign_task(
+    '22222222-2222-4222-8222-222222222222',
+    v_task_id, v_member_id, 'dddddddd-dddd-4ddd-8ddd-ddddddddddd2'
+  );
+  begin
+    perform public.owner_workforce_set_member(
+      '99999999-9999-4999-8999-999999999999',
+      v_member_id, 'support', array['freelance-hub'],
+      'dddddddd-dddd-4ddd-8ddd-ddddddddddd3'
+    );
+    raise exception 'Owner changed a member role while an incompatible open task remained assigned.';
+  exception when invalid_parameter_value then
+    null;
+  end;
 
   v_member := public.owner_workforce_set_member_status(
     '99999999-9999-4999-8999-999999999999',
