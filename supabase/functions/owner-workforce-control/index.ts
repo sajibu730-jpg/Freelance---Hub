@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { dispatchWorkforceInvitation, type InvitationStatus } from "./invitation-lifecycle.ts";
 import {
   authorizeAssignedTaskMutation,
   authorizePrimaryOwner,
@@ -16,6 +17,7 @@ import {
   parseWorkforceRole,
   parseProjectScopes,
   parseMemberStatus,
+  parseInvitationEmail,
 } from "./request.ts";
 
 const corsHeaders = {
@@ -52,10 +54,19 @@ Deno.serve(async (req: Request) => {
     const action = body.action;
     const projectKey = text(body.project_key, 100);
     const requestId = body.request_id;
-    if (action !== "list_members" && action !== "list_member_events" && action !== "set_member" && action !== "set_member_status" && !projectKey) {
+    const noProjectActions = [
+      "list_members", "list_member_events", "set_member", "set_member_status",
+      "list_invitations", "invite_member", "accept_invitation",
+      "cancel_invitation", "reconcile_invitation",
+    ];
+    if (!noProjectActions.includes(String(action)) && !projectKey) {
       return json({ success: false, error: "A valid project_key is required." }, 400);
     }
-    if (action !== "list_tasks" && action !== "list_members" && action !== "list_member_events" && !isUuid(requestId)) {
+    const noRequestIdActions = [
+      "list_tasks", "list_members", "list_member_events", "list_invitations",
+      "accept_invitation", "cancel_invitation", "reconcile_invitation",
+    ];
+    if (!noRequestIdActions.includes(String(action)) && !isUuid(requestId)) {
       return json({ success: false, error: "A valid request_id is required for this action." }, 400);
     }
 
@@ -82,6 +93,202 @@ Deno.serve(async (req: Request) => {
     // Narrow the large generated Supabase client type to the small lookup contract.
     const membershipClient = admin as unknown as StaffMembershipLookup;
     const ownerClient = admin as unknown as OwnerLookup;
+
+    if (action === "list_invitations") {
+      const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
+      if (!owner.ok) return json({ success: false, error: owner.error }, owner.status);
+      const { data, error } = await admin.rpc("owner_workforce_list_invitations", {
+        p_actor_user_id: actorId,
+        p_limit: 50,
+      });
+      if (error) {
+        console.error("Workforce list_invitations RPC failed", error.code ?? "unknown");
+        return json({ success: false, error: "Invitations could not be loaded." }, rpcErrorStatus(error));
+      }
+      return json({ success: true, invitations: data ?? [] });
+    }
+
+    if (action === "invite_member") {
+      const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
+      if (!owner.ok) return json({ success: false, error: owner.error }, owner.status);
+
+      const email = parseInvitationEmail(body.email);
+      const role = parseWorkforceRole(body.role);
+      const projectScopes = parseProjectScopes(body.project_scopes);
+      if (!email || !role || !projectScopes) {
+        return json({ success: false, error: "A valid email, workforce role, and 1 to 50 unique project scopes are required." }, 400);
+      }
+
+      const { data: prepared, error: prepareError } = await admin.rpc("owner_workforce_prepare_invitation", {
+        p_actor_user_id: actorId,
+        p_email: email,
+        p_role: role,
+        p_project_scopes: projectScopes,
+        p_request_id: requestId,
+      });
+      if (prepareError) {
+        console.error("Workforce prepare_invitation RPC failed", prepareError.code ?? "unknown");
+        return json({ success: false, error: "Invitation could not be prepared." }, rpcErrorStatus(prepareError));
+      }
+      const invitationId = prepared?.id;
+      if (!isUuid(invitationId)) {
+        return json({ success: false, error: "Invitation was prepared but its identifier could not be confirmed." }, 500);
+      }
+
+      const dispatch = await dispatchWorkforceInvitation(
+        invitationId,
+        {
+          async claimForDispatch(id) {
+            const { data, error } = await admin.rpc("owner_workforce_claim_invitation_dispatch", {
+              p_actor_user_id: actorId,
+              p_invitation_id: id,
+            });
+            if (error) return { claimed: false, invitation: null, error: error.code ?? "claim_failed" };
+            const row = data?.invitation;
+            if (!row || !isUuid(row.id) || typeof row.email !== "string") {
+              return { claimed: false, invitation: null, error: "invalid_claim_response" };
+            }
+            return {
+              claimed: data.claimed === true,
+              invitation: {
+                id: row.id,
+                email: row.email,
+                status: row.status as InvitationStatus,
+                auth_user_id: isUuid(row.auth_user_id) ? row.auth_user_id : null,
+              },
+            };
+          },
+          async recordSent(id, authUserId) {
+            const { error } = await admin.rpc("owner_workforce_record_invitation_sent", {
+              p_actor_user_id: actorId,
+              p_invitation_id: id,
+              p_auth_user_id: authUserId,
+            });
+            return { ok: !error, error: error?.code };
+          },
+          async markNeedsReview(id, reason, authUserId) {
+            const { error } = await admin.rpc("owner_workforce_mark_invitation_review", {
+              p_actor_user_id: actorId,
+              p_invitation_id: id,
+              p_reason: reason,
+              p_auth_user_id: authUserId ?? null,
+            });
+            return { ok: !error };
+          },
+        },
+        {
+          async inviteUserByEmail(targetEmail) {
+            const { data, error } = await admin.auth.admin.inviteUserByEmail(targetEmail);
+            return { userId: data.user?.id ?? null, error };
+          },
+        },
+      );
+
+      if (dispatch.outcome === "sent") {
+        return json({ success: true, outcome: "sent", invitation_id: invitationId, auth_user_id: dispatch.authUserId });
+      }
+      if (dispatch.outcome === "not_claimed") {
+        return json({
+          success: false,
+          outcome: "not_claimed",
+          invitation_id: invitationId,
+          status: dispatch.status,
+          error: "This invitation is already being processed. Do not send it again.",
+        }, 409);
+      }
+      if (dispatch.outcome === "reconciliation_required") {
+        return json({
+          success: true,
+          outcome: "needs_review",
+          invitation_id: invitationId,
+          reason: dispatch.reason,
+          auth_user_id: dispatch.authUserId ?? null,
+          message: "The Auth result is uncertain. The invitation is quarantined for Owner reconciliation; it will not be resent automatically.",
+        }, 202);
+      }
+      return json({
+        success: false,
+        outcome: "claim_failed",
+        invitation_id: invitationId,
+        error: "The invitation dispatch claim could not be confirmed.",
+      }, 500);
+    }
+
+    if (action === "accept_invitation") {
+      const invitationId = body.invitation_id;
+      if (!isUuid(invitationId)) return json({ success: false, error: "A valid invitation_id is required." }, 400);
+      const { data, error } = await admin.rpc("owner_workforce_accept_invitation", {
+        p_actor_user_id: actorId,
+        p_invitation_id: invitationId,
+      });
+      if (error) {
+        console.error("Workforce accept_invitation RPC failed", error.code ?? "unknown");
+        return json({ success: false, error: "Invitation acceptance failed. Verify the invitation email first." }, rpcErrorStatus(error));
+      }
+      return json({ success: true, member: data });
+    }
+
+    if (action === "cancel_invitation") {
+      const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
+      if (!owner.ok) return json({ success: false, error: owner.error }, owner.status);
+      const invitationId = body.invitation_id;
+      const reason = text(body.reason, 1000);
+      if (!isUuid(invitationId) || !reason) {
+        return json({ success: false, error: "A valid invitation_id and cancellation reason are required." }, 400);
+      }
+      const { data, error } = await admin.rpc("owner_workforce_cancel_invitation", {
+        p_actor_user_id: actorId,
+        p_invitation_id: invitationId,
+        p_reason: reason,
+      });
+      if (error) {
+        console.error("Workforce cancel_invitation RPC failed", error.code ?? "unknown");
+        return json({ success: false, error: "Invitation could not be cancelled." }, rpcErrorStatus(error));
+      }
+      return json({ success: true, invitation: data, auth_account_deleted: false });
+    }
+
+    if (action === "reconcile_invitation") {
+      const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
+      if (!owner.ok) return json({ success: false, error: owner.error }, owner.status);
+      const invitationId = body.invitation_id;
+      const resolution = body.resolution;
+      if (!isUuid(invitationId)) return json({ success: false, error: "A valid invitation_id is required." }, 400);
+
+      if (resolution === "confirm_sent") {
+        const authUserId = body.auth_user_id;
+        if (!isUuid(authUserId)) {
+          return json({ success: false, error: "Confirming a sent invitation requires the verified Auth User UUID from the Owner's Auth review." }, 400);
+        }
+        const { data, error } = await admin.rpc("owner_workforce_record_invitation_sent", {
+          p_actor_user_id: actorId,
+          p_invitation_id: invitationId,
+          p_auth_user_id: authUserId,
+        });
+        if (error) {
+          console.error("Workforce invitation reconciliation failed", error.code ?? "unknown");
+          return json({ success: false, error: "Auth user could not be matched to this invitation." }, rpcErrorStatus(error));
+        }
+        return json({ success: true, resolution: "sent", invitation: data });
+      }
+
+      if (resolution === "cancel") {
+        const reason = text(body.reason, 1000);
+        if (!reason) return json({ success: false, error: "A reconciliation reason is required." }, 400);
+        const { data, error } = await admin.rpc("owner_workforce_cancel_invitation", {
+          p_actor_user_id: actorId,
+          p_invitation_id: invitationId,
+          p_reason: reason,
+        });
+        if (error) {
+          console.error("Workforce invitation cancellation failed", error.code ?? "unknown");
+          return json({ success: false, error: "Invitation could not be cancelled." }, rpcErrorStatus(error));
+        }
+        return json({ success: true, resolution: "cancelled", invitation: data, auth_account_deleted: false });
+      }
+
+      return json({ success: false, error: "Resolution must be confirm_sent or cancel." }, 400);
+    }
 
     if (action === "list_members") {
       const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
