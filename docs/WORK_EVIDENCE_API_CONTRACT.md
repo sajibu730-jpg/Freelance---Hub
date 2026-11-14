@@ -64,7 +64,7 @@ Original submission fields and evidence identity are immutable after creation. R
 - No public Storage URL or direct client table grant is created. Evidence tables have RLS enabled and direct `anon`/`authenticated` grants revoked. The Edge Function uses the server-only service role only after verifying the user JWT and relationship.
 - External links must be HTTPS and contain no embedded credentials. The server does not fetch links or generate previews.
 - The current draft does not include antivirus scanning or content disarm/reconstruction. Signature checks are not malware scanning; downloaded files must still be treated as untrusted. Add a quarantine/scanning integration before broad production rollout.
-- The API has a best-effort limit of 20 evidence records per user per rolling 24 hours. This count-based check is not atomic under concurrent requests; replace it with an atomic database rate-limit mechanism before production rollout.
+- The API enforces a 20-record per-user rolling 24-hour limit through a database RPC serialized with a per-user transaction advisory lock. The quota ledger is inaccessible to API roles; the Edge Function can execute only the quota-claim RPC. Repeated request IDs are idempotent and do not consume additional slots.
 - Evidence is not automatically deleted. A retention policy, legal hold process, user deletion rules, and owner export procedure require explicit policy decisions before production.
 
 ## Owner authorization
