@@ -41,6 +41,7 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
             r"grant\s+[^;]*public\.owner_workforce_(?:member|task)_events",
         )
         self.assertNotRegex(SQL, r"grant\s+[^;]*public\.owner_release_events")
+        self.assertNotRegex(SQL, r"grant\s+[^;]*public\.owner_workforce_invitation_events")
 
     def test_event_tables_have_unique_request_ids(self):
         for table in (
