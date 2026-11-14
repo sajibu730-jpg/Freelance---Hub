@@ -138,3 +138,8 @@ This first safe phase intentionally does not create Auth users or send invitatio
 
 
 The Owner-only \`list_member_events\` action returns a bounded, newest-first membership audit history (maximum 100 records). The event table remains inaccessible to API roles; the read is performed by a SECURITY DEFINER function that checks the active primary Owner row, while the Edge Function separately requires AAL2.
+
+
+## Staff invitation safety extension (draft)
+
+The recoverable dispatch design is documented in `docs/drafts/owner-workforce-invitations.draft.md` and its side-effect-injected coordinator is in `supabase/functions/owner-workforce-control/invitation-lifecycle.ts`. Invitation email delivery is an external Auth side effect and cannot be made atomic with a database transaction. The dispatch coordinator therefore requires a durable compare-and-set claim before Auth is called, records the returned Auth user UUID, and quarantines ambiguous Auth/network/database outcomes for Owner reconciliation. It never automatically retries an uncertain send and never deletes an Auth user as compensation. The coordinator is tested with Deno fakes but is not wired to the Edge Function or deployed. Invitation persistence RPCs, verified-email acceptance, and Owner reconciliation remain pending.
