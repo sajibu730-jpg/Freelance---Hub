@@ -879,7 +879,7 @@ declare
   v_auth_email text;
 begin
   if p_actor_user_id is null or p_invitation_id is null
-     or p_reason not in ('auth_error', 'auth_exception', 'record_sent_failed') then
+     or p_reason is null or p_reason not in ('auth_error', 'auth_exception', 'record_sent_failed') then
     raise exception using errcode = '22023', message = 'Invalid invitation review details.';
   end if;
   if not exists (
@@ -979,8 +979,9 @@ begin
 
   insert into public.owner_workforce_member_events
     (member_user_id, actor_user_id, event_type, details)
-  values (p_actor_user_id, v_invite.invited_by, 'added',
-          pg_catalog.jsonb_build_object('source', 'invitation', 'invitation_id', p_invitation_id));
+  values (p_actor_user_id, p_actor_user_id, 'added',
+          pg_catalog.jsonb_build_object('source', 'invitation', 'invitation_id', p_invitation_id,
+            'invited_by', v_invite.invited_by));
 
   insert into public.owner_workforce_invitation_events
     (invitation_id, actor_user_id, event_type, details)
