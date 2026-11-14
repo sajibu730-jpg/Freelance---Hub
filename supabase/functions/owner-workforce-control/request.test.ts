@@ -104,3 +104,11 @@ Deno.test("Owner member status parser allows only active and suspended", () => {
     if (parseMemberStatus(status) !== null) throw new Error("invalid member status accepted");
   }
 });
+
+
+Deno.test("Owner audit history request does not require a project or mutation id", () => {
+  const body = parseWorkforceBody('{"action":"list_member_events","limit":50}');
+  if (!body.ok || body.body.action !== "list_member_events") {
+    throw new Error("valid Owner audit history request was rejected");
+  }
+});
