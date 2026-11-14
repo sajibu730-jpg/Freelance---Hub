@@ -1,10 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEqual, isExpectedEvidenceStoragePath } from "./validation.ts";
 
 const BUCKET = "work-evidence-private";
 const BATCH_SIZE = 50;
-const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
-const STORAGE_PATH = new RegExp(`^${UUID}/${UUID}/proof$`, "i");
-
 function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -13,15 +11,6 @@ function reply(body: unknown, status = 200) {
       "Cache-Control": "no-store",
     },
   });
-}
-
-function constantTimeEqual(left: string, right: string): boolean {
-  const length = Math.max(left.length, right.length);
-  let difference = left.length ^ right.length;
-  for (let i = 0; i < length; i++) {
-    difference |= (left.charCodeAt(i) || 0) ^ (right.charCodeAt(i) || 0);
-  }
-  return difference === 0;
 }
 
 Deno.serve(async (req: Request) => {
@@ -40,6 +29,10 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceRoleKey) {
     return reply({ success: false, error: "Server configuration is incomplete." }, 503);
+  }
+  const bearer = req.headers.get("Authorization")?.match(/^Bearer\\s+(.+)$/i)?.[1] || "";
+  if (!constantTimeEqual(bearer, serviceRoleKey)) {
+    return reply({ success: false, error: "Unauthorized." }, 401);
   }
 
   const admin = createClient(url, serviceRoleKey, {
@@ -60,7 +53,7 @@ Deno.serve(async (req: Request) => {
 
     for (const job of jobs || []) {
       try {
-        if (typeof job.storage_path !== "string" || !STORAGE_PATH.test(job.storage_path)) {
+        if (!isExpectedEvidenceStoragePath(job.storage_path)) {
           throw new Error("Storage path failed the expected evidence-path check.");
         }
 
