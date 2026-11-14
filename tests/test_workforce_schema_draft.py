@@ -25,6 +25,16 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
         self.assertRegex(SQL, r"grant all on table[\s\S]*to service_role")
         self.assertNotRegex(SQL, r"grant\s+[^;]*\b(?:anon|authenticated)\b")
 
+    def test_audit_tables_are_append_only_for_service_role(self):
+        self.assertRegex(
+            SQL,
+            r"grant select, insert on table public\\.owner_workforce_member_events,[\\s\\S]*?public\\.owner_release_events\\s+to service_role",
+        )
+        self.assertNotRegex(
+            SQL,
+            r"grant\\s+(?:all|update|delete)[^;]*owner_workforce_(?:member_events|task_events)|grant\\s+(?:all|update|delete)[^;]*owner_release_events",
+        )
+
     def test_no_privileged_definer_function_is_hidden_in_draft(self):
         self.assertNotRegex(SQL, r"security\s+definer")
 
