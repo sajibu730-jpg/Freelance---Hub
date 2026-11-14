@@ -80,8 +80,8 @@ No system can guarantee zero defects. ZFPS is designed to prevent detectable fai
 ## Initial implementation sequence
 
 1. Add PR checks for Owner Dashboard source and preserve main-only deployment.
-2. Build Workforce Control and System Evolution UI with server-enforced Owner permissions.
-3. Add least-privilege staff identities, task assignments, audit events, and operating-mode settings.
+2. Add a guarded Workforce Control UI and server-enforced Owner member/task APIs (draft implementation; not deployed).
+3. Complete least-privilege staff identities, task assignments, audit events, and operating-mode settings.
 4. Add release records, approvals, preflight checks, stable-version pointer, and rollback orchestration.
 5. Add staging verification for database migrations and Edge Functions.
 6. Connect Android/web release pipelines and critical-flow regression suites.
@@ -91,7 +91,7 @@ No system can guarantee zero defects. ZFPS is designed to prevent detectable fai
 
 - The Owner AI Assistant saves drafts to `owner_ai_requests`; its prompt explicitly prohibits deployment or direct settings changes.
 - Existing Owner Dashboard has Overview, AI Assistant, AI Request Queue, Remote Settings, System Monitoring, Device Access, and Owner Security.
-- No Workforce Control Center or System Evolution Center was found in the current dashboard.
+- A draft Workforce Control panel is now present in the PR dashboard, with member list, add/update, suspend/reactivate, and audit-history UI. It is intentionally disabled while the backend remains undeployed.
 - Existing Android CI builds both Android APKs for pull requests to `main`.
 - Owner Dashboard Pages deploys on pushes to `main`; it already runs a JavaScript syntax check before publishing.
 - Existing database includes `app_admins`, `owner_ai_requests`, `owner_system_reports`, `owner_device_access`, `user_platform_activity`, and app business tables. No workforce task, release approval, or release history tables were found in the schema inventory.
@@ -100,3 +100,13 @@ No system can guarantee zero defects. ZFPS is designed to prevent detectable fai
 ## Production safety boundary
 
 This specification and PR checks do not themselves activate Workforce Mode, create staff accounts, change Supabase production schema, or install a production rollback service. Those require separately reviewed implementation, staging tests, and Owner-approved deployment.
+
+
+## Workforce implementation progress (draft PR, 2026-11-14)
+
+- Added server-side Owner AAL2-protected actions to list members, add/update an existing Auth account's workforce role and project scopes, suspend/reactivate a member, and read bounded membership audit history.
+- The database RPC layer independently checks the active primary Owner row in `app_admins`; mutations and audit events are written atomically. Audit tables remain inaccessible directly to API roles.
+- The member-management SQL is applied only in disposable PostgreSQL CI. Tests cover Owner-only authorization, idempotency, role/scope changes, suspend/reactivate, audit history, and service-role-only RPC grants.
+- The Owner Dashboard contains a Workforce Control panel, but its API feature flag is deliberately `false`; controls remain disabled until an explicitly approved backend deployment.
+- The first version manages existing Auth user UUIDs only. It does not create accounts or send invitation emails; that workflow needs a separate recoverable invitation design.
+- None of these draft APIs or tables are active in the Production Supabase project.
