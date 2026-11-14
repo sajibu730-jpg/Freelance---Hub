@@ -100,6 +100,9 @@ jobs:
           CREATE ROLE service_role NOLOGIN BYPASSRLS;
           CREATE SCHEMA auth;
           CREATE TABLE auth.users (id uuid PRIMARY KEY);
+          CREATE TABLE public.app_admins (user_id uuid PRIMARY KEY REFERENCES auth.users(id), role text NOT NULL, is_active boolean NOT NULL DEFAULT true);
+          INSERT INTO auth.users (id) VALUES ('99999999-9999-4999-8999-999999999999');
+          INSERT INTO public.app_admins (user_id, role, is_active) VALUES ('99999999-9999-4999-8999-999999999999', 'owner', true);
           SQL
 
       - name: Apply draft to disposable PostgreSQL only
