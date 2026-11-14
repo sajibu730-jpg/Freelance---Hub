@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
   if (!url || !serviceRoleKey) {
     return reply({ success: false, error: "Server configuration is incomplete." }, 503);
   }
-  const bearer = req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+  const bearer = req.headers.get("Authorization")?.match(/^Bearer\\s+(.+)$/i)?.[1] || "";
   if (!constantTimeEqual(bearer, serviceRoleKey)) {
     return reply({ success: false, error: "Unauthorized." }, 401);
   }
@@ -53,8 +53,16 @@ Deno.serve(async (req: Request) => {
 
     for (const job of jobs || []) {
       try {
-        if (!isExpectedEvidenceStoragePath(job.storage_path)) {
-          throw new Error("Storage path failed the expected evidence-path check.");
+        // Re-read the authoritative evidence row before touching Storage. A
+        // queue path must match both its submitter and evidence ID exactly.
+        const { data: evidence, error: evidenceError } = await admin.from("work_evidence")
+          .select("id,submitted_by,storage_path,status")
+          .eq("id", job.evidence_id)
+          .maybeSingle();
+        if (evidenceError || !evidence || evidence.status !== "upload_failed"
+          || evidence.storage_path !== job.storage_path
+          || !isExpectedEvidenceStoragePath(job.storage_path, evidence.submitted_by, job.evidence_id)) {
+          throw new Error("Cleanup queue entry does not match its authoritative evidence record.");
         }
 
         const segments = job.storage_path.split("/");
