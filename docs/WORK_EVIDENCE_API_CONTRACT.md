@@ -27,6 +27,7 @@ All requests use JSON and one `action`:
 | `owner_list` | Primary Owner | List evidence for review |
 | `owner_review` | Primary Owner | Mark evidence verified, rejected, or needs-info |
 | `owner_download` | Primary Owner | Obtain a five-minute signed download URL for a private file |
+| `owner_events` | Primary Owner | Read the append-only audit timeline for one evidence record |
 
 Every submission requires a client-generated UUID `request_id` idempotency key. The server derives `submitted_by` from the verified JWT; clients cannot nominate another account.
 
