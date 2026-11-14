@@ -42,7 +42,7 @@ create table public.owner_workforce_member_events (
   request_id uuid not null unique default gen_random_uuid(),
   member_user_id uuid not null references auth.users(id) on delete restrict,
   actor_user_id uuid not null references auth.users(id) on delete restrict,
-  event_type text not null check (event_type in ('invited', 'role_changed', 'scope_changed', 'suspended', 'reactivated')),
+  event_type text not null check (event_type in ('added', 'role_changed', 'scope_changed', 'suspended', 'reactivated')),
   details jsonb not null default '{}'::jsonb check (jsonb_typeof(details) = 'object'),
   created_at timestamptz not null default now()
 );
