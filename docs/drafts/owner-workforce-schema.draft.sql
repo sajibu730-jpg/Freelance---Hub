@@ -116,8 +116,12 @@ revoke all on table public.owner_workforce_members, public.owner_workforce_tasks
   public.owner_release_proposals, public.owner_release_events
   from public, anon, authenticated;
 grant all on table public.owner_workforce_members, public.owner_workforce_tasks,
-  public.owner_workforce_member_events, public.owner_workforce_task_events,
-  public.owner_release_proposals, public.owner_release_events
+  public.owner_release_proposals
+  to service_role;
+
+-- Audit/event history is append-only even for the service-role API client.
+grant select, insert on table public.owner_workforce_member_events,
+  public.owner_workforce_task_events, public.owner_release_events
   to service_role;
 
 -- IMPORTANT: this draft intentionally omits mutation functions and policies.
