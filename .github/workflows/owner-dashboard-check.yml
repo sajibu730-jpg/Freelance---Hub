@@ -6,6 +6,7 @@ on:
     paths:
       - "owner-dashboard/**"
       - "scripts/check_system_evolution_draft.py"
+      - "tests/test_system_evolution_release_draft.py"
       - "docs/drafts/system-evolution-center.draft.md"
       - "docs/drafts/system-evolution-backend-release-approval.draft.md"
       - ".github/workflows/owner-dashboard-check.yml"
@@ -65,6 +66,7 @@ jobs:
           PY
           node --check /tmp/owner-dashboard.mjs
           python3 scripts/check_system_evolution_draft.py
+          python3 -m unittest tests/test_system_evolution_release_draft.py -v
 
       - name: Verify production deployment remains main-only
         run: |
