@@ -136,12 +136,13 @@ create table public.work_evidence_cleanup_queue (
   attempts integer not null default 0 check (attempts >= 0),
   next_attempt_at timestamptz not null default now(),
   lease_started_at timestamptz,
+  lease_token uuid,
   last_error text check (last_error is null or length(last_error) <= 500),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   completed_at timestamptz,
-  check ((state = 'processing' and lease_started_at is not null)
-      or (state <> 'processing' and lease_started_at is null)),
+  check ((state = 'processing' and lease_started_at is not null and lease_token is not null)
+      or (state <> 'processing' and lease_started_at is null and lease_token is null)),
   check ((state = 'completed' and completed_at is not null)
       or (state <> 'completed' and completed_at is null))
 );
@@ -298,7 +299,7 @@ for each row execute function public.prevent_work_evidence_event_mutation();
 -- Claim an atomic batch of due cleanup jobs. Expire uploads only after 24 hours;
 -- retry_upload is separately capped so no fresh two-hour URL overlaps this deadline.
 create or replace function public.claim_work_evidence_cleanup_batch(p_limit integer default 50)
-returns table (evidence_id uuid, storage_path text, attempt_count integer)
+returns table (evidence_id uuid, storage_path text, attempt_count integer, lease_token uuid)
 language plpgsql
 security definer
 set search_path = ''
@@ -317,6 +318,7 @@ begin
   update public.work_evidence_cleanup_queue
   set state = 'pending',
       lease_started_at = null,
+      lease_token = null,
       updated_at = pg_catalog.now()
   where state = 'processing'
     and lease_started_at <= pg_catalog.now() - interval '15 minutes';
@@ -336,18 +338,20 @@ begin
     set state = 'processing',
         attempts = q.attempts + 1,
         lease_started_at = pg_catalog.now(),
+        lease_token = gen_random_uuid(),
         updated_at = pg_catalog.now()
     from candidates c
     where q.evidence_id = c.evidence_id
-    returning q.evidence_id, q.storage_path, q.attempts
+    returning q.evidence_id, q.storage_path, q.attempts, q.lease_token
   )
-  select claimed.evidence_id, claimed.storage_path, claimed.attempts
+  select claimed.evidence_id, claimed.storage_path, claimed.attempts, claimed.lease_token
   from claimed;
 end;
 $cleanup_claim$;
 
 create or replace function public.finish_work_evidence_cleanup(
   p_evidence_id uuid,
+  p_lease_token uuid,
   p_succeeded boolean,
   p_error text default null
 )
@@ -359,13 +363,14 @@ as $cleanup_finish$
 declare
   v_job public.work_evidence_cleanup_queue%rowtype;
 begin
-  if p_evidence_id is null or p_succeeded is null then
+  if p_evidence_id is null or p_lease_token is null or p_succeeded is null then
     raise exception using errcode = '22023', message = 'Evidence ID and cleanup result are required';
   end if;
 
   update public.work_evidence_cleanup_queue
   set state = case when p_succeeded then 'completed' else 'pending' end,
       lease_started_at = null,
+      lease_token = null,
       next_attempt_at = case
         when p_succeeded then next_attempt_at
         else pg_catalog.now() + pg_catalog.make_interval(
@@ -377,6 +382,7 @@ begin
       completed_at = case when p_succeeded then pg_catalog.now() else null end
   where evidence_id = p_evidence_id
     and state = 'processing'
+    and lease_token = p_lease_token
   returning * into v_job;
 
   if not found then return false; end if;
@@ -396,7 +402,7 @@ end;
 $cleanup_finish$;
 
 revoke all on function public.claim_work_evidence_cleanup_batch(integer) from public, anon, authenticated;
-revoke all on function public.finish_work_evidence_cleanup(uuid, boolean, text) from public, anon, authenticated;
+revoke all on function public.finish_work_evidence_cleanup(uuid, uuid, boolean, text) from public, anon, authenticated;
 grant execute on function public.claim_work_evidence_cleanup_batch(integer) to service_role;
 grant execute on function public.finish_work_evidence_cleanup(uuid, boolean, text) to service_role;
 
