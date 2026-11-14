@@ -23,9 +23,10 @@ export function safeHttpsUrl(value: unknown): string | null {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || !url.hostname || url.username || url.password) return null;
-    const host = url.hostname.toLowerCase();
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
     if (host === "localhost" || host.endsWith(".localhost") || host === "127.0.0.1"
       || host === "::1" || host.startsWith("10.") || host.startsWith("192.168.")
+      || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")
       || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host)) return null;
     return url.toString();
   } catch {
@@ -36,7 +37,12 @@ export function safeHttpsUrl(value: unknown): string | null {
 export function safeOriginalFilename(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const name = value.trim();
-  if (!name || name.length > 128 || /[\\/\\0-\\x1f\\x7f]/.test(name) || name === "." || name === "..") return null;
+  if (!name || name.length > 128 || name === "." || name === ".."
+    || name.includes("/") || name.includes("\\")
+    || [...name].some((character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127;
+    })) return null;
   return name;
 }
 
