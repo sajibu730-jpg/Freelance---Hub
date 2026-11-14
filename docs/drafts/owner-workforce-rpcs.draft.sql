@@ -410,3 +410,208 @@ comment on function public.owner_workforce_update_task_status(uuid, uuid, text, 
   is 'DRAFT ONLY. Service-role Edge Function RPC. Assigned Developer/QA only; strict transitions and evidence. Atomic update and audit event.';
 comment on function public.owner_workforce_append_task_evidence(uuid, uuid, text, uuid)
   is 'DRAFT ONLY. Service-role Edge Function RPC. Assigned Developer/QA only. Atomic append-only evidence event.';
+
+
+-- Owner-only workforce membership administration.
+-- AAL2 is enforced by the Edge Function; this database layer independently
+-- verifies that the supplied actor is the active primary Owner.
+create or replace function public.owner_workforce_set_member(
+  p_actor_user_id uuid,
+  p_member_user_id uuid,
+  p_role text,
+  p_project_scopes text[],
+  p_request_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_owner_role text;
+  v_owner_active boolean;
+  v_member public.owner_workforce_members%rowtype;
+  v_existing public.owner_workforce_member_events%rowtype;
+  v_event_type text;
+  v_old_role text;
+  v_old_scopes text[];
+  v_invalid_scopes integer;
+begin
+  if p_actor_user_id is null or p_member_user_id is null or p_request_id is null
+     or p_actor_user_id = p_member_user_id
+     or p_role not in ('project_manager', 'developer', 'qa', 'support')
+     or p_project_scopes is null or cardinality(p_project_scopes) < 1
+     or cardinality(p_project_scopes) > 50 then
+    raise exception using errcode = '22023', message = 'Invalid workforce member details.';
+  end if;
+
+  select count(*) into v_invalid_scopes
+  from pg_catalog.unnest(p_project_scopes) as scope
+  where scope is null or length(scope) not between 1 and 100 or scope <> btrim(scope);
+  if v_invalid_scopes > 0
+     or cardinality(p_project_scopes) <> (
+       select count(distinct scope) from pg_catalog.unnest(p_project_scopes) as scope
+     ) then
+    raise exception using errcode = '22023', message = 'Project scopes must be unique, trimmed keys of 1 to 100 characters.';
+  end if;
+
+  select a.role, a.is_active into v_owner_role, v_owner_active
+  from public.app_admins a
+  where a.user_id = p_actor_user_id;
+  if not found or v_owner_role <> 'owner' or v_owner_active is distinct from true then
+    raise exception using errcode = '42501', message = 'Active primary Owner authorization is required.';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(p_request_id::text));
+
+  select e.* into v_existing
+  from public.owner_workforce_member_events e
+  where e.request_id = p_request_id;
+  if found then
+    if v_existing.actor_user_id <> p_actor_user_id
+       or v_existing.member_user_id <> p_member_user_id
+       or v_existing.details ->> 'operation' is distinct from 'set_member'
+       or v_existing.details ->> 'role' is distinct from p_role
+       or v_existing.details -> 'project_scopes' is distinct from pg_catalog.to_jsonb(p_project_scopes) then
+      raise exception using errcode = '23505', message = 'Idempotency key was already used.';
+    end if;
+    select m.* into v_member from public.owner_workforce_members m where m.user_id = p_member_user_id;
+    if not found then
+      raise exception using errcode = 'P0002', message = 'Previously managed member no longer exists.';
+    end if;
+    return pg_catalog.to_jsonb(v_member);
+  end if;
+
+  select m.* into v_member
+  from public.owner_workforce_members m
+  where m.user_id = p_member_user_id
+  for update;
+
+  if not found then
+    insert into public.owner_workforce_members
+      (user_id, role, status, project_scopes, invited_by)
+    values
+      (p_member_user_id, p_role, 'active', p_project_scopes, p_actor_user_id)
+    returning * into v_member;
+    v_event_type := 'added';
+    v_old_role := null;
+    v_old_scopes := null;
+  else
+    v_old_role := v_member.role;
+    v_old_scopes := v_member.project_scopes;
+    if v_member.role = p_role and v_member.project_scopes = p_project_scopes then
+      raise exception using errcode = '22023', message = 'No workforce member changes were requested.';
+    end if;
+    update public.owner_workforce_members
+    set role = p_role, project_scopes = p_project_scopes, updated_at = pg_catalog.now()
+    where user_id = p_member_user_id
+    returning * into v_member;
+    v_event_type := case when v_old_role is distinct from p_role then 'role_changed' else 'scope_changed' end;
+  end if;
+
+  insert into public.owner_workforce_member_events
+    (request_id, member_user_id, actor_user_id, event_type, details)
+  values
+    (p_request_id, p_member_user_id, p_actor_user_id, v_event_type,
+     pg_catalog.jsonb_build_object(
+       'operation', 'set_member',
+       'role', p_role,
+       'project_scopes', p_project_scopes,
+       'previous_role', v_old_role,
+       'previous_project_scopes', v_old_scopes
+     ));
+
+  return pg_catalog.to_jsonb(v_member);
+end;
+$function$;
+
+create or replace function public.owner_workforce_set_member_status(
+  p_actor_user_id uuid,
+  p_member_user_id uuid,
+  p_new_status text,
+  p_request_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_owner_role text;
+  v_owner_active boolean;
+  v_member public.owner_workforce_members%rowtype;
+  v_existing public.owner_workforce_member_events%rowtype;
+  v_event_type text;
+begin
+  if p_actor_user_id is null or p_member_user_id is null or p_request_id is null
+     or p_actor_user_id = p_member_user_id
+     or p_new_status not in ('active', 'suspended') then
+    raise exception using errcode = '22023', message = 'Invalid workforce status request.';
+  end if;
+
+  select a.role, a.is_active into v_owner_role, v_owner_active
+  from public.app_admins a
+  where a.user_id = p_actor_user_id;
+  if not found or v_owner_role <> 'owner' or v_owner_active is distinct from true then
+    raise exception using errcode = '42501', message = 'Active primary Owner authorization is required.';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(p_request_id::text));
+
+  select e.* into v_existing
+  from public.owner_workforce_member_events e
+  where e.request_id = p_request_id;
+  if found then
+    if v_existing.actor_user_id <> p_actor_user_id
+       or v_existing.member_user_id <> p_member_user_id
+       or v_existing.details ->> 'operation' is distinct from 'set_member_status'
+       or v_existing.details ->> 'status' is distinct from p_new_status then
+      raise exception using errcode = '23505', message = 'Idempotency key was already used.';
+    end if;
+    select m.* into v_member from public.owner_workforce_members m where m.user_id = p_member_user_id;
+    if not found then
+      raise exception using errcode = 'P0002', message = 'Previously managed member no longer exists.';
+    end if;
+    return pg_catalog.to_jsonb(v_member);
+  end if;
+
+  select m.* into v_member
+  from public.owner_workforce_members m
+  where m.user_id = p_member_user_id
+  for update;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Workforce member not found.';
+  end if;
+  if v_member.status = p_new_status then
+    raise exception using errcode = '22023', message = 'Member already has the requested status.';
+  end if;
+
+  update public.owner_workforce_members
+  set status = p_new_status, updated_at = pg_catalog.now()
+  where user_id = p_member_user_id
+  returning * into v_member;
+
+  v_event_type := case when p_new_status = 'suspended' then 'suspended' else 'reactivated' end;
+  insert into public.owner_workforce_member_events
+    (request_id, member_user_id, actor_user_id, event_type, details)
+  values
+    (p_request_id, p_member_user_id, p_actor_user_id, v_event_type,
+     pg_catalog.jsonb_build_object(
+       'operation', 'set_member_status',
+       'previous_status', case when p_new_status = 'suspended' then 'active' else 'suspended' end,
+       'status', p_new_status
+     ));
+
+  return pg_catalog.to_jsonb(v_member);
+end;
+$function$;
+
+revoke all on function public.owner_workforce_set_member(uuid, uuid, text, text[], uuid) from public, anon, authenticated;
+revoke all on function public.owner_workforce_set_member_status(uuid, uuid, text, uuid) from public, anon, authenticated;
+grant execute on function public.owner_workforce_set_member(uuid, uuid, text, text[], uuid) to service_role;
+grant execute on function public.owner_workforce_set_member_status(uuid, uuid, text, uuid) to service_role;
+
+comment on function public.owner_workforce_set_member(uuid, uuid, text, text[], uuid)
+  is 'DRAFT ONLY. Owner AAL2 Edge Function required; DB also checks active app_admins Owner. Adds or updates existing Auth accounts and writes an atomic member audit event. Does not send invitations.';
+comment on function public.owner_workforce_set_member_status(uuid, uuid, text, uuid)
+  is 'DRAFT ONLY. Owner AAL2 Edge Function required; DB also checks active app_admins Owner. Suspends/reactivates workforce access with an atomic audit event.';
