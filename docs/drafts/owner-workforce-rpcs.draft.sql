@@ -368,7 +368,7 @@ begin
   where m.user_id = p_actor_user_id;
 
   if not found or v_role not in ('developer', 'qa') or v_member_status <> 'active'
-     or v_task.assignee_id <> p_actor_user_id
+     or v_task.assignee_id is distinct from p_actor_user_id
      or not (v_task.project_key = any(coalesce(v_scopes, array[]::text[]))) then
     raise exception using errcode = '42501', message = 'Only the active assigned Developer or QA member may append evidence.';
   end if;
