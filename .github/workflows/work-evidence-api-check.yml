@@ -30,6 +30,8 @@ jobs:
           deno-version: v2.x
       - name: Run pure validation tests
         run: deno test supabase/functions/work-evidence-api/validation.test.ts
+      - name: Run cleanup worker policy tests
+        run: deno test supabase/functions/work-evidence-cleanup/validation.test.ts
       - name: Type-check Edge Function
         run: deno check supabase/functions/work-evidence-api/index.ts
       - name: Type-check cleanup worker
