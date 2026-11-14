@@ -20,6 +20,15 @@ BEGIN
     OR NOT has_table_privilege('service_role', 'public.work_evidence_events', 'INSERT') THEN
     RAISE EXCEPTION 'Edge Function service role grants are incomplete';
   END IF;
+  IF has_table_privilege('anon', 'public.work_evidence_quota_events', 'SELECT')
+    OR has_table_privilege('authenticated', 'public.work_evidence_quota_events', 'SELECT')
+    OR has_table_privilege('service_role', 'public.work_evidence_quota_events', 'SELECT')
+    OR has_table_privilege('service_role', 'public.work_evidence_quota_events', 'INSERT')
+    OR NOT has_function_privilege('service_role', 'public.claim_work_evidence_quota(uuid,uuid)', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.claim_work_evidence_quota(uuid,uuid)', 'EXECUTE')
+    OR has_function_privilege('authenticated', 'public.claim_work_evidence_quota(uuid,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Evidence quota ledger or RPC privileges are unsafe';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM storage.buckets
     WHERE id='work-evidence-private' AND public=false AND file_size_limit=10485760
@@ -33,7 +42,52 @@ BEGIN
 END;
 $$;
 
-INSERT INTO auth.users(id) VALUES ('11111111-1111-4111-8111-111111111111');
+INSERT INTO auth.users(id) VALUES
+  ('11111111-1111-4111-8111-111111111111'),
+  ('33333333-3333-4333-8333-333333333333');
+
+-- Exercise the atomic quota RPC through the only permitted API role.
+SET ROLE service_role;
+DO $
+DECLARE
+  i integer;
+  v_request uuid;
+  v_first_request uuid;
+BEGIN
+  FOR i IN 1..20 LOOP
+    v_request := gen_random_uuid();
+    IF i = 1 THEN v_first_request := v_request; END IF;
+    IF NOT public.claim_work_evidence_quota(
+      '11111111-1111-4111-8111-111111111111', v_request
+    ) THEN
+      RAISE EXCEPTION 'Evidence quota rejected an allowed submission at slot %', i;
+    END IF;
+  END LOOP;
+
+  IF NOT public.claim_work_evidence_quota(
+    '11111111-1111-4111-8111-111111111111', v_first_request
+  ) THEN
+    RAISE EXCEPTION 'Idempotent retry should not consume another quota slot';
+  END IF;
+
+  IF public.claim_work_evidence_quota(
+    '11111111-1111-4111-8111-111111111111',
+    '44444444-4444-4444-8444-444444444444'
+  ) THEN
+    RAISE EXCEPTION 'Twenty-first evidence submission unexpectedly passed';
+  END IF;
+
+  IF NOT public.claim_work_evidence_quota(
+    '33333333-3333-4333-8333-333333333333',
+    '55555555-5555-4555-8555-555555555555'
+  ) THEN
+    RAISE EXCEPTION 'Quota should be isolated per user';
+  END IF;
+END;
+$;
+RESET ROLE;
+
+
 
 INSERT INTO public.work_evidence (
   request_id, submitted_by, origin, evidence_type, title, description, status, submitted_at
