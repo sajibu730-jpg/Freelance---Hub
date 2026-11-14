@@ -146,18 +146,6 @@ revoke all on table public.evolution_candidates, public.evolution_evidence,
 -- No direct grants are intentionally issued. Future narrowly scoped SECURITY DEFINER
 -- functions must be separately reviewed, pin search_path, verify the current primary
 -- Owner and AAL2 inside the transaction, and append audit events atomically.
-),
-  approved_risk_level text not null check (approved_risk_level in ('low', 'medium', 'high', 'critical')),
-  approved_at timestamptz not null default now(),
-  expires_at timestamptz not null,
-  consumed_at timestamptz,
-  invalidated_at timestamptz,
-  invalidation_reason text check (invalidation_reason is null or length(invalidation_reason) <= 1000),
-  created_at timestamptz not null default now(),
-  check (expires_at > approved_at),
-  check ((invalidated_at is null and invalidation_reason is null)
-      or (invalidated_at is not null and invalidation_reason is not null))
-);
 
 create unique index evolution_one_unconsumed_approval_per_candidate_version
   on public.evolution_approvals(candidate_id, candidate_version)
