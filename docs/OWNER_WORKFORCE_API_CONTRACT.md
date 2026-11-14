@@ -38,6 +38,21 @@ The proposed SQL structure is recorded in `docs/drafts/owner-workforce-schema.dr
 
 Foreign keys must target stable UUID identities. Use check constraints for roles, statuses, and risk levels. Use unique/idempotency keys for external request IDs where retries could otherwise create duplicate assignments or release events.
 
+## Draft atomic mutation RPC layer
+
+The non-production SQL draft is `docs/drafts/owner-workforce-rpcs.draft.sql`. It defines four server-only operations:
+
+- `owner_workforce_create_task` — Project Manager may create general tasks; Support may create support/incident tasks.
+- `owner_workforce_assign_task` — Project Manager assigns within project scope to an active member whose role matches the task kind.
+- `owner_workforce_update_task_status` — only the active assigned Developer/QA member may use the permitted status transitions; blocked reason and completion evidence are mandatory when applicable.
+- `owner_workforce_append_task_evidence` — only the active assigned Developer/QA member may append evidence; completed tasks are read-only.
+
+Each operation takes an idempotency request UUID, serializes retries for that request, and commits the task mutation plus one audit event in the same PostgreSQL function transaction. A repeated matching request returns the original task; reusing the request key with a different actor or operation is rejected.
+
+These functions use `SECURITY DEFINER` only because the workforce tables intentionally have no client grants or policies. Every function pins `search_path = ''`, fully qualifies database objects, revokes EXECUTE from `PUBLIC`, `anon`, and `authenticated`, and grants EXECUTE only to `service_role`. This does not make a browser safe to call them: only the trusted Edge Function may hold/use the service-role credential. The Edge Function must validate the user with Auth `getUser(token)` and supply the verified Auth user ID as `p_actor_user_id`; it must never accept that ID from client JSON. Owner-only RPCs are not part of this draft; any such operation must require verified Owner AAL2 in the Edge Function before calling a server-only RPC.
+
+The draft and its disposable PostgreSQL tests are not a Supabase migration and have not been applied to Production. Passing disposable PostgreSQL checks does not prove deployed Supabase Auth integration, PostgREST exposure, Edge Function behavior, or production readiness.
+
 ## Edge Function contract
 
 Single function family: `owner-workforce-control`. Accept POST JSON only; reject unknown actions and oversized fields. Suggested actions:
