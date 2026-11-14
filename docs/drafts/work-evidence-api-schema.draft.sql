@@ -72,7 +72,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $quota$
 declare
   v_count integer;
 begin
@@ -109,7 +109,7 @@ begin
   values (p_submitted_by, p_request_id);
   return true;
 end;
-$;
+$quota$;
 
 revoke all on function public.claim_work_evidence_quota(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.claim_work_evidence_quota(uuid, uuid) to service_role;
