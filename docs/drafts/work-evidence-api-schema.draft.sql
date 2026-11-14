@@ -261,11 +261,13 @@ begin
     (new.id, v_actor, v_event, v_from, new.status, v_details);
 
   -- Any failed pending upload is queued transactionally for idempotent Storage cleanup.
-  if tg_op = 'UPDATE' and old.status = 'upload_pending'
-    and new.status = 'upload_failed' and new.storage_path is not null then
-    insert into public.work_evidence_cleanup_queue (evidence_id, storage_path)
-    values (new.id, new.storage_path)
-    on conflict (evidence_id) do nothing;
+  if tg_op = 'UPDATE' then
+    if old.status = 'upload_pending'
+      and new.status = 'upload_failed' and new.storage_path is not null then
+      insert into public.work_evidence_cleanup_queue (evidence_id, storage_path)
+      values (new.id, new.storage_path)
+      on conflict (evidence_id) do nothing;
+    end if;
   end if;
   return new;
 end;
