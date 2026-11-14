@@ -114,3 +114,17 @@ A test is **PASS** only when its expected result is observed in Staging. Static 
 - Remove synthetic users and test jobs/contracts/submissions from Staging.
 - Revoke temporary test secrets and signed URLs.
 - Keep Production untouched. No migration, Edge Function deployment, bucket creation, or dashboard integration is authorized by this plan.
+
+
+## Pending upload cleanup integration cases (Staging only)
+
+1. Prepare a file upload and leave it incomplete. Confirm it remains `upload_pending` before 24 hours.
+2. Retry URL renewal before 21h45m and confirm a new signed URL is issued; at/after the cutoff, confirm renewal is rejected.
+3. At 24 hours, run the cleanup worker. Confirm the row changes to `upload_failed`, the durable cleanup queue is claimed, and the exact private object is removed if present.
+4. Confirm the evidence row, original metadata, and prior audit history remain. Confirm a `storage_cleanup_completed` event is appended.
+5. Simulate Storage list/remove failure. Confirm the queue returns to `pending`, the error field contains only a generic message, the retry backoff is applied, and a later run completes.
+6. Race `complete_upload` against expiry. Exactly one conditional status transition may win; if expiry wins, no uploaded object may be accepted as submitted.
+7. Simulate worker interruption after claiming. Confirm the 15-minute lease allows a later run to reclaim the job.
+8. Verify only a server scheduler with the platform JWT and the Edge secret can invoke the worker; missing/incorrect secret must fail closed.
+
+Do not configure a production schedule or create any Staging resource until the Owner explicitly approves the environment and cost implications.
