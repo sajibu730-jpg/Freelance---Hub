@@ -404,7 +404,7 @@ $cleanup_finish$;
 revoke all on function public.claim_work_evidence_cleanup_batch(integer) from public, anon, authenticated;
 revoke all on function public.finish_work_evidence_cleanup(uuid, uuid, boolean, text) from public, anon, authenticated;
 grant execute on function public.claim_work_evidence_cleanup_batch(integer) to service_role;
-grant execute on function public.finish_work_evidence_cleanup(uuid, boolean, text) to service_role;
+grant execute on function public.finish_work_evidence_cleanup(uuid, uuid, boolean, text) to service_role;
 
 -- Private bucket; no client Storage policies are created. Upload/download access
 -- is granted only through short-lived signed URLs after Edge Function checks.
