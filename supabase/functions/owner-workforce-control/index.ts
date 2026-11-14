@@ -52,10 +52,10 @@ Deno.serve(async (req: Request) => {
     const action = body.action;
     const projectKey = text(body.project_key, 100);
     const requestId = body.request_id;
-    if (action !== "list_members" && action !== "set_member" && action !== "set_member_status" && !projectKey) {
+    if (action !== "list_members" && action !== "list_member_events" && action !== "set_member" && action !== "set_member_status" && !projectKey) {
       return json({ success: false, error: "A valid project_key is required." }, 400);
     }
-    if (action !== "list_tasks" && action !== "list_members" && !isUuid(requestId)) {
+    if (action !== "list_tasks" && action !== "list_members" && action !== "list_member_events" && !isUuid(requestId)) {
       return json({ success: false, error: "A valid request_id is required for this action." }, 400);
     }
 
@@ -96,6 +96,30 @@ Deno.serve(async (req: Request) => {
         return json({ success: false, error: "Workforce members could not be loaded." }, 500);
       }
       return json({ success: true, members: data ?? [] });
+    }
+
+    if (action === "list_member_events") {
+      const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
+      if (!owner.ok) return json({ success: false, error: owner.error }, owner.status);
+
+      const memberUserId = body.member_user_id === undefined ? null : body.member_user_id;
+      if (memberUserId !== null && !isUuid(memberUserId)) {
+        return json({ success: false, error: "member_user_id must be a valid UUID when supplied." }, 400);
+      }
+      const limit = body.limit === undefined ? 50 : body.limit;
+      if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return json({ success: false, error: "Audit limit must be an integer from 1 to 100." }, 400);
+      }
+      const { data, error } = await admin.rpc("owner_workforce_list_member_events", {
+        p_actor_user_id: actorId,
+        p_member_user_id: memberUserId,
+        p_limit: limit,
+      });
+      if (error) {
+        console.error("Workforce list_member_events RPC failed", error.code ?? "unknown");
+        return json({ success: false, error: "Member audit history could not be loaded." }, rpcErrorStatus(error));
+      }
+      return json({ success: true, events: data ?? [] });
     }
 
     if (action === "set_member" || action === "set_member_status") {
