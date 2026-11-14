@@ -72,3 +72,22 @@ export function parseProjectScopes(value: unknown): string[] | null {
 export function parseMemberStatus(value: unknown): WorkforceMemberStatus | null {
   return value === "active" || value === "suspended" ? value : null;
 }
+
+
+export type InvitationReviewReason = "auth_error" | "auth_exception" | "record_sent_failed";
+
+export function parseInvitationEmail(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const email = value.trim().toLowerCase();
+  if (email.length < 5 || email.length > 254 || /\\s/.test(email)) return null;
+  const parts = email.split("@");
+  if (parts.length !== 2 || !parts[0] || !parts[1] || !parts[1].includes(".")) return null;
+  if (parts[0].length > 64 || parts[1].length > 253) return null;
+  return email;
+}
+
+export function parseInvitationReviewReason(value: unknown): InvitationReviewReason | null {
+  return value === "auth_error" || value === "auth_exception" || value === "record_sent_failed"
+    ? value
+    : null;
+}
