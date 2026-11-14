@@ -110,11 +110,13 @@ declare
   v_actor uuid;
   v_event text;
   v_from text;
+  v_details jsonb := '{}'::jsonb;
 begin
   if tg_op = 'INSERT' then
     v_actor := new.submitted_by;
     v_event := case when new.status = 'submitted' then 'submitted' else 'created' end;
     v_from := null;
+    v_details := jsonb_build_object('origin', new.origin, 'evidence_type', new.evidence_type);
   else
     v_actor := coalesce(new.reviewed_by, new.submitted_by);
     v_from := old.status;
@@ -124,12 +126,15 @@ begin
       when new.status in ('verified', 'rejected', 'needs_info') then 'reviewed'
       else 'submitted'
     end;
+    if new.status in ('verified', 'rejected', 'needs_info') then
+      v_details := jsonb_build_object('review_note', new.review_note);
+    end if;
   end if;
 
   insert into public.work_evidence_events
     (evidence_id, actor_user_id, event_type, from_status, to_status, details)
   values
-    (new.id, v_actor, v_event, v_from, new.status, '{}'::jsonb);
+    (new.id, v_actor, v_event, v_from, new.status, v_details);
   return new;
 end;
 $$;
