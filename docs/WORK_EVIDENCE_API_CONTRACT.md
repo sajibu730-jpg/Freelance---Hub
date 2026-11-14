@@ -88,7 +88,7 @@ The worker is implemented as draft code, but real Supabase Storage behavior, sch
 
 ## Owner authorization
 
-Only the single active `app_admins` record with `role = owner` may list, review, or download evidence. Because the existing `app_admins` schema has no primary-owner flag, the API fails closed if more than one active Owner record exists; invited dashboard viewers and workforce roles are not granted access by this draft. A verified TOTP factor is mandatory, and the request JWT must have AAL2. Missing or unverified TOTP enrollment is denied. The primary Owner must complete authenticator enrollment and verification in Supabase Auth before using the evidence review API.
+Only the single active `app_admins` record with `role = owner` may list, review, or download evidence. Because the existing `app_admins` schema has no primary-owner flag, the API fails closed if more than one active Owner record exists; invited dashboard viewers and workforce roles are not granted access by this draft. A verified TOTP factor is mandatory, and the request JWT must have AAL2. The Edge Function reads the target Owner's factor list through the server-only Auth Admin MFA endpoint and independently checks AAL2 against the presented user JWT; it does not rely on a persisted browser session. Missing or unverified TOTP enrollment is denied. The primary Owner must complete authenticator enrollment and verification in Supabase Auth before using the evidence review API.
 
 ## Audit fields
 
