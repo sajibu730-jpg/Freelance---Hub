@@ -8,7 +8,15 @@ import {
   type OwnerLookup,
   type StaffMembershipLookup,
 } from "../_shared/workforce-auth.ts";
-import { isUuid, parseWorkforceBody, rpcErrorStatus, taskListPolicy } from "./request.ts";
+import {
+  isUuid,
+  parseWorkforceBody,
+  rpcErrorStatus,
+  taskListPolicy,
+  parseWorkforceRole,
+  parseProjectScopes,
+  parseMemberStatus,
+} from "./request.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,7 +52,7 @@ Deno.serve(async (req: Request) => {
     const action = body.action;
     const projectKey = text(body.project_key, 100);
     const requestId = body.request_id;
-    if (action !== "list_members" && !projectKey) {
+    if (action !== "list_members" && action !== "set_member" && action !== "set_member_status" && !projectKey) {
       return json({ success: false, error: "A valid project_key is required." }, 400);
     }
     if (action !== "list_tasks" && action !== "list_members" && !isUuid(requestId)) {
@@ -88,6 +96,52 @@ Deno.serve(async (req: Request) => {
         return json({ success: false, error: "Workforce members could not be loaded." }, 500);
       }
       return json({ success: true, members: data ?? [] });
+    }
+
+    if (action === "set_member" || action === "set_member_status") {
+      const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
+      if (!owner.ok) return json({ success: false, error: owner.error }, owner.status);
+
+      const memberUserId = body.member_user_id;
+      if (!isUuid(memberUserId)) {
+        return json({ success: false, error: "A valid member_user_id is required." }, 400);
+      }
+
+      if (action === "set_member") {
+        const role = parseWorkforceRole(body.role);
+        const projectScopes = parseProjectScopes(body.project_scopes);
+        if (!role || !projectScopes) {
+          return json({ success: false, error: "A valid workforce role and 1 to 50 unique project scopes are required." }, 400);
+        }
+        const { data, error } = await admin.rpc("owner_workforce_set_member", {
+          p_actor_user_id: actorId,
+          p_member_user_id: memberUserId,
+          p_role: role,
+          p_project_scopes: projectScopes,
+          p_request_id: requestId,
+        });
+        if (error) {
+          console.error("Workforce set_member RPC failed", error.code ?? "unknown");
+          return json({ success: false, error: "Workforce member could not be added or updated." }, rpcErrorStatus(error));
+        }
+        return json({ success: true, member: data });
+      }
+
+      const status = parseMemberStatus(body.status);
+      if (!status) {
+        return json({ success: false, error: "Member status must be active or suspended." }, 400);
+      }
+      const { data, error } = await admin.rpc("owner_workforce_set_member_status", {
+        p_actor_user_id: actorId,
+        p_member_user_id: memberUserId,
+        p_new_status: status,
+        p_request_id: requestId,
+      });
+      if (error) {
+        console.error("Workforce set_member_status RPC failed", error.code ?? "unknown");
+        return json({ success: false, error: "Workforce member status could not be changed." }, rpcErrorStatus(error));
+      }
+      return json({ success: true, member: data });
     }
 
     if (!projectKey) {
