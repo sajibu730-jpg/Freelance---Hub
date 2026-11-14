@@ -178,7 +178,7 @@ begin
   if exists (
     select 1 from storage.buckets
     where id = 'work-evidence-private'
-      and (public is true or file_size_limit > 10485760
+      and (public is true or file_size_limit is distinct from 10485760
         or allowed_mime_types is distinct from array['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
   ) then
     raise exception 'Existing work-evidence-private bucket has unsafe settings; manual review required';
