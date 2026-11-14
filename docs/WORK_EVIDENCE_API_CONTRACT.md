@@ -60,7 +60,18 @@ Allowed status transitions:
 
 The database trigger enforces this state machine and prevents review metadata changes outside a valid review transition. Original submission fields and evidence identity are immutable after creation. Database triggers append an audit event in the same transaction as each insert/update; audit events reject UPDATE and DELETE.
 
-**Open lifecycle item:** pending uploads do not yet have an automatic expiry/cleanup worker. Before release, define the retention window and implement a scheduled Staging-tested process that marks expired pending records as `upload_failed`, removes any orphaned private object through the Storage API, and records the cleanup event.
+### Pending-upload expiry and private Storage cleanup
+
+- A file upload remains `upload_pending` for at most **24 hours** from record creation. The evidence record is retained; it is not deleted by cleanup.
+- The API stops issuing renewed two-hour signed upload URLs after **21 hours 45 minutes**, leaving a safety margin before the 24-hour expiry.
+- The cleanup worker first atomically changes expired `upload_pending` rows to `upload_failed`. The same database transaction creates a durable cleanup-queue row and the normal audit event. A concurrent `complete_upload` can win only if its conditional status update commits first; once expiry wins, completion is rejected.
+- The worker claims queue entries with `FOR UPDATE SKIP LOCKED`, a 15-minute processing lease, and batches of at most 50. It removes only the exact expected `{user_uuid}/{evidence_uuid}/proof` object from the private bucket.
+- Missing objects count as already cleaned. Storage failures return the queue entry to `pending` with exponential backoff (30 seconds up to one hour); stale processing leases are reclaimable. Evidence rows and existing audit events remain intact.
+- Successful removals and retry outcomes append system audit events. Raw provider errors, signed URLs, and secrets are never stored in audit details.
+- The separate `work-evidence-cleanup` Edge Function requires the platform JWT check plus a server-only `WORK_EVIDENCE_CLEANUP_SECRET`. The secret must be stored only as an Edge Function secret; never in Git, Android, browser JavaScript, or the Owner Dashboard.
+- Suggested schedule after Staging validation: invoke the worker every 15 minutes using a trusted server-side scheduler. No schedule, secret, Edge Function, SQL, or Storage resource has been configured or deployed by this draft.
+
+The worker is implemented as draft code, but real Supabase Storage behavior, scheduler authentication, retries, and race handling still require Staging integration tests before release.
 
 ## File and privacy controls
 
