@@ -147,9 +147,7 @@ revoke all on table public.evolution_candidates, public.evolution_evidence,
 -- functions must be separately reviewed, pin search_path, verify the current primary
 -- Owner and AAL2 inside the transaction, and append audit events atomically.
 
-create unique index evolution_one_unconsumed_approval_per_candidate_version
-  on public.evolution_approvals(candidate_id, candidate_version)
-  where consumed_at is null and invalidated_at is null;
+
 
 create table public.evolution_release_events (
   id uuid primary key default gen_random_uuid(),
