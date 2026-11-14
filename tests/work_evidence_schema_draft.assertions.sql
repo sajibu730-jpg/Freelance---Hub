@@ -223,7 +223,7 @@ INSERT INTO public.work_evidence (
   'off_app', 'file', 'Expired upload cleanup test', '',
   '11111111-1111-4111-8111-111111111111/77777777-7777-4777-8777-777777777777/proof',
   'proof.pdf', 'application/pdf', 12, 'upload_pending', null,
-  now() - interval '25 hours', now() - interval '25 hours'
+  now() - interval '24 hours', now() - interval '24 hours'
 );
 
 SET ROLE service_role;
