@@ -234,11 +234,14 @@ DECLARE
   v_failed_token uuid;
   v_expired_token uuid;
 BEGIN
+  WITH claimed AS MATERIALIZED (
+    SELECT * FROM public.claim_work_evidence_cleanup_batch(10)
+  )
   SELECT count(*),
-         max(lease_token) FILTER (WHERE evidence_id='66666666-6666-4666-8666-666666666666'),
-         max(lease_token) FILTER (WHERE evidence_id='77777777-7777-4777-8777-777777777777')
+         (array_agg(lease_token) FILTER (WHERE evidence_id='66666666-6666-4666-8666-666666666666'))[1],
+         (array_agg(lease_token) FILTER (WHERE evidence_id='77777777-7777-4777-8777-777777777777'))[1]
     INTO v_claimed, v_failed_token, v_expired_token
-  FROM public.claim_work_evidence_cleanup_batch(10);
+  FROM claimed;
   IF v_claimed <> 2 THEN
     RAISE EXCEPTION 'Expected two cleanup jobs (failed + expired), got %', v_claimed;
   END IF;
