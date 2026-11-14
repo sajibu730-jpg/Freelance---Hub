@@ -46,7 +46,8 @@ create table public.evolution_candidates (
       'release_queued', 'deploying', 'monitoring', 'released')
       and submitted_at is not null) or lifecycle_state not in
       ('submitted', 'validating', 'staging_ready', 'owner_approved',
-       'release_queued', 'deploying', 'monitoring', 'released'))
+       'release_queued', 'deploying', 'monitoring', 'released')),
+  unique (id, candidate_version, source_commit_sha, artifact_sha256, recovery_plan_digest, risk_level)
 );
 
 create table public.evolution_evidence (
@@ -77,7 +78,74 @@ create table public.evolution_approvals (
   approved_artifact_sha256 text not null check (approved_artifact_sha256 ~ '^[0-9a-f]{64}$'),
   evidence_set_digest text not null check (evidence_set_digest ~ '^[0-9a-f]{64}$'),
   risk_acknowledgement text not null check (length(btrim(risk_acknowledgement)) between 1 and 2000),
-  recovery_plan_digest text not null check (recovery_plan_digest ~ '^[0-9a-f]{64}$'),
+  recovery_plan_digest text not null check (recovery_plan_digest ~ '^[0-9a-f]{64} timestamptz not null default now(),
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  invalidated_at timestamptz,
+  invalidation_reason text check (invalidation_reason is null or length(invalidation_reason) <= 1000),
+  created_at timestamptz not null default now(),
+  check (expires_at > approved_at),
+  check ((invalidated_at is null and invalidation_reason is null)
+      or (invalidated_at is not null and invalidation_reason is not null)),
+  foreign key (candidate_id, candidate_version, approved_commit_sha,
+    approved_artifact_sha256, recovery_plan_digest, approved_risk_level)
+    references public.evolution_candidates
+      (id, candidate_version, source_commit_sha, artifact_sha256, recovery_plan_digest, risk_level)
+);
+
+create unique index evolution_one_unconsumed_approval_per_candidate_version
+  on public.evolution_approvals(candidate_id, candidate_version)
+  where consumed_at is null and invalidated_at is null;
+
+create table public.evolution_release_events (
+  id uuid primary key default gen_random_uuid(),
+  candidate_id uuid not null references public.evolution_candidates(id) on delete restrict,
+  event_type text not null check (event_type in
+    ('created', 'submitted', 'validation_started', 'evidence_recorded', 'blocked',
+     'staging_verified', 'approval_granted', 'approval_invalidated', 'approval_consumed',
+     'release_queued', 'deployment_started', 'deployment_succeeded',
+     'deployment_failed', 'deployment_uncertain', 'recovery_started', 'recovered',
+     'rejected', 'expired')),
+  actor_user_id uuid references auth.users(id) on delete restrict,
+  actor_kind text not null check (actor_kind in ('owner', 'proposer', 'system', 'trusted_adapter')),
+  previous_state text,
+  new_state text,
+  source_commit_sha text check (source_commit_sha is null or source_commit_sha ~ '^[0-9a-f]{40}([0-9a-f]{24})?$'),
+  artifact_sha256 text check (artifact_sha256 is null or artifact_sha256 ~ '^[0-9a-f]{64}$'),
+  evidence_set_digest text check (evidence_set_digest is null or evidence_set_digest ~ '^[0-9a-f]{64}$'),
+  approval_id uuid references public.evolution_approvals(id) on delete restrict,
+  correlation_id uuid not null,
+  outcome_code text check (outcome_code is null or length(outcome_code) <= 100),
+  occurred_at timestamptz not null default now()
+);
+
+create index evolution_candidates_state_time_idx
+  on public.evolution_candidates(lifecycle_state, created_at desc);
+create index evolution_evidence_candidate_time_idx
+  on public.evolution_evidence(candidate_id, observed_at desc);
+create index evolution_approvals_candidate_version_idx
+  on public.evolution_approvals(candidate_id, candidate_version, approved_at desc);
+create index evolution_release_events_candidate_time_idx
+  on public.evolution_release_events(candidate_id, occurred_at desc);
+
+alter table public.evolution_candidates enable row level security;
+alter table public.evolution_candidates force row level security;
+alter table public.evolution_evidence enable row level security;
+alter table public.evolution_evidence force row level security;
+alter table public.evolution_approvals enable row level security;
+alter table public.evolution_approvals force row level security;
+alter table public.evolution_release_events enable row level security;
+alter table public.evolution_release_events force row level security;
+
+revoke all on table public.evolution_candidates, public.evolution_evidence,
+  public.evolution_approvals, public.evolution_release_events
+  from public, anon, authenticated, service_role;
+
+-- No direct grants are intentionally issued. Future narrowly scoped SECURITY DEFINER
+-- functions must be separately reviewed, pin search_path, verify the current primary
+-- Owner and AAL2 inside the transaction, and append audit events atomically.
+),
+  approved_risk_level text not null check (approved_risk_level in ('low', 'medium', 'high', 'critical')),
   approved_at timestamptz not null default now(),
   expires_at timestamptz not null,
   consumed_at timestamptz,
