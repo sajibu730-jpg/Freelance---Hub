@@ -58,7 +58,7 @@ Deno.test("checks file signatures rather than trusting the MIME label", () => {
 });
 
 Deno.test("Owner MFA fails closed for unverified TOTP and requires AAL2", () => {
-  assert(hasRequiredOwnerMfa({ all: [] }, "aal1"), "Owner without TOTP enrollment should not be blocked");
+  assert(!hasRequiredOwnerMfa({ all: [] }, "aal1"), "Owner without TOTP enrollment must be blocked");
   assert(!hasRequiredOwnerMfa(undefined, "aal2"), "missing factor response must fail closed");
   assert(!hasRequiredOwnerMfa({ all: [{ factor_type: "totp", status: "unverified" }] }, "aal1"),
     "unverified TOTP enrollment must not bypass MFA");
