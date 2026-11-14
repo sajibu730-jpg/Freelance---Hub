@@ -44,6 +44,12 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
             section = SQL.split(f"create table public.{table}", 1)[1].split(");", 1)[0]
             self.assertRegex(section, r"request_id uuid not null unique")
 
+    def test_task_kind_separates_general_support_and_incident_work(self):
+        self.assertIn(
+            "task_kind text not null default 'general' check (task_kind in ('general', 'support', 'incident'))",
+            SQL,
+        )
+
     def test_done_tasks_require_completion_evidence(self):
         self.assertIn(
             "check ((status = 'done' and completion_evidence is not null) or status <> 'done')",
