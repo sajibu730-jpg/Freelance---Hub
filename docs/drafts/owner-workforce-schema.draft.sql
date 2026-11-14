@@ -80,6 +80,42 @@ create table public.owner_release_proposals (
     or status not in ('owner_approved', 'production_deployed', 'monitored'))
 );
 
+create table public.owner_workforce_invitations (
+  id uuid primary key default gen_random_uuid(),
+  request_id uuid not null unique,
+  email text not null check (email = lower(btrim(email)) and length(email) between 5 and 254),
+  role text not null check (role in ('project_manager', 'developer', 'qa', 'support')),
+  project_scopes text[] not null check (cardinality(project_scopes) between 1 and 50),
+  status text not null default 'prepared'
+    check (status in ('prepared', 'dispatching', 'sent', 'accepted', 'cancelled', 'needs_review')),
+  invited_by uuid not null references auth.users(id) on delete restrict,
+  auth_user_id uuid unique references auth.users(id) on delete restrict,
+  review_code text check (review_code is null or review_code in ('auth_error', 'auth_exception', 'record_sent_failed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  sent_at timestamptz,
+  accepted_at timestamptz,
+  cancelled_at timestamptz,
+  check ((status in ('sent', 'accepted') and auth_user_id is not null and sent_at is not null)
+      or status not in ('sent', 'accepted')),
+  check ((status = 'accepted' and accepted_at is not null) or status <> 'accepted')
+);
+
+create unique index owner_workforce_invites_pending_email_idx
+  on public.owner_workforce_invitations (email)
+  where status in ('prepared', 'dispatching', 'sent', 'needs_review');
+
+create table public.owner_workforce_invitation_events (
+  id uuid primary key default gen_random_uuid(),
+  request_id uuid not null unique default gen_random_uuid(),
+  invitation_id uuid not null references public.owner_workforce_invitations(id) on delete restrict,
+  actor_user_id uuid references auth.users(id) on delete restrict,
+  event_type text not null check (event_type in
+    ('prepared', 'dispatch_claimed', 'sent', 'needs_review', 'accepted', 'cancelled')),
+  details jsonb not null default '{}'::jsonb check (jsonb_typeof(details) = 'object'),
+  created_at timestamptz not null default now()
+);
+
 create table public.owner_release_events (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null unique default gen_random_uuid(),
@@ -109,6 +145,8 @@ alter table public.owner_workforce_member_events enable row level security;
 alter table public.owner_workforce_task_events enable row level security;
 alter table public.owner_release_proposals enable row level security;
 alter table public.owner_release_events enable row level security;
+alter table public.owner_workforce_invitations enable row level security;
+alter table public.owner_workforce_invitation_events enable row level security;
 
 -- RLS-EXCEPTION: service-role-only public.owner_workforce_members
 -- RLS-EXCEPTION: service-role-only public.owner_workforce_tasks
@@ -116,15 +154,18 @@ alter table public.owner_release_events enable row level security;
 -- RLS-EXCEPTION: service-role-only public.owner_workforce_task_events
 -- RLS-EXCEPTION: service-role-only public.owner_release_proposals
 -- RLS-EXCEPTION: service-role-only public.owner_release_events
+-- RLS-EXCEPTION: service-role-only public.owner_workforce_invitations
+-- RLS-EXCEPTION: service-role-only public.owner_workforce_invitation_events
 revoke all on table public.owner_workforce_members, public.owner_workforce_tasks,
   public.owner_workforce_member_events, public.owner_workforce_task_events,
-  public.owner_release_proposals, public.owner_release_events
+  public.owner_release_proposals, public.owner_release_events,
+  public.owner_workforce_invitations, public.owner_workforce_invitation_events
   from public, anon, authenticated, service_role;
 
 -- The Edge Function may read current membership and task rows, but cannot mutate
 -- them directly. All task mutations and audit inserts must use the atomic RPCs.
 grant select on table public.owner_workforce_members, public.owner_workforce_tasks,
-  public.owner_release_proposals
+  public.owner_release_proposals, public.owner_workforce_invitations
   to service_role;
 
 -- Event tables are inaccessible to API roles. SECURITY DEFINER RPCs owned by the
