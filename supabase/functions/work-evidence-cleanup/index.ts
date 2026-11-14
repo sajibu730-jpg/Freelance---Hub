@@ -77,6 +77,7 @@ Deno.serve(async (req: Request) => {
           "finish_work_evidence_cleanup",
           {
             p_evidence_id: job.evidence_id,
+            p_lease_token: job.lease_token,
             p_succeeded: true,
             p_error: null,
           },
@@ -87,6 +88,7 @@ Deno.serve(async (req: Request) => {
         // Never persist raw provider errors, object metadata, credentials, or signed URLs.
         const { error: retryError } = await admin.rpc("finish_work_evidence_cleanup", {
           p_evidence_id: job.evidence_id,
+          p_lease_token: job.lease_token,
           p_succeeded: false,
           p_error: "Private Storage cleanup failed; retry scheduled.",
         });
