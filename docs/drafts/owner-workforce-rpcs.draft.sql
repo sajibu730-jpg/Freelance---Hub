@@ -502,6 +502,19 @@ begin
     if v_member.role = p_role and v_member.project_scopes = p_project_scopes then
       raise exception using errcode = '22023', message = 'No workforce member changes were requested.';
     end if;
+    if exists (
+      select 1
+      from public.owner_workforce_tasks t
+      where t.assignee_id = p_member_user_id
+        and t.status <> 'done'
+        and (
+          v_member.role is distinct from p_role
+          or not (t.project_key = any(p_project_scopes))
+        )
+    ) then
+      raise exception using errcode = '22023',
+        message = 'Reassign or complete open tasks before changing this member role or project scope.';
+    end if;
     update public.owner_workforce_members
     set role = p_role, project_scopes = p_project_scopes, updated_at = pg_catalog.now()
     where user_id = p_member_user_id
