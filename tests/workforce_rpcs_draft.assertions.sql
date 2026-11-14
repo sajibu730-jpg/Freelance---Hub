@@ -195,3 +195,103 @@ begin
 end $$;
 
 select 'Atomic workforce RPC disposable PostgreSQL tests passed.' as result;
+
+
+-- Owner-only membership management is tested only in disposable PostgreSQL.
+insert into auth.users (id) values
+  ('55555555-5555-4555-8555-555555555555')
+on conflict (id) do nothing;
+
+set role service_role;
+do $$
+declare
+  v_member jsonb;
+  v_member_id uuid := '55555555-5555-4555-8555-555555555555';
+begin
+  -- Primary Owner adds an existing Auth account to the workforce.
+  v_member := public.owner_workforce_set_member(
+    '99999999-9999-4999-8999-999999999999',
+    v_member_id, 'developer', array['freelance-hub'],
+    'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  );
+  if v_member ->> 'role' <> 'developer' or v_member ->> 'status' <> 'active' then
+    raise exception 'Owner did not add the member with expected role/status.';
+  end if;
+
+  -- Matching retries are idempotent and return the same membership.
+  if (public.owner_workforce_set_member(
+    '99999999-9999-4999-8999-999999999999',
+    v_member_id, 'developer', array['freelance-hub'],
+    'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  ) ->> 'user_id')::uuid <> v_member_id then
+    raise exception 'Member add retry was not idempotent.';
+  end if;
+
+  -- Owner changes both role and scope, retaining the original member identity.
+  v_member := public.owner_workforce_set_member(
+    '99999999-9999-4999-8999-999999999999',
+    v_member_id, 'qa', array['freelance-hub', 'tips-it'],
+    'cccccccc-cccc-4ccc-8ccc-ccccccccccc2'
+  );
+  if v_member ->> 'role' <> 'qa' or jsonb_array_length(v_member -> 'project_scopes') <> 2 then
+    raise exception 'Owner role/scope update failed.';
+  end if;
+
+  v_member := public.owner_workforce_set_member_status(
+    '99999999-9999-4999-8999-999999999999',
+    v_member_id, 'suspended',
+    'cccccccc-cccc-4ccc-8ccc-ccccccccccc3'
+  );
+  if v_member ->> 'status' <> 'suspended' then
+    raise exception 'Owner could not suspend workforce member.';
+  end if;
+
+  -- Suspended membership is restored explicitly, never automatically.
+  v_member := public.owner_workforce_set_member_status(
+    '99999999-9999-4999-8999-999999999999',
+    v_member_id, 'active',
+    'cccccccc-cccc-4ccc-8ccc-ccccccccccc4'
+  );
+  if v_member ->> 'status' <> 'active' then
+    raise exception 'Owner could not reactivate workforce member.';
+  end if;
+
+  -- A non-Owner Project Manager cannot manage workforce membership.
+  begin
+    perform public.owner_workforce_set_member(
+      '22222222-2222-4222-8222-222222222222',
+      v_member_id, 'support', array['freelance-hub'],
+      'cccccccc-cccc-4ccc-8ccc-ccccccccccc5'
+    );
+    raise exception 'Project Manager was able to change workforce membership.';
+  exception when insufficient_privilege then
+    null;
+  end;
+
+  -- Owner cannot accidentally remove their own workforce membership through this API.
+  begin
+    perform public.owner_workforce_set_member_status(
+      '99999999-9999-4999-8999-999999999999',
+      '99999999-9999-4999-8999-999999999999', 'suspended',
+      'cccccccc-cccc-4ccc-8ccc-ccccccccccc6'
+    );
+    raise exception 'Owner was able to suspend their own account through workforce controls.';
+  exception when invalid_parameter_value then
+    null;
+  end;
+end $$;
+reset role;
+
+do $$
+declare
+  v_events integer;
+begin
+  select count(*) into v_events
+  from public.owner_workforce_member_events
+  where member_user_id = '55555555-5555-4555-8555-555555555555';
+  if v_events <> 4 then
+    raise exception 'Expected 4 member audit events (add, role/scope, suspend, reactivate), found %', v_events;
+  end if;
+end $$;
+
+select 'Owner workforce membership RPC disposable PostgreSQL tests passed.' as result;
