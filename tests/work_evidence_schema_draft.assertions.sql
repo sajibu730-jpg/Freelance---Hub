@@ -8,10 +8,15 @@ BEGIN
   IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.work_evidence_events'::regclass) THEN
     RAISE EXCEPTION 'work_evidence_events RLS is not enabled';
   END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.work_evidence_cleanup_queue'::regclass) THEN
+    RAISE EXCEPTION 'work_evidence_cleanup_queue RLS is not enabled';
+  END IF;
   IF has_table_privilege('anon', 'public.work_evidence', 'SELECT')
     OR has_table_privilege('authenticated', 'public.work_evidence', 'SELECT')
     OR has_table_privilege('anon', 'public.work_evidence_events', 'SELECT')
-    OR has_table_privilege('authenticated', 'public.work_evidence_events', 'SELECT') THEN
+    OR has_table_privilege('authenticated', 'public.work_evidence_events', 'SELECT')
+    OR has_table_privilege('anon', 'public.work_evidence_cleanup_queue', 'SELECT')
+    OR has_table_privilege('authenticated', 'public.work_evidence_cleanup_queue', 'SELECT') THEN
     RAISE EXCEPTION 'Evidence tables are directly readable by client roles';
   END IF;
   IF NOT has_table_privilege('service_role', 'public.work_evidence', 'SELECT')
@@ -20,7 +25,15 @@ BEGIN
     OR NOT has_table_privilege('service_role', 'public.work_evidence_events', 'INSERT')
     OR has_table_privilege('service_role', 'public.work_evidence', 'DELETE')
     OR has_table_privilege('service_role', 'public.work_evidence_events', 'UPDATE')
-    OR has_table_privilege('service_role', 'public.work_evidence_events', 'DELETE') THEN
+    OR has_table_privilege('service_role', 'public.work_evidence_events', 'DELETE')
+    OR NOT has_table_privilege('service_role', 'public.work_evidence_cleanup_queue', 'SELECT')
+    OR NOT has_table_privilege('service_role', 'public.work_evidence_cleanup_queue', 'INSERT')
+    OR NOT has_table_privilege('service_role', 'public.work_evidence_cleanup_queue', 'UPDATE')
+    OR has_table_privilege('service_role', 'public.work_evidence_cleanup_queue', 'DELETE')
+    OR NOT has_function_privilege('service_role', 'public.claim_work_evidence_cleanup_batch(integer)', 'EXECUTE')
+    OR NOT has_function_privilege('service_role', 'public.finish_work_evidence_cleanup(uuid,boolean,text)', 'EXECUTE')
+    OR has_function_privilege('authenticated', 'public.claim_work_evidence_cleanup_batch(integer)', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.finish_work_evidence_cleanup(uuid,boolean,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Edge Function service role grants are incomplete or overly broad';
   END IF;
   IF has_table_privilege('anon', 'public.work_evidence_quota_events', 'SELECT')
@@ -182,5 +195,88 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Verify failed and expired uploads enter a durable, retryable cleanup queue.
+INSERT INTO public.work_evidence (
+  id, request_id, submitted_by, origin, evidence_type, title, description,
+  storage_path, original_filename, mime_type, byte_size, status, submitted_at
+) VALUES (
+  '66666666-6666-4666-8666-666666666666',
+  '66666666-6666-4666-8666-666666666667',
+  '11111111-1111-4111-8111-111111111111',
+  'off_app', 'file', 'Failed upload cleanup test', '',
+  '11111111-1111-4111-8111-111111111111/66666666-6666-4666-8666-666666666666/proof',
+  'proof.pdf', 'application/pdf', 12, 'upload_pending', null
+);
+UPDATE public.work_evidence
+SET status='upload_failed', submitted_at=now()
+WHERE id='66666666-6666-4666-8666-666666666666';
+
+INSERT INTO public.work_evidence (
+  id, request_id, submitted_by, origin, evidence_type, title, description,
+  storage_path, original_filename, mime_type, byte_size, status, submitted_at,
+  created_at, updated_at
+) VALUES (
+  '77777777-7777-4777-8777-777777777777',
+  '77777777-7777-4777-8777-777777777778',
+  '11111111-1111-4111-8111-111111111111',
+  'off_app', 'file', 'Expired upload cleanup test', '',
+  '11111111-1111-4111-8111-111111111111/77777777-7777-4777-8777-777777777777/proof',
+  'proof.pdf', 'application/pdf', 12, 'upload_pending', null,
+  now() - interval '25 hours', now() - interval '25 hours'
+);
+
+SET ROLE service_role;
+DO $cleanup_test$
+DECLARE
+  v_claimed integer;
+  v_ok boolean;
+BEGIN
+  SELECT count(*) INTO v_claimed
+  FROM public.claim_work_evidence_cleanup_batch(10);
+  IF v_claimed <> 2 THEN
+    RAISE EXCEPTION 'Expected two cleanup jobs (failed + expired), got %', v_claimed;
+  END IF;
+
+  IF (SELECT status FROM public.work_evidence
+      WHERE id='77777777-7777-4777-8777-777777777777') <> 'upload_failed' THEN
+    RAISE EXCEPTION 'Expired upload was not atomically marked upload_failed';
+  END IF;
+
+  SELECT public.finish_work_evidence_cleanup(
+    '66666666-6666-4666-8666-666666666666', true, null
+  ) INTO v_ok;
+  IF NOT v_ok THEN RAISE EXCEPTION 'Cleanup success could not be committed'; END IF;
+
+  SELECT public.finish_work_evidence_cleanup(
+    '77777777-7777-4777-8777-777777777777', false, 'Disposable retry test'
+  ) INTO v_ok;
+  IF NOT v_ok THEN RAISE EXCEPTION 'Cleanup retry could not be committed'; END IF;
+
+  IF (SELECT state FROM public.work_evidence_cleanup_queue
+      WHERE evidence_id='66666666-6666-4666-8666-666666666666') <> 'completed' THEN
+    RAISE EXCEPTION 'Successful cleanup was not marked completed';
+  END IF;
+  IF (SELECT state FROM public.work_evidence_cleanup_queue
+      WHERE evidence_id='77777777-7777-4777-8777-777777777777') <> 'pending' THEN
+    RAISE EXCEPTION 'Failed cleanup was not returned to retry queue';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.work_evidence_events
+    WHERE evidence_id='66666666-6666-4666-8666-666666666666'
+      AND event_type='storage_cleanup_completed'
+  ) THEN
+    RAISE EXCEPTION 'Successful Storage cleanup audit event is missing';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.work_evidence_events
+    WHERE evidence_id='77777777-7777-4777-8777-777777777777'
+      AND event_type='storage_cleanup_retry'
+  ) THEN
+    RAISE EXCEPTION 'Failed Storage cleanup retry audit event is missing';
+  END IF;
+END;
+$cleanup_test$;
+RESET ROLE;
 
 SELECT 'work evidence schema assertions passed' AS result;
