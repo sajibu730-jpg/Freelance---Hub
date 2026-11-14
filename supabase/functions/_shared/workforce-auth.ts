@@ -176,3 +176,27 @@ export async function authorizeStaffTaskAction(
 
   return { ok: true, userId, role, projectKey };
 }
+
+export type AssignedTaskMutation = "update_task_status" | "append_task_evidence";
+
+/**
+ * Enforce row ownership after the caller has fetched the task from the database.
+ * Managers need separate review/assignment actions; Developer and QA evidence
+ * mutations are allowed only for the task currently assigned to that user.
+ */
+export function authorizeAssignedTaskMutation(
+  actor: StaffAuthorization,
+  action: AssignedTaskMutation,
+  task: { project_key?: string | null; assignee_id?: string | null },
+): { ok: true } | { ok: false; status: 403; error: string } {
+  if (!actor.ok || (actor.role !== "developer" && actor.role !== "qa")) {
+    return { ok: false, status: 403, error: "An assigned Developer or QA member is required." };
+  }
+  if (task.project_key !== actor.projectKey || task.assignee_id !== actor.userId) {
+    return { ok: false, status: 403, error: "You can update only a task assigned to your account in this project." };
+  }
+  if (action !== "update_task_status" && action !== "append_task_evidence") {
+    return { ok: false, status: 403, error: "Task action is not permitted." };
+  }
+  return { ok: true };
+}
