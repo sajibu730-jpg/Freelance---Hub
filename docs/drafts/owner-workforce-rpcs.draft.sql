@@ -678,3 +678,416 @@ revoke all on function public.owner_workforce_list_member_events(uuid, uuid, int
 grant execute on function public.owner_workforce_list_member_events(uuid, uuid, integer) to service_role;
 comment on function public.owner_workforce_list_member_events(uuid, uuid, integer)
   is 'DRAFT ONLY. Owner AAL2 Edge Function required; DB independently checks active app_admins Owner. Read-only bounded membership audit history.';
+
+
+-- ---------------------------------------------------------------------------
+-- Recoverable Owner-managed invitation RPCs. Draft only; disposable CI database.
+-- Auth email delivery is external and is deliberately NOT performed in SQL.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.owner_workforce_prepare_invitation(
+  p_actor_user_id uuid,
+  p_email text,
+  p_role text,
+  p_project_scopes text[],
+  p_request_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_invite public.owner_workforce_invitations%rowtype;
+begin
+  if p_actor_user_id is null or p_request_id is null
+     or p_email is null or p_email <> pg_catalog.lower(pg_catalog.btrim(p_email))
+     or length(p_email) not between 5 and 254
+     or p_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+     or p_role is null or p_role not in ('project_manager', 'developer', 'qa', 'support')
+     or p_project_scopes is null or pg_catalog.cardinality(p_project_scopes) not between 1 and 50
+     or exists (select 1 from pg_catalog.unnest(p_project_scopes) s
+                where s is null or s = '' or s <> pg_catalog.btrim(s) or length(s) > 100)
+     or (select count(*) from pg_catalog.unnest(p_project_scopes)) <>
+        (select count(distinct s) from pg_catalog.unnest(p_project_scopes) s) then
+    raise exception using errcode = '22023', message = 'Invalid workforce invitation input.';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(p_request_id::text));
+
+  if not exists (
+    select 1 from public.app_admins a
+    where a.user_id = p_actor_user_id and a.role = 'owner' and a.is_active = true
+  ) then
+    raise exception using errcode = '42501', message = 'Active primary Owner is required.';
+  end if;
+
+  select i.* into v_invite
+  from public.owner_workforce_invitations i
+  where i.request_id = p_request_id;
+  if found then
+    if v_invite.invited_by <> p_actor_user_id
+       or v_invite.email <> p_email
+       or v_invite.role <> p_role
+       or v_invite.project_scopes <> p_project_scopes then
+      raise exception using errcode = '23505', message = 'Invitation request ID was already used.';
+    end if;
+    return pg_catalog.to_jsonb(v_invite);
+  end if;
+
+  if exists (select 1 from auth.users u where pg_catalog.lower(u.email) = p_email) then
+    raise exception using errcode = '23505', message = 'An Auth account already exists for this email.';
+  end if;
+
+  insert into public.owner_workforce_invitations
+    (request_id, email, role, project_scopes, invited_by)
+  values (p_request_id, p_email, p_role, p_project_scopes, p_actor_user_id)
+  returning * into v_invite;
+
+  insert into public.owner_workforce_invitation_events
+    (invitation_id, actor_user_id, event_type, details)
+  values
+    (v_invite.id, p_actor_user_id, 'prepared',
+     pg_catalog.jsonb_build_object('role', p_role, 'project_scope_count', pg_catalog.cardinality(p_project_scopes)));
+
+  return pg_catalog.to_jsonb(v_invite);
+end;
+$function$;
+
+create or replace function public.owner_workforce_claim_invitation_dispatch(
+  p_actor_user_id uuid,
+  p_invitation_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_invite public.owner_workforce_invitations%rowtype;
+begin
+  if p_actor_user_id is null or p_invitation_id is null then
+    raise exception using errcode = '22023', message = 'Invalid invitation dispatch claim.';
+  end if;
+  if not exists (
+    select 1 from public.app_admins a
+    where a.user_id = p_actor_user_id and a.role = 'owner' and a.is_active = true
+  ) then
+    raise exception using errcode = '42501', message = 'Active primary Owner is required.';
+  end if;
+
+  select i.* into v_invite
+  from public.owner_workforce_invitations i
+  where i.id = p_invitation_id
+  for update;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Invitation not found.';
+  end if;
+
+  if v_invite.status <> 'prepared' then
+    return pg_catalog.jsonb_build_object('claimed', false, 'invitation', pg_catalog.to_jsonb(v_invite));
+  end if;
+
+  update public.owner_workforce_invitations
+  set status = 'dispatching', updated_at = pg_catalog.now()
+  where id = p_invitation_id
+  returning * into v_invite;
+
+  insert into public.owner_workforce_invitation_events
+    (invitation_id, actor_user_id, event_type, details)
+  values (p_invitation_id, p_actor_user_id, 'dispatch_claimed', '{}'::jsonb);
+
+  return pg_catalog.jsonb_build_object('claimed', true, 'invitation', pg_catalog.to_jsonb(v_invite));
+end;
+$function$;
+
+create or replace function public.owner_workforce_record_invitation_sent(
+  p_actor_user_id uuid,
+  p_invitation_id uuid,
+  p_auth_user_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_invite public.owner_workforce_invitations%rowtype;
+  v_auth_email text;
+  v_invited_at timestamptz;
+begin
+  if p_actor_user_id is null or p_invitation_id is null or p_auth_user_id is null then
+    raise exception using errcode = '22023', message = 'Invalid invitation completion.';
+  end if;
+  if not exists (
+    select 1 from public.app_admins a
+    where a.user_id = p_actor_user_id and a.role = 'owner' and a.is_active = true
+  ) then
+    raise exception using errcode = '42501', message = 'Active primary Owner is required.';
+  end if;
+
+  select i.* into v_invite
+  from public.owner_workforce_invitations i
+  where i.id = p_invitation_id
+  for update;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Invitation not found.';
+  end if;
+  if v_invite.status in ('sent', 'accepted') and v_invite.auth_user_id = p_auth_user_id then
+    return pg_catalog.to_jsonb(v_invite);
+  end if;
+  if v_invite.status not in ('dispatching', 'needs_review') then
+    raise exception using errcode = '22023', message = 'Invitation is not awaiting Auth reconciliation.';
+  end if;
+
+  select u.email, u.invited_at into v_auth_email, v_invited_at
+  from auth.users u
+  where u.id = p_auth_user_id;
+  if not found or pg_catalog.lower(v_auth_email) <> v_invite.email or v_invited_at is null then
+    raise exception using errcode = '22023', message = 'Auth user does not match the invited email.';
+  end if;
+
+  update public.owner_workforce_invitations
+  set status = 'sent', auth_user_id = p_auth_user_id,
+      sent_at = coalesce(sent_at, pg_catalog.now()), review_code = null,
+      updated_at = pg_catalog.now()
+  where id = p_invitation_id
+  returning * into v_invite;
+
+  insert into public.owner_workforce_invitation_events
+    (invitation_id, actor_user_id, event_type, details)
+  values (p_invitation_id, p_actor_user_id, 'sent',
+          pg_catalog.jsonb_build_object('auth_user_id', p_auth_user_id));
+
+  return pg_catalog.to_jsonb(v_invite);
+end;
+$function$;
+
+create or replace function public.owner_workforce_mark_invitation_review(
+  p_actor_user_id uuid,
+  p_invitation_id uuid,
+  p_reason text,
+  p_auth_user_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_invite public.owner_workforce_invitations%rowtype;
+  v_auth_email text;
+begin
+  if p_actor_user_id is null or p_invitation_id is null
+     or p_reason not in ('auth_error', 'auth_exception', 'record_sent_failed') then
+    raise exception using errcode = '22023', message = 'Invalid invitation review details.';
+  end if;
+  if not exists (
+    select 1 from public.app_admins a
+    where a.user_id = p_actor_user_id and a.role = 'owner' and a.is_active = true
+  ) then
+    raise exception using errcode = '42501', message = 'Active primary Owner is required.';
+  end if;
+
+  select i.* into v_invite
+  from public.owner_workforce_invitations i
+  where i.id = p_invitation_id
+  for update;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Invitation not found.';
+  end if;
+  if v_invite.status = 'needs_review' then
+    return pg_catalog.to_jsonb(v_invite);
+  end if;
+  if v_invite.status <> 'dispatching' then
+    raise exception using errcode = '22023', message = 'Invitation is not in dispatching state.';
+  end if;
+
+  if p_auth_user_id is not null then
+    select u.email into v_auth_email from auth.users u where u.id = p_auth_user_id;
+    if not found or pg_catalog.lower(v_auth_email) <> v_invite.email then
+      raise exception using errcode = '22023', message = 'Auth user does not match the invited email.';
+    end if;
+  end if;
+
+  update public.owner_workforce_invitations
+  set status = 'needs_review', auth_user_id = coalesce(p_auth_user_id, auth_user_id),
+      review_code = p_reason, updated_at = pg_catalog.now()
+  where id = p_invitation_id
+  returning * into v_invite;
+
+  insert into public.owner_workforce_invitation_events
+    (invitation_id, actor_user_id, event_type, details)
+  values (p_invitation_id, p_actor_user_id, 'needs_review',
+          pg_catalog.jsonb_build_object('reason', p_reason, 'auth_user_id', p_auth_user_id));
+
+  return pg_catalog.to_jsonb(v_invite);
+end;
+$function$;
+
+create or replace function public.owner_workforce_accept_invitation(
+  p_actor_user_id uuid,
+  p_invitation_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_invite public.owner_workforce_invitations%rowtype;
+  v_auth_email text;
+  v_confirmed_at timestamptz;
+  v_member public.owner_workforce_members%rowtype;
+begin
+  if p_actor_user_id is null or p_invitation_id is null then
+    raise exception using errcode = '22023', message = 'Invalid invitation acceptance.';
+  end if;
+
+  select i.* into v_invite
+  from public.owner_workforce_invitations i
+  where i.id = p_invitation_id
+  for update;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Invitation not found.';
+  end if;
+  if v_invite.status = 'accepted' and v_invite.auth_user_id = p_actor_user_id then
+    select m.* into v_member from public.owner_workforce_members m where m.user_id = p_actor_user_id;
+    return pg_catalog.to_jsonb(v_member);
+  end if;
+  if v_invite.status not in ('sent', 'needs_review') or v_invite.auth_user_id is distinct from p_actor_user_id then
+    raise exception using errcode = '42501', message = 'This Auth account is not authorized for the invitation.';
+  end if;
+
+  select u.email, u.email_confirmed_at into v_auth_email, v_confirmed_at
+  from auth.users u
+  where u.id = p_actor_user_id;
+  if not found or pg_catalog.lower(v_auth_email) <> v_invite.email or v_confirmed_at is null then
+    raise exception using errcode = '42501', message = 'A matching verified email is required to accept the invitation.';
+  end if;
+
+  insert into public.owner_workforce_members
+    (user_id, role, status, project_scopes, invited_by)
+  values
+    (p_actor_user_id, v_invite.role, 'active', v_invite.project_scopes, v_invite.invited_by)
+  returning * into v_member;
+
+  update public.owner_workforce_invitations
+  set status = 'accepted', accepted_at = pg_catalog.now(), updated_at = pg_catalog.now()
+  where id = p_invitation_id
+  returning * into v_invite;
+
+  insert into public.owner_workforce_member_events
+    (member_user_id, actor_user_id, event_type, details)
+  values (p_actor_user_id, v_invite.invited_by, 'added',
+          pg_catalog.jsonb_build_object('source', 'invitation', 'invitation_id', p_invitation_id));
+
+  insert into public.owner_workforce_invitation_events
+    (invitation_id, actor_user_id, event_type, details)
+  values (p_invitation_id, p_actor_user_id, 'accepted', '{}'::jsonb);
+
+  return pg_catalog.to_jsonb(v_member);
+end;
+$function$;
+
+create or replace function public.owner_workforce_cancel_invitation(
+  p_actor_user_id uuid,
+  p_invitation_id uuid,
+  p_reason text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_invite public.owner_workforce_invitations%rowtype;
+begin
+  if p_actor_user_id is null or p_invitation_id is null
+     or p_reason is null or length(p_reason) not between 1 and 1000 then
+    raise exception using errcode = '22023', message = 'A cancellation reason is required.';
+  end if;
+  if not exists (
+    select 1 from public.app_admins a
+    where a.user_id = p_actor_user_id and a.role = 'owner' and a.is_active = true
+  ) then
+    raise exception using errcode = '42501', message = 'Active primary Owner is required.';
+  end if;
+
+  select i.* into v_invite
+  from public.owner_workforce_invitations i
+  where i.id = p_invitation_id
+  for update;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Invitation not found.';
+  end if;
+  if v_invite.status = 'cancelled' then
+    return pg_catalog.to_jsonb(v_invite);
+  end if;
+  if v_invite.status = 'accepted' then
+    raise exception using errcode = '22023', message = 'An accepted workforce membership must be suspended separately.';
+  end if;
+
+  update public.owner_workforce_invitations
+  set status = 'cancelled', cancelled_at = pg_catalog.now(),
+      updated_at = pg_catalog.now()
+  where id = p_invitation_id
+  returning * into v_invite;
+
+  insert into public.owner_workforce_invitation_events
+    (invitation_id, actor_user_id, event_type, details)
+  values (p_invitation_id, p_actor_user_id, 'cancelled',
+          pg_catalog.jsonb_build_object('reason', p_reason, 'auth_account_deleted', false));
+
+  return pg_catalog.to_jsonb(v_invite);
+end;
+$function$;
+
+create or replace function public.owner_workforce_list_invitations(
+  p_actor_user_id uuid,
+  p_limit integer default 50
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if p_actor_user_id is null or p_limit is null or p_limit not between 1 and 100 then
+    raise exception using errcode = '22023', message = 'Invitation list limit must be from 1 to 100.';
+  end if;
+  if not exists (
+    select 1 from public.app_admins a
+    where a.user_id = p_actor_user_id and a.role = 'owner' and a.is_active = true
+  ) then
+    raise exception using errcode = '42501', message = 'Active primary Owner is required.';
+  end if;
+  return coalesce((
+    select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(x) order by x.created_at desc)
+    from (
+      select i.id, i.email, i.role, i.project_scopes, i.status, i.invited_by,
+             i.auth_user_id, i.review_code, i.created_at, i.updated_at,
+             i.sent_at, i.accepted_at, i.cancelled_at
+      from public.owner_workforce_invitations i
+      order by i.created_at desc
+      limit p_limit
+    ) x
+  ), '[]'::jsonb);
+end;
+$function$;
+
+revoke all on function public.owner_workforce_prepare_invitation(uuid,text,text,text[],uuid) from public, anon, authenticated;
+revoke all on function public.owner_workforce_claim_invitation_dispatch(uuid,uuid) from public, anon, authenticated;
+revoke all on function public.owner_workforce_record_invitation_sent(uuid,uuid,uuid) from public, anon, authenticated;
+revoke all on function public.owner_workforce_mark_invitation_review(uuid,uuid,text,uuid) from public, anon, authenticated;
+revoke all on function public.owner_workforce_accept_invitation(uuid,uuid) from public, anon, authenticated;
+revoke all on function public.owner_workforce_cancel_invitation(uuid,uuid,text) from public, anon, authenticated;
+revoke all on function public.owner_workforce_list_invitations(uuid,integer) from public, anon, authenticated;
+
+grant execute on function public.owner_workforce_prepare_invitation(uuid,text,text,text[],uuid) to service_role;
+grant execute on function public.owner_workforce_claim_invitation_dispatch(uuid,uuid) to service_role;
+grant execute on function public.owner_workforce_record_invitation_sent(uuid,uuid,uuid) to service_role;
+grant execute on function public.owner_workforce_mark_invitation_review(uuid,uuid,text,uuid) to service_role;
+grant execute on function public.owner_workforce_accept_invitation(uuid,uuid) to service_role;
+grant execute on function public.owner_workforce_cancel_invitation(uuid,uuid,text) to service_role;
+grant execute on function public.owner_workforce_list_invitations(uuid,integer) to service_role;
