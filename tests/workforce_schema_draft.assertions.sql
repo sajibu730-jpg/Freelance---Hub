@@ -62,6 +62,17 @@ begin
   end;
 end $$;
 
+do $
+begin
+  begin
+    insert into public.owner_workforce_tasks (project_key, title, task_kind, created_by)
+    values ('freelance-hub', 'Invalid task kind', 'owner_override', '11111111-1111-4111-8111-111111111111');
+    raise exception 'An invalid task kind was accepted';
+  exception when check_violation then
+    null;
+  end;
+end $;
+
 insert into public.owner_workforce_tasks (project_key, title, created_by)
 values ('freelance-hub', 'Valid draft task', '11111111-1111-4111-8111-111111111111');
 
