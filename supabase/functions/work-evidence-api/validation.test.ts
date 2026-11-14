@@ -14,6 +14,7 @@ import {
   MAX_FILE_BYTES,
   safeHttpsUrl,
   safeOriginalFilename,
+  sameEvidenceRequest,
 } from "./validation.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -135,4 +136,31 @@ Deno.test("upload retry URLs stop before the 24-hour pending expiry", () => {
   assert(!canRenewPendingUpload("not-a-date", now), "invalid creation timestamp must fail closed");
   assert(!canRenewPendingUpload(new Date(now + 1000).toISOString(), now),
     "future creation timestamp must fail closed");
+});
+
+
+Deno.test("evidence request retries are idempotent only for an identical payload", () => {
+  const original = {
+    origin: "off_app",
+    evidence_type: "file",
+    title: "Project delivery",
+    description: "Final exported file",
+    job_id: null,
+    contract_id: null,
+    submission_id: null,
+    external_url: null,
+    original_filename: "delivery.pdf",
+    mime_type: "application/pdf",
+    byte_size: 1024,
+  };
+  assert(sameEvidenceRequest({ ...original }, { ...original }),
+    "identical retry should reuse the original evidence record");
+  assert(sameEvidenceRequest({ ...original, job_id: undefined }, { ...original, job_id: null }),
+    "missing and null optional relationship fields should be equivalent");
+  assert(!sameEvidenceRequest({ ...original }, { ...original, title: "Different title" }),
+    "changed title must conflict");
+  assert(!sameEvidenceRequest({ ...original }, { ...original, byte_size: 2048 }),
+    "changed file size must conflict");
+  assert(!sameEvidenceRequest({ ...original }, { ...original, external_url: "https://example.com" }),
+    "changed evidence source must conflict");
 });
