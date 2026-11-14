@@ -303,6 +303,11 @@ create trigger work_evidence_events_no_update
 before update or delete on public.work_evidence_events
 for each row execute function public.prevent_work_evidence_event_mutation();
 
+-- Trigger-only functions are not callable by API roles directly.
+revoke all on function public.guard_work_evidence_update() from public, anon, authenticated, service_role;
+revoke all on function public.audit_work_evidence_change() from public, anon, authenticated, service_role;
+revoke all on function public.prevent_work_evidence_event_mutation() from public, anon, authenticated, service_role;
+
 -- Claim an atomic batch of due cleanup jobs. Expire uploads only after 24 hours;
 -- retry_upload is separately capped so no fresh two-hour URL overlaps this deadline.
 create or replace function public.claim_work_evidence_cleanup_batch(p_limit integer default 50)
