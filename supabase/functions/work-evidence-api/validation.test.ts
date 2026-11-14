@@ -7,6 +7,7 @@ import {
   hasExpectedMagic,
   hasRequiredOwnerMfa,
   isSoleActiveOwner,
+  isPendingUploadWithinTtl,
   isUuid,
   isWorkSubmissionParticipant,
   submissionMatchesContract,
@@ -109,6 +110,16 @@ Deno.test("review policy allows only submitted or needs-info evidence", () => {
   assert(!canReviewEvidence("upload_pending", "verified"), "pending upload can be reviewed");
   assert(!canReviewEvidence("upload_failed", "verified"), "failed upload can be reviewed");
   assert(!canReviewEvidence("verified", "rejected"), "final review can be overwritten");
+});
+
+Deno.test("pending upload completion expires exactly at 24 hours", () => {
+  const now = Date.parse("2026-11-14T12:00:00.000Z");
+  const justBeforeExpiry = new Date(now - UPLOAD_PENDING_TTL_MS + 1).toISOString();
+  const atExpiry = new Date(now - UPLOAD_PENDING_TTL_MS).toISOString();
+  assert(isPendingUploadWithinTtl(justBeforeExpiry, now), "upload just before expiry should remain valid");
+  assert(!isPendingUploadWithinTtl(atExpiry, now), "upload at 24-hour expiry must be rejected");
+  assert(!isPendingUploadWithinTtl("invalid-date", now), "invalid timestamp must fail closed");
+  assert(!isPendingUploadWithinTtl(new Date(now + 1000).toISOString(), now), "future timestamp must fail closed");
 });
 
 Deno.test("upload retry URLs stop before the 24-hour pending expiry", () => {
