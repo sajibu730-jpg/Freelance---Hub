@@ -196,6 +196,34 @@ BEGIN
 END;
 $$;
 
+-- Database-level completion guard closes the API download-time race.
+INSERT INTO public.work_evidence (
+  id, request_id, submitted_by, origin, evidence_type, title, description,
+  storage_path, original_filename, mime_type, byte_size, status, submitted_at,
+  created_at, updated_at
+) VALUES (
+  '88888888-8888-4888-8888-888888888888',
+  '88888888-8888-4888-8888-888888888889',
+  '11111111-1111-4111-8111-111111111111',
+  'off_app', 'file', 'Expired completion guard test', '',
+  '11111111-1111-4111-8111-111111111111/88888888-8888-4888-8888-888888888888/proof',
+  'proof.pdf', 'application/pdf', 12, 'upload_pending', null,
+  now() - interval '24 hours', now() - interval '24 hours'
+);
+DO $expiry_guard$
+BEGIN
+  BEGIN
+    UPDATE public.work_evidence
+    SET status='submitted', submitted_at=now()
+    WHERE id='88888888-8888-4888-8888-888888888888';
+    RAISE EXCEPTION 'Expired upload completion unexpectedly succeeded';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM = 'Expired upload completion unexpectedly succeeded' THEN RAISE; END IF;
+    IF SQLERRM <> 'Pending evidence upload has expired' THEN RAISE; END IF;
+  END;
+END;
+$expiry_guard$;
+
 -- Verify failed and expired uploads enter a durable, retryable cleanup queue.
 INSERT INTO public.work_evidence (
   id, request_id, submitted_by, origin, evidence_type, title, description,
