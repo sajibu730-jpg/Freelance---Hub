@@ -128,3 +128,10 @@ The undeployed `owner-workforce-control` handler now supports `action: "list_tas
 ## Owner-only workforce roster (draft Edge Function)
 
 The handler now supports `action: "list_members"` as a read-only Owner roster. It does not require a project key or mutation idempotency key. Before reading the roster, it calls the shared primary-Owner authorization helper, which verifies the bearer token with Supabase Auth, binds the token subject to the verified user, requires AAL2, and confirms an active `app_admins` Owner record. The response is limited to 100 membership records and excludes audit-event tables. This is draft-only source and is not deployed.
+
+
+## Owner workforce member management (draft only)
+
+The undeployed Edge Function now supports Owner-only \`set_member\` and \`set_member_status\` actions. The Owner can add an existing Supabase Auth account to the workforce, change its role/project scopes, suspend it, or reactivate it. Every request requires a verified primary Owner AAL2 session; the database RPC independently checks the actor against the active \`app_admins\` Owner row and writes the membership change plus audit event atomically.
+
+This first safe phase intentionally does not create Auth users or send invitation emails. It only manages an existing Auth user UUID, preventing an email invite from being sent before the membership transaction is committed. A separate invitation workflow must later handle email delivery and compensating cleanup/reconciliation.
