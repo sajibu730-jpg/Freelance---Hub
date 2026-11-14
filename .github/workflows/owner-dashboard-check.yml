@@ -61,6 +61,7 @@ jobs:
           print("Dashboard structural and public-client safety checks passed.")
           PY
           node --check /tmp/owner-dashboard.mjs
+          python3 scripts/check_system_evolution_draft.py
 
       - name: Verify production deployment remains main-only
         run: |
