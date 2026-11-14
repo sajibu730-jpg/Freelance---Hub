@@ -6,6 +6,8 @@ import {
   parseWorkforceRole,
   parseProjectScopes,
   parseMemberStatus,
+  parseInvitationEmail,
+  parseInvitationReviewReason,
 } from "./request.ts";
 
 Deno.test("workforce body accepts a JSON object", () => {
@@ -110,5 +112,27 @@ Deno.test("Owner audit history request does not require a project or mutation id
   const body = parseWorkforceBody('{"action":"list_member_events","limit":50}');
   if (!body.ok || body.body.action !== "list_member_events") {
     throw new Error("valid Owner audit history request was rejected");
+  }
+});
+
+
+Deno.test("invitation email parser trims and normalizes valid email addresses", () => {
+  if (parseInvitationEmail("  Staff.Example+Ops@Example.COM ") !== "staff.example+ops@example.com") {
+    throw new Error("valid invitation email was not normalized");
+  }
+});
+
+Deno.test("invitation email parser rejects malformed or oversized addresses", () => {
+  for (const value of [null, 12, "", "missing-at.example.com", "staff@", "@example.com", "staff@example", "two@@example.com", "bad space@example.com", "x".repeat(255) + "@example.com"]) {
+    if (parseInvitationEmail(value) !== null) throw new Error("invalid invitation email accepted");
+  }
+});
+
+Deno.test("invitation reconciliation reason parser allows only fixed safe codes", () => {
+  for (const reason of ["auth_error", "auth_exception", "record_sent_failed"]) {
+    if (parseInvitationReviewReason(reason) !== reason) throw new Error("valid review reason rejected");
+  }
+  for (const reason of ["arbitrary", "delete_user", null, 1]) {
+    if (parseInvitationReviewReason(reason) !== null) throw new Error("invalid review reason accepted");
   }
 });
