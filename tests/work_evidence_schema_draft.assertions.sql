@@ -311,6 +311,12 @@ BEGIN
     '77777777-7777-4777-8777-777777777777', v_expired_token, false, 'Disposable retry test'
   ) INTO v_ok;
   IF NOT v_ok THEN RAISE EXCEPTION 'Cleanup retry could not be committed'; END IF;
+  IF (SELECT next_attempt_at < now() + interval '29 seconds'
+      OR next_attempt_at > now() + interval '31 seconds'
+      FROM public.work_evidence_cleanup_queue
+      WHERE evidence_id='77777777-7777-4777-8777-777777777777') THEN
+    RAISE EXCEPTION 'First cleanup retry must use the documented 30-second backoff';
+  END IF;
 
   IF (SELECT state FROM public.work_evidence_cleanup_queue
       WHERE evidence_id='66666666-6666-4666-8666-666666666666') <> 'completed' THEN
