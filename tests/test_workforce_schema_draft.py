@@ -11,7 +11,7 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
         self.assertIn("DRAFT ONLY", SQL)
         self.assertIn("Do not execute against Production", SQL)
 
-    def test_all_six_tables_enable_rls(self):
+    def test_all_eight_tables_enable_rls(self):
         tables = re.findall(r"create table public\.(owner_[a-z_]+)", SQL, re.I)
         self.assertEqual(8, len(tables), tables)
         for table in tables:
@@ -29,8 +29,7 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
             "grant select on table public.owner_workforce_members, public.owner_workforce_tasks,",
             SQL,
         )
-        self.assertIn("public.owner_workforce_invitations", SQL
-        )
+        self.assertIn("public.owner_workforce_invitations", SQL)
         self.assertNotRegex(SQL, r"grant\s+(?:all|insert|update|delete)[^;]*to service_role")
         self.assertNotRegex(SQL, r"grant\s+[^;]*\b(?:anon|authenticated)\b")
 
