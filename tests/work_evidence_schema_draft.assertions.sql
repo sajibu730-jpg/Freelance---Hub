@@ -58,6 +58,9 @@ BEGIN
     OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='work_evidence_events_no_update' AND NOT tgisinternal) THEN
     RAISE EXCEPTION 'Evidence audit or append-only trigger is missing';
   END IF;
+  IF NOT (SELECT prosecdef FROM pg_proc WHERE oid='public.audit_work_evidence_change()'::regprocedure) THEN
+    RAISE EXCEPTION 'Evidence audit trigger must run with narrowly scoped definer privileges';
+  END IF;
 END;
 $$;
 
@@ -225,6 +228,45 @@ BEGIN
   END;
 END;
 $expiry_guard$;
+ROLLBACK;
+
+-- The API updates work_evidence as service_role. The audit trigger must be able
+-- to append the event and enqueue cleanup without granting direct queue access.
+BEGIN;
+INSERT INTO public.work_evidence (
+  id, request_id, submitted_by, origin, evidence_type, title, description,
+  storage_path, original_filename, mime_type, byte_size, status, submitted_at
+) VALUES (
+  '99999999-9999-4999-8999-999999999999',
+  '99999999-9999-4999-8999-999999999998',
+  '11111111-1111-4111-8111-111111111111',
+  'off_app', 'file', 'Service role cleanup trigger test', '',
+  '11111111-1111-4111-8111-111111111111/99999999-9999-4999-8999-999999999999/proof',
+  'proof.pdf', 'application/pdf', 12, 'upload_pending', null
+);
+SET LOCAL ROLE service_role;
+UPDATE public.work_evidence
+SET status='upload_failed', submitted_at=now()
+WHERE id='99999999-9999-4999-8999-999999999999';
+RESET ROLE;
+DO $service_role_trigger_test$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.work_evidence_cleanup_queue
+    WHERE evidence_id='99999999-9999-4999-8999-999999999999'
+      AND storage_path='11111111-1111-4111-8111-111111111111/99999999-9999-4999-8999-999999999999/proof'
+  ) THEN
+    RAISE EXCEPTION 'Service-role failure transition did not enqueue Storage cleanup';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.work_evidence_events
+    WHERE evidence_id='99999999-9999-4999-8999-999999999999'
+      AND event_type='upload_failed'
+  ) THEN
+    RAISE EXCEPTION 'Service-role failure transition did not append its audit event';
+  END IF;
+END;
+$service_role_trigger_test$;
 ROLLBACK;
 
 -- Verify failed and expired uploads enter a durable, retryable cleanup queue.
