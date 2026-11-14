@@ -94,6 +94,13 @@ export function isWorkSubmissionParticipant(
   return userId === freelancerId || (!!jobOwnerId && userId === jobOwnerId);
 }
 
+export function submissionMatchesContract(
+  submissionFreelancerId: string,
+  contractFreelancerId: string,
+): boolean {
+  return submissionFreelancerId === contractFreelancerId;
+}
+
 export function canReviewEvidence(currentStatus: string, nextStatus: string): boolean {
   return ["submitted", "needs_info"].includes(currentStatus)
     && ["verified", "rejected", "needs_info"].includes(nextStatus);
