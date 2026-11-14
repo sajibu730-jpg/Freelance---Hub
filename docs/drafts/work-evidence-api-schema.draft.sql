@@ -235,8 +235,9 @@ $$;
 create or replace function public.audit_work_evidence_change()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
-as $$
+as $
 declare
   v_actor uuid;
   v_event text;
