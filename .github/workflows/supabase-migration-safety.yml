@@ -15,6 +15,7 @@ on:
       - "supabase/functions/_shared/workforce-auth.ts"
       - "supabase/functions/_shared/workforce-auth.test.ts"
       - "supabase/functions/owner-workforce-control/**"
+      - "docs/drafts/owner-workforce-invitations.draft.md"
       - ".github/workflows/supabase-migration-safety.yml"
 
 permissions:
@@ -44,6 +45,9 @@ jobs:
 
       - name: Test workforce Edge Function request validation
         run: deno test supabase/functions/owner-workforce-control/request.test.ts
+
+      - name: Test recoverable workforce invitation dispatch
+        run: deno test supabase/functions/owner-workforce-control/invitation-lifecycle.test.ts
 
       - name: Type-check the undeployed workforce Edge Function
         run: deno check supabase/functions/owner-workforce-control/index.ts
