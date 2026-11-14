@@ -123,3 +123,8 @@ The current Supabase account has one Production project and no development branc
 ## Read-only task listing (draft Edge Function)
 
 The undeployed `owner-workforce-control` handler now supports `action: "list_tasks"`. It validates the bearer token through Supabase Auth, checks active membership and project scope, then applies role-specific server-side filters: Project Managers see tasks in their scoped project, Developers and QA see only tasks assigned to their verified account, and Support sees only support/incident tasks. Results are limited to the latest 50 records and expose no audit-event table. This endpoint is still draft source; it is not deployed and has not been integration-tested against a real Supabase staging project.
+
+
+## Owner-only workforce roster (draft Edge Function)
+
+The handler now supports `action: "list_members"` as a read-only Owner roster. It does not require a project key or mutation idempotency key. Before reading the roster, it calls the shared primary-Owner authorization helper, which verifies the bearer token with Supabase Auth, binds the token subject to the verified user, requires AAL2, and confirms an active `app_admins` Owner record. The response is limited to 100 membership records and excludes audit-event tables. This is draft-only source and is not deployed.
