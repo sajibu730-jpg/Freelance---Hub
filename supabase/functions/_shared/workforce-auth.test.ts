@@ -1,5 +1,6 @@
 import {
   authorizePrimaryOwner,
+  authorizeAssignedTaskMutation,
   authorizeStaffTaskAction,
   extractBearerToken,
   type AuthLookup,
@@ -155,4 +156,24 @@ Deno.test("Unknown role and malformed scope fail closed", async () => {
   if (unknown.ok) throw new Error("unknown staff role was allowed");
   const malformed = await authorizeStaffTaskAction("staff-1", " freelance-hub", "list_tasks", membership("developer"));
   if (malformed.ok) throw new Error("malformed project key was allowed");
+});
+
+
+Deno.test("Developer and QA can update only their own assigned task", async () => {
+  for (const role of ["developer", "qa"]) {
+    const actor = await authorizeStaffTaskAction("staff-1", "freelance-hub", "update_task_status", membership(role));
+    if (!actor.ok) throw new Error(`${role} membership setup failed`);
+    const own = authorizeAssignedTaskMutation(actor, "update_task_status", {
+      project_key: "freelance-hub", assignee_id: "staff-1",
+    });
+    if (!own.ok) throw new Error(`${role} could not update assigned task`);
+    const other = authorizeAssignedTaskMutation(actor, "append_task_evidence", {
+      project_key: "freelance-hub", assignee_id: "another-user",
+    });
+    if (other.ok) throw new Error(`${role} updated another member's task`);
+    const crossProject = authorizeAssignedTaskMutation(actor, "update_task_status", {
+      project_key: "other-project", assignee_id: "staff-1",
+    });
+    if (crossProject.ok) throw new Error(`${role} updated a task from another project`);
+  }
 });
