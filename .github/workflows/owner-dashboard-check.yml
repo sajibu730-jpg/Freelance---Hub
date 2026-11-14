@@ -45,6 +45,8 @@ jobs:
               'System Monitoring',
               'Owner Security',
               'Platform Overview',
+              'Workforce Control',
+              'owner-workforce-control',
               'owner-analytics',
               'owner-security',
           ]
