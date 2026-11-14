@@ -32,3 +32,11 @@ Deno.test("RPC errors map to safe HTTP status classes", () => {
     if (rpcErrorStatus({ code }) !== expected) throw new Error("incorrect RPC error mapping");
   }
 });
+
+
+Deno.test("read-only task list does not require a mutation idempotency key", () => {
+  const body = parseWorkforceBody('{"action":"list_tasks","project_key":"freelance-hub"}');
+  if (!body.ok || body.body.action !== "list_tasks") {
+    throw new Error("valid read-only list request was rejected");
+  }
+});
