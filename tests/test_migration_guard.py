@@ -8,12 +8,21 @@ SPEC = importlib.util.spec_from_file_location(
 guard = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(guard)
 
+
 class MigrationGuardTests(unittest.TestCase):
-    def test_new_table_requires_rls_and_policy(self):
+    def test_quoted_policy_name_passes(self):
         sql = """
         create table public.work_items (id uuid primary key);
         alter table public.work_items enable row level security;
         create policy "owner reads" on public.work_items for select to authenticated using (true);
+        """
+        self.assertEqual([], guard.validate(Path("example.sql"), sql))
+
+    def test_unquoted_policy_name_passes(self):
+        sql = """
+        create table public.work_items (id uuid primary key);
+        alter table public.work_items enable row level security;
+        create policy owner_reads on public.work_items for select to authenticated using (true);
         """
         self.assertEqual([], guard.validate(Path("example.sql"), sql))
 
@@ -22,13 +31,17 @@ class MigrationGuardTests(unittest.TestCase):
         self.assertTrue(any("missing ENABLE ROW LEVEL SECURITY" in e
                             for e in guard.validate(Path("example.sql"), sql)))
 
-    def test_service_only_exception_is_explicit(self):
+    def test_service_only_exception_is_table_scoped(self):
         sql = """
-        -- RLS-EXCEPTION: service-role-only
+        -- RLS-EXCEPTION: service-role-only public.private_events
         create table public.private_events (id uuid primary key);
+        create table public.other_events (id uuid primary key);
         alter table public.private_events enable row level security;
+        alter table public.other_events enable row level security;
         """
-        self.assertEqual([], guard.validate(Path("example.sql"), sql))
+        errors = guard.validate(Path("example.sql"), sql)
+        self.assertFalse(any("public.private_events has no CREATE POLICY" in e for e in errors))
+        self.assertTrue(any("public.other_events has no CREATE POLICY" in e for e in errors))
 
     def test_security_definer_needs_review_marker(self):
         sql = "create function public.f() returns void language sql security definer as $$ select; $$;"
@@ -39,6 +52,7 @@ class MigrationGuardTests(unittest.TestCase):
         sql = "drop table public.old_table;"
         self.assertTrue(any("destructive SQL" in e
                             for e in guard.validate(Path("example.sql"), sql)))
+
 
 if __name__ == "__main__":
     unittest.main()
