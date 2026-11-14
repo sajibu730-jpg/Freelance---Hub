@@ -51,6 +51,18 @@ export function safeOriginalFilename(value: unknown): string | null {
   return name;
 }
 
+
+export function sameEvidenceRequest(
+  existing: Record<string, unknown>,
+  requested: Record<string, unknown>,
+): boolean {
+  const fields = [
+    "origin", "evidence_type", "title", "description", "job_id", "contract_id",
+    "submission_id", "external_url", "original_filename", "mime_type", "byte_size",
+  ];
+  return fields.every((key) => (existing[key] ?? null) === (requested[key] ?? null));
+}
+
 export function hasExpectedMagic(mime: string, bytes: Uint8Array): boolean {
   if (mime === "application/pdf") {
     return bytes.length >= 5 && new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
