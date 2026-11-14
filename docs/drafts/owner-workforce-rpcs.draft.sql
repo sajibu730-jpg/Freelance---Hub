@@ -41,8 +41,8 @@ begin
      or p_title is null or p_title <> btrim(p_title)
      or length(p_title) not between 1 and 180
      or p_description is null or length(p_description) > 8000
-     or p_task_kind not in ('general', 'support', 'incident')
-     or p_priority not in ('low', 'normal', 'high', 'urgent') then
+     or p_task_kind is null or p_task_kind not in ('general', 'support', 'incident')
+     or p_priority is null or p_priority not in ('low', 'normal', 'high', 'urgent') then
     raise exception using errcode = '22023', message = 'Invalid task input.';
   end if;
 
@@ -55,7 +55,7 @@ begin
   if found then
     if v_existing.actor_user_id <> p_actor_user_id
        or v_existing.event_type <> 'created'
-       or v_existing.details ->> 'operation' <> 'create_task' then
+       or v_existing.details ->> 'operation' is distinct from 'create_task' then
       raise exception using errcode = '23505', message = 'Idempotency key was already used.';
     end if;
     select t.* into v_task from public.owner_workforce_tasks t where t.id = v_existing.task_id;
@@ -133,8 +133,8 @@ begin
     if v_existing.actor_user_id <> p_actor_user_id
        or v_existing.task_id <> p_task_id
        or v_existing.event_type not in ('assigned', 'reassigned')
-       or v_existing.details ->> 'operation' <> 'assign_task'
-       or (v_existing.details ->> 'assignee_id')::uuid <> p_assignee_id then
+       or v_existing.details ->> 'operation' is distinct from 'assign_task'
+       or (v_existing.details ->> 'assignee_id')::uuid is distinct from p_assignee_id then
       raise exception using errcode = '23505', message = 'Idempotency key was already used.';
     end if;
     select t.* into v_task from public.owner_workforce_tasks t where t.id = p_task_id;
@@ -159,6 +159,7 @@ begin
   where m.user_id = p_actor_user_id;
 
   if not found or v_role <> 'project_manager' or v_status <> 'active'
+     or v_task.status = 'done'
      or not (v_task.project_key = any(coalesce(v_scopes, array[]::text[]))) then
     raise exception using errcode = '42501', message = 'An active scoped Project Manager is required.';
   end if;
@@ -216,9 +217,10 @@ declare
   v_scopes text[];
   v_task public.owner_workforce_tasks%rowtype;
   v_existing public.owner_workforce_task_events%rowtype;
+  v_previous_status text;
 begin
   if p_actor_user_id is null or p_task_id is null or p_request_id is null
-     or p_new_status not in ('in_progress', 'blocked', 'in_review', 'done')
+     or p_new_status is null or p_new_status not in ('in_progress', 'blocked', 'in_review', 'done')
      or (p_blocked_reason is not null and length(p_blocked_reason) > 1000)
      or (p_completion_evidence is not null and length(p_completion_evidence) > 4000) then
     raise exception using errcode = '22023', message = 'Invalid task status input.';
@@ -234,8 +236,8 @@ begin
     if v_existing.actor_user_id <> p_actor_user_id
        or v_existing.task_id <> p_task_id
        or v_existing.event_type <> 'status_changed'
-       or v_existing.details ->> 'operation' <> 'update_task_status'
-       or v_existing.details ->> 'new_status' <> p_new_status then
+       or v_existing.details ->> 'operation' is distinct from 'update_task_status'
+       or v_existing.details ->> 'new_status' is distinct from p_new_status then
       raise exception using errcode = '23505', message = 'Idempotency key was already used.';
     end if;
     select t.* into v_task from public.owner_workforce_tasks t where t.id = p_task_id;
@@ -260,7 +262,7 @@ begin
   where m.user_id = p_actor_user_id;
 
   if not found or v_role not in ('developer', 'qa') or v_member_status <> 'active'
-     or v_task.assignee_id <> p_actor_user_id
+     or v_task.assignee_id is distinct from p_actor_user_id
      or not (v_task.project_key = any(coalesce(v_scopes, array[]::text[]))) then
     raise exception using errcode = '42501', message = 'Only the active assigned Developer or QA member may update this task.';
   end if;
@@ -282,6 +284,8 @@ begin
     raise exception using errcode = '22023', message = 'Completion evidence is required.';
   end if;
 
+  v_previous_status := v_task.status;
+
   update public.owner_workforce_tasks
   set status = p_new_status,
       blocked_reason = case when p_new_status = 'blocked' then p_blocked_reason else null end,
@@ -297,7 +301,7 @@ begin
     (p_request_id, p_task_id, v_task.project_key, p_actor_user_id, 'status_changed',
      pg_catalog.jsonb_build_object(
        'operation', 'update_task_status',
-       'previous_status', (select e.details ->> 'previous_status' from public.owner_workforce_task_events e where e.task_id = p_task_id order by e.created_at desc limit 1),
+       'previous_status', v_previous_status,
        'new_status', p_new_status,
        'has_completion_evidence', (p_new_status = 'done')
      ));
@@ -339,7 +343,7 @@ begin
     if v_existing.actor_user_id <> p_actor_user_id
        or v_existing.task_id <> p_task_id
        or v_existing.event_type <> 'evidence_added'
-       or v_existing.details ->> 'operation' <> 'append_task_evidence' then
+       or v_existing.details ->> 'operation' is distinct from 'append_task_evidence' then
       raise exception using errcode = '23505', message = 'Idempotency key was already used.';
     end if;
     select t.* into v_task from public.owner_workforce_tasks t where t.id = p_task_id;
@@ -367,6 +371,10 @@ begin
      or v_task.assignee_id <> p_actor_user_id
      or not (v_task.project_key = any(coalesce(v_scopes, array[]::text[]))) then
     raise exception using errcode = '42501', message = 'Only the active assigned Developer or QA member may append evidence.';
+  end if;
+
+  if v_task.status = 'done' then
+    raise exception using errcode = '22023', message = 'Completed tasks are read-only.';
   end if;
 
   insert into public.owner_workforce_task_events
