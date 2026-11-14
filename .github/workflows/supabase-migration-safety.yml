@@ -6,10 +6,12 @@ on:
     paths:
       - "supabase/migrations/**"
       - "docs/drafts/owner-workforce-schema.draft.sql"
+      - "docs/drafts/owner-workforce-rpcs.draft.sql"
       - "scripts/check_supabase_migrations.py"
       - "tests/test_migration_guard.py"
       - "tests/test_workforce_schema_draft.py"
       - "tests/workforce_schema_draft.assertions.sql"
+      - "tests/workforce_rpcs_draft.assertions.sql"
       - "supabase/functions/_shared/workforce-auth.ts"
       - "supabase/functions/_shared/workforce-auth.test.ts"
       - ".github/workflows/supabase-migration-safety.yml"
@@ -100,9 +102,23 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f docs/drafts/owner-workforce-schema.draft.sql
 
-      - name: Verify RLS, grants, constraints, and idempotency
+      - name: Apply draft atomic workforce RPCs to disposable PostgreSQL only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f docs/drafts/owner-workforce-rpcs.draft.sql
+
+      - name: Verify schema RLS, grants, constraints, and idempotency
         env:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f tests/workforce_schema_draft.assertions.sql
+
+      - name: Verify atomic workforce RPC permissions and behavior
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/workforce_rpcs_draft.assertions.sql
