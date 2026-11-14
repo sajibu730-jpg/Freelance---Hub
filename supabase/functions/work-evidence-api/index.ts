@@ -4,6 +4,7 @@ import {
   ALLOWED_EVIDENCE_MIME,
   cleanText,
   hasExpectedMagic,
+  hasRequiredOwnerMfa,
   isUuid,
   MAX_FILE_BYTES,
   safeHttpsUrl,
@@ -79,22 +80,26 @@ function optionalUuid(value: unknown, field: string): string | null {
 }
 
 async function ownerMfaSatisfied(authClient: any, token: string): Promise<boolean> {
-  const [{ data: factors, error: factorError }, { data: claims, error: claimsError }] =
-    await Promise.all([authClient.auth.mfa.listFactors(), authClient.auth.getClaims(token)]);
-  if (factorError || claimsError) throw new HttpError(503, "Could not verify Owner MFA status.");
-  const verifiedTotp = (factors?.totp ?? []).some((factor: { status?: string }) => factor.status === "verified");
-  return !verifiedTotp || claims?.claims?.aal === "aal2";
+  const [{ data: factors, error: factorError }, { data: assurance, error: assuranceError }] =
+    await Promise.all([
+      authClient.auth.mfa.listFactors(),
+      authClient.auth.mfa.getAuthenticatorAssuranceLevel(token),
+    ]);
+  if (factorError || assuranceError) throw new HttpError(503, "Could not verify Owner MFA status.");
+  return hasRequiredOwnerMfa(factors, assurance?.currentLevel);
 }
 
 async function requireOwner(admin: any, authClient: any, token: string, userId: string) {
-  const { data, error } = await admin.from("app_admins")
-    .select("role,is_active").eq("user_id", userId).maybeSingle();
+  // app_admins has no separate primary-owner flag. Treat the sole active role=owner
+  // record as the primary Owner and fail closed if the data contains multiple owners.
+  const { data: owners, error } = await admin.from("app_admins")
+    .select("user_id").eq("role", "owner").eq("is_active", true);
   if (error) throw error;
-  if (data?.role !== "owner" || data?.is_active !== true) {
-    throw new HttpError(403, "Only the primary active Owner can access evidence review.");
+  if (!Array.isArray(owners) || owners.length !== 1 || owners[0].user_id !== userId) {
+    throw new HttpError(403, "Only the single active primary Owner can access evidence review.");
   }
   if (!(await ownerMfaSatisfied(authClient, token))) {
-    throw new HttpError(403, "Owner MFA verification is required (AAL2).");
+    throw new HttpError(403, "Complete Owner TOTP enrollment and verify MFA (AAL2) before continuing.");
   }
 }
 
@@ -133,6 +138,16 @@ async function validateRelationship(
     if (jobId && jobId !== submission.job_id) throw new HttpError(400, "Submission and job do not match.");
     if (contractId && contractId !== submission.contract_id) {
       throw new HttpError(400, "Submission and contract do not match.");
+    }
+    // A submission belongs to its freelancer and (through its job) the client.
+    // A proposal on the same job is not enough to claim somebody else's submission.
+    if (!submission.contract_id && userId !== submission.freelancer_id) {
+      const { data: jobOwner, error: jobOwnerError } = await admin.from("jobs")
+        .select("owner_id").eq("id", submission.job_id).maybeSingle();
+      if (jobOwnerError) throw jobOwnerError;
+      if (!jobOwner || jobOwner.owner_id !== userId) {
+        throw new HttpError(403, "You are not a participant in this work submission.");
+      }
     }
     jobId = submission.job_id;
     contractId = submission.contract_id;
