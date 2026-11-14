@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "docs/WORK_EVIDENCE_API_CONTRACT.md"
+      - "docs/testing/work-evidence-api-staging-test-plan.md"
       - "docs/drafts/work-evidence-api-schema.draft.sql"
       - "supabase/functions/work-evidence-api/**"
       - "supabase/functions/work-evidence-cleanup/**"
