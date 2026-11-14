@@ -348,9 +348,10 @@ Deno.serve(async (req: Request) => {
       if (!evidence) throw new HttpError(404, "Evidence upload not found.");
       if (evidence.status !== "upload_pending") throw new HttpError(409, "Evidence is not awaiting upload.");
       if (!isPendingUploadWithinTtl(evidence.created_at)) {
-        await admin.from("work_evidence").update({
+        const { error: expireError } = await admin.from("work_evidence").update({
           status: "upload_failed", submitted_at: new Date().toISOString(),
         }).eq("id", evidence.id).eq("submitted_by", user.id).eq("status", "upload_pending");
+        if (expireError) throw new HttpError(503, "The expired upload could not be queued for cleanup. Please retry.");
         throw new HttpError(409, "The upload window has expired. Create a new evidence request.");
       }
 
@@ -375,7 +376,19 @@ Deno.serve(async (req: Request) => {
         .update({ status: "submitted", submitted_at: new Date().toISOString() })
         .eq("id", evidence.id).eq("submitted_by", user.id).eq("status", "upload_pending")
         .select("id,status,submitted_at").maybeSingle();
-      if (updateError) throw updateError;
+      if (updateError) {
+        // The database trigger is the final authority for the 24-hour deadline.
+        // If validation crossed that boundary, mark the pending row failed so
+        // its private Storage object is transactionally queued for cleanup.
+        if (String(updateError.message || "").includes("Pending evidence upload has expired")) {
+          const { error: expireError } = await admin.from("work_evidence").update({
+            status: "upload_failed", submitted_at: new Date().toISOString(),
+          }).eq("id", evidence.id).eq("submitted_by", user.id).eq("status", "upload_pending");
+          if (expireError) throw new HttpError(503, "The expired upload could not be queued for cleanup. Please retry.");
+          throw new HttpError(409, "The upload window expired during file validation. Create a new evidence request.");
+        }
+        throw updateError;
+      }
       if (!updated) throw new HttpError(409, "Upload state changed; refresh your evidence list.");
       return reply({ success: true, evidence: updated });
     }
