@@ -127,7 +127,7 @@ do $$
 begin
   begin
     perform public.approve_evolution_release(
-      (select id from public.evolution_candidates where title = 'AAL2 Owner approval fixture'),
+      current_setting('test.approval_candidate_id')::uuid,
       'Risk accepted', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'
     );
     raise exception 'A non-Owner unexpectedly approved a release.';
@@ -162,8 +162,7 @@ declare
   v_state text;
   v_event_count integer;
 begin
-  select id into v_candidate from public.evolution_candidates
-  where title = 'AAL2 Owner approval fixture';
+  v_candidate := current_setting('test.approval_candidate_id')::uuid;
 
   v_result := public.approve_evolution_release(
     v_candidate, 'I reviewed and accept the low-risk release.', 
@@ -178,21 +177,6 @@ begin
     raise exception 'Approval response is not bound to the exact candidate evidence.';
   end if;
 
-  select lifecycle_state into v_state
-  from public.evolution_candidates where id = v_candidate;
-  if v_state <> 'owner_approved' then
-    raise exception 'Candidate state and approval were not committed together.';
-  end if;
-
-  select count(*) into v_event_count
-  from public.evolution_release_events
-  where candidate_id = v_candidate and event_type = 'approval_granted'
-    and approval_id = v_approval
-    and actor_user_id = '88888888-8888-4888-8888-888888888888';
-  if v_event_count <> 1 then
-    raise exception 'Approval audit event missing or duplicated.';
-  end if;
-
   begin
     perform public.approve_evolution_release(
       v_candidate, 'Second approval attempt', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5'
@@ -204,5 +188,31 @@ begin
 end $$;
 
 reset role;
+
+do $
+declare
+  v_candidate uuid := current_setting('test.approval_candidate_id')::uuid;
+  v_state text;
+  v_approval uuid;
+  v_event_count integer;
+begin
+  select lifecycle_state into v_state
+  from public.evolution_candidates where id = v_candidate;
+  if v_state <> 'owner_approved' then
+    raise exception 'Candidate state and approval were not committed together.';
+  end if;
+
+  select id into v_approval from public.evolution_approvals
+  where candidate_id = v_candidate and owner_user_id = '88888888-8888-4888-8888-888888888888';
+
+  select count(*) into v_event_count
+  from public.evolution_release_events
+  where candidate_id = v_candidate and event_type = 'approval_granted'
+    and approval_id = v_approval
+    and actor_user_id = '88888888-8888-4888-8888-888888888888';
+  if v_event_count <> 1 then
+    raise exception 'Approval audit event missing or duplicated.';
+  end if;
+end $;
 
 select 'System Evolution Owner AAL2 approval RPC disposable PostgreSQL tests passed.' as result;
