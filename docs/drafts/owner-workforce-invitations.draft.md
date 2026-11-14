@@ -40,8 +40,10 @@ The invitee must complete the Supabase invitation flow, sign in with a verified 
 
 - `supabase/functions/owner-workforce-control/invitation-lifecycle.ts` contains a side-effect-injected dispatch coordinator.
 - Its Deno tests prove one-time claim behavior, no automatic retry on ambiguous Auth outcomes, and preservation of the returned Auth UUID when database finalization fails.
+- `owner_workforce_invitations` and `owner_workforce_invitation_events` are draft tables with RLS enabled; API roles have no direct audit-table access.
+- Server-only RPC drafts cover prepare, one-time dispatch claim, sent/reconciliation recording, verified-email acceptance, cancellation, and bounded Owner listing. The PostgreSQL workflow tests these transitions in a disposable database.
 - The coordinator is not wired to the live Edge Function and has no Auth or database adapter yet.
-- Database tables/RPCs, Owner reconciliation UI, invite acceptance integration, and staging Auth tests remain pending.
+- The draft invitation table and atomic prepare/claim/record/review/accept/cancel/list RPCs now exist and are covered by disposable PostgreSQL assertions. The Owner reconciliation UI, Edge Function adapter wiring, and staging Auth tests remain pending.
 
 ## Activation gate
 
