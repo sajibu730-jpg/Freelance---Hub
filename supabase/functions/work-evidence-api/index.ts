@@ -40,6 +40,39 @@ function requiredDescription(value: unknown): string {
   return value.trim();
 }
 
+async function readJsonLimited(req: Request): Promise<Record<string, any>> {
+  if (!req.body) throw new HttpError(400, "A JSON request body is required.");
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new HttpError(413, "Request body is too large.");
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.length;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(body));
+  } catch {
+    throw new HttpError(400, "Request body must be valid JSON.");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new HttpError(400, "A JSON object is required.");
+  }
+  return parsed as Record<string, any>;
+}
+
 function optionalUuid(value: unknown, field: string): string | null {
   if (value === undefined || value === null || value === "") return null;
   if (!isUuid(value)) throw new HttpError(400, `${field} must be a valid ID.`);
@@ -148,7 +181,9 @@ Deno.serve(async (req: Request) => {
     return reply({ success: false, error: "Origin not allowed." }, 403);
   }
   const contentLength = Number(req.headers.get("Content-Length") || 0);
-  if (contentLength > MAX_BODY_BYTES) return reply({ success: false, error: "Request body is too large." }, 413);
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return reply({ success: false, error: "Request body is too large." }, 413);
+  }
 
   try {
     const url = Deno.env.get("SUPABASE_URL");
@@ -168,8 +203,7 @@ Deno.serve(async (req: Request) => {
     const user = authData.user;
     const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "A JSON request body is required.");
+    const body = await readJsonLimited(req);
     const action = String(body.action || "");
 
     if (action === "submit_link" || action === "submit_note" || action === "prepare_upload") {
@@ -300,7 +334,15 @@ Deno.serve(async (req: Request) => {
           ? await admin.from("profiles").select("id,display_name,country").in("id", ids)
           : { data: [], error: null };
         if (profileError) throw profileError;
-        return reply({ success: true, evidence: data || [], profiles: profiles || [], total: count || 0, page, page_size: 50 });
+        const accounts = await Promise.all(ids.map(async (id: string) => {
+          const { data: account, error: accountError } = await admin.auth.admin.getUserById(id);
+          if (accountError) throw accountError;
+          return { id, email: account.user?.email || null };
+        }));
+        return reply({
+          success: true, evidence: data || [], profiles: profiles || [], accounts,
+          total: count || 0, page, page_size: 50,
+        });
       }
 
       if (!isUuid(body.evidence_id)) throw new HttpError(400, "evidence_id must be a UUID.");
@@ -323,6 +365,10 @@ Deno.serve(async (req: Request) => {
       const newStatus = String(body.status || "");
       if (!["verified", "rejected", "needs_info"].includes(newStatus)) {
         throw new HttpError(400, "Review status must be verified, rejected, or needs_info.");
+      }
+      if (body.review_note !== undefined && body.review_note !== null
+        && (typeof body.review_note !== "string" || body.review_note.length > 2000)) {
+        throw new HttpError(400, "Review note must be 2000 characters or fewer.");
       }
       const note = body.review_note === undefined || body.review_note === null ? null : cleanText(body.review_note, 2000);
       if ((newStatus === "rejected" || newStatus === "needs_info") && !note) {
