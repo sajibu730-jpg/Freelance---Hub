@@ -110,6 +110,13 @@ export const UPLOAD_PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 // Stop issuing two-hour signed upload URLs 2h15m before the 24h expiry.
 export const UPLOAD_RETRY_CUTOFF_MS = 21 * 60 * 60 * 1000 + 45 * 60 * 1000;
 
+export function isPendingUploadWithinTtl(createdAt: unknown, nowMs = Date.now()): boolean {
+  if (typeof createdAt !== "string") return false;
+  const createdAtMs = Date.parse(createdAt);
+  if (!Number.isFinite(createdAtMs) || createdAtMs > nowMs) return false;
+  return nowMs - createdAtMs < UPLOAD_PENDING_TTL_MS;
+}
+
 export function canRenewPendingUpload(createdAt: unknown, nowMs = Date.now()): boolean {
   if (typeof createdAt !== "string") return false;
   const createdAtMs = Date.parse(createdAt);
