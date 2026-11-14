@@ -27,7 +27,10 @@ begin
     'public.owner_workforce_create_task(uuid,text,text,text,text,text,timestamp with time zone,uuid)'::regprocedure,
     'public.owner_workforce_assign_task(uuid,uuid,uuid,uuid)'::regprocedure,
     'public.owner_workforce_update_task_status(uuid,uuid,text,text,text,uuid)'::regprocedure,
-    'public.owner_workforce_append_task_evidence(uuid,uuid,text,uuid)'::regprocedure
+    'public.owner_workforce_append_task_evidence(uuid,uuid,text,uuid)'::regprocedure,
+    'public.owner_workforce_set_member(uuid,uuid,text,text[],uuid)'::regprocedure,
+    'public.owner_workforce_set_member_status(uuid,uuid,text,uuid)'::regprocedure,
+    'public.owner_workforce_list_member_events(uuid,uuid,integer)'::regprocedure
   ] loop
     if has_function_privilege('anon', fn, 'EXECUTE')
        or has_function_privilege('authenticated', fn, 'EXECUTE')
