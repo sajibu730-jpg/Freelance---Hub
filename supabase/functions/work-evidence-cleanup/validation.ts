@@ -9,7 +9,7 @@ export function isExpectedEvidenceStoragePath(
     return false;
   }
   if (!UUID.test(userId) || !UUID.test(evidenceId)) return false;
-  return value.toLowerCase() === `${userId}/${evidenceId}/proof`.toLowerCase();
+  return value === `${userId}/${evidenceId}/proof`;
 }
 
 export function constantTimeEqual(left: string, right: string): boolean {
