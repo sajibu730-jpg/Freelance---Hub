@@ -6,6 +6,7 @@ import {
   isSoleActiveOwner,
   isUuid,
   isWorkSubmissionParticipant,
+  submissionMatchesContract,
   MAX_FILE_BYTES,
   safeHttpsUrl,
   safeOriginalFilename,
@@ -88,6 +89,13 @@ Deno.test("submission and contract access requires a real participant", () => {
     "unrelated user accepted");
   assert(!isWorkSubmissionParticipant("other-user", "freelancer-1", null),
     "unrelated user accepted without a job owner");
+});
+
+Deno.test("submission freelancer must match the linked contract freelancer", () => {
+  assert(submissionMatchesContract("freelancer-1", "freelancer-1"),
+    "matching submission and contract freelancer rejected");
+  assert(!submissionMatchesContract("freelancer-2", "freelancer-1"),
+    "a different freelancer's submission was accepted through this contract");
 });
 
 Deno.test("review policy allows only submitted or needs-info evidence", () => {
