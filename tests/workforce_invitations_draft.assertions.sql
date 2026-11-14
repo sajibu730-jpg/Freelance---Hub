@@ -1,10 +1,12 @@
 -- Disposable PostgreSQL tests only. Never execute against Production.
 -- Assumes the draft schema and RPC files have been applied by the CI workflow.
 
-insert into auth.users (id, email, invited_at, email_confirmed_at) values
-  ('66666666-6666-4666-8666-666666666666', 'new.staff@example.com', pg_catalog.now(), pg_catalog.now()),
-  ('77777777-7777-4777-8777-777777777777', 'recovery.staff@example.com', pg_catalog.now(), null),
-  ('88888888-8888-4888-8888-888888888888', 'unverified.staff@example.com', pg_catalog.now(), null)
+-- Reserve stable Auth UUIDs without emails. The email is attached only after the
+-- invitation intent is durably prepared, simulating Auth Admin's external side effect.
+insert into auth.users (id) values
+  ('66666666-6666-4666-8666-666666666666'),
+  ('77777777-7777-4777-8777-777777777777'),
+  ('88888888-8888-4888-8888-888888888888')
 on conflict (id) do nothing;
 
 set role service_role;
@@ -13,14 +15,9 @@ do $$
 declare
   v_invite jsonb;
   v_retry jsonb;
-  v_invite_id uuid;
-  v_cancel_id uuid;
-  v_review_id uuid;
-  v_claim jsonb;
-  v_member jsonb;
-  v_event_count integer;
+  v_id uuid;
 begin
-  -- Prepare is Owner-only, normalizes nothing silently, and is idempotent by request ID.
+  -- Prepare invitations before the Auth Admin side effect exists.
   v_invite := public.owner_workforce_prepare_invitation(
     '99999999-9999-4999-8999-999999999999',
     'new.staff@example.com',
@@ -28,7 +25,7 @@ begin
     array['freelance-hub'],
     'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1'
   );
-  v_invite_id := (v_invite ->> 'id')::uuid;
+  v_id := (v_invite ->> 'id')::uuid;
   if v_invite ->> 'status' <> 'prepared' then
     raise exception 'New invitation should be prepared.';
   end if;
@@ -40,11 +37,10 @@ begin
     array['freelance-hub'],
     'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1'
   );
-  if (v_retry ->> 'id')::uuid <> v_invite_id then
+  if (v_retry ->> 'id')::uuid <> v_id then
     raise exception 'Matching invitation retry created a duplicate.';
   end if;
 
-  -- A different payload cannot reuse the same idempotency key.
   begin
     perform public.owner_workforce_prepare_invitation(
       '99999999-9999-4999-8999-999999999999',
@@ -58,57 +54,7 @@ begin
     null;
   end;
 
-  -- Only one concurrent caller can claim prepared -> dispatching.
-  v_claim := public.owner_workforce_claim_invitation_dispatch(
-    '99999999-9999-4999-8999-999999999999', v_invite_id
-  );
-  if (v_claim ->> 'claimed')::boolean is not true then
-    raise exception 'First invitation dispatch claim failed.';
-  end if;
-  v_claim := public.owner_workforce_claim_invitation_dispatch(
-    '99999999-9999-4999-8999-999999999999', v_invite_id
-  );
-  if (v_claim ->> 'claimed')::boolean is not false then
-    raise exception 'Invitation dispatch claim was not one-time.';
-  end if;
-
-  -- Auth user is created by the Auth Admin API outside this SQL transaction.
-  v_invite := public.owner_workforce_record_invitation_sent(
-    '99999999-9999-4999-8999-999999999999',
-    v_invite_id,
-    '66666666-6666-4666-8666-666666666666'
-  );
-  if v_invite ->> 'status' <> 'sent' then
-    raise exception 'Invitation was not recorded as sent.';
-  end if;
-  v_retry := public.owner_workforce_record_invitation_sent(
-    '99999999-9999-4999-8999-999999999999',
-    v_invite_id,
-    '66666666-6666-4666-8666-666666666666'
-  );
-  if v_retry ->> 'status' <> 'sent' then
-    raise exception 'Recording the same successful Auth invite was not idempotent.';
-  end if;
-
-  -- The Auth user is already verified in this isolated fixture.
-  v_member := public.owner_workforce_accept_invitation(
-    '66666666-6666-4666-8666-666666666666', v_invite_id
-  );
-  if v_member ->> 'role' <> 'developer'
-     or v_member ->> 'status' <> 'active'
-     or (v_member ->> 'user_id')::uuid <> '66666666-6666-4666-8666-666666666666' then
-    raise exception 'Verified invite acceptance did not create the expected membership.';
-  end if;
-
-  -- A retry is idempotent and does not duplicate the membership.
-  v_member := public.owner_workforce_accept_invitation(
-    '66666666-6666-4666-8666-666666666666', v_invite_id
-  );
-  if v_member ->> 'role' <> 'developer' then
-    raise exception 'Invitation acceptance retry failed.';
-  end if;
-
-  -- Auth API/network ambiguity is quarantined; cancellation does not delete Auth users.
+  -- A second and third invitation exercise ambiguous and unverified outcomes.
   v_invite := public.owner_workforce_prepare_invitation(
     '99999999-9999-4999-8999-999999999999',
     'recovery.staff@example.com',
@@ -116,10 +62,102 @@ begin
     array['freelance-hub'],
     'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2'
   );
-  v_review_id := (v_invite ->> 'id')::uuid;
-  perform public.owner_workforce_claim_invitation_dispatch(
-    '99999999-9999-4999-8999-999999999999', v_review_id
+  perform public.owner_workforce_prepare_invitation(
+    '99999999-9999-4999-8999-999999999999',
+    'unverified.staff@example.com',
+    'qa',
+    array['freelance-hub'],
+    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee3'
   );
+
+  -- Each prepared invite has exactly one successful dispatch claim.
+  for v_id in
+    select i.id from public.owner_workforce_invitations i
+    where i.email in ('new.staff@example.com', 'recovery.staff@example.com', 'unverified.staff@example.com')
+  loop
+    v_invite := public.owner_workforce_claim_invitation_dispatch(
+      '99999999-9999-4999-8999-999999999999', v_id
+    );
+    if (v_invite ->> 'claimed')::boolean is not true then
+      raise exception 'First invitation dispatch claim failed.';
+    end if;
+    v_invite := public.owner_workforce_claim_invitation_dispatch(
+      '99999999-9999-4999-8999-999999999999', v_id
+    );
+    if (v_invite ->> 'claimed')::boolean is not false then
+      raise exception 'Invitation dispatch claim was not one-time.';
+    end if;
+  end loop;
+end $$;
+
+reset role;
+
+-- Simulate Auth Admin creating invited Auth users after the DB intent and claim.
+update auth.users
+set email = 'new.staff@example.com', invited_at = pg_catalog.now(),
+    email_confirmed_at = pg_catalog.now()
+where id = '66666666-6666-4666-8666-666666666666';
+
+update auth.users
+set email = 'recovery.staff@example.com', invited_at = pg_catalog.now()
+where id = '77777777-7777-4777-8777-777777777777';
+
+update auth.users
+set email = 'unverified.staff@example.com', invited_at = pg_catalog.now()
+where id = '88888888-8888-4888-8888-888888888888';
+
+set role service_role;
+
+do $$
+declare
+  v_invite jsonb;
+  v_retry jsonb;
+  v_member jsonb;
+  v_primary_id uuid;
+  v_review_id uuid;
+  v_unverified_id uuid;
+begin
+  select id into v_primary_id from public.owner_workforce_invitations
+  where email = 'new.staff@example.com';
+  select id into v_review_id from public.owner_workforce_invitations
+  where email = 'recovery.staff@example.com';
+  select id into v_unverified_id from public.owner_workforce_invitations
+  where email = 'unverified.staff@example.com';
+
+  v_invite := public.owner_workforce_record_invitation_sent(
+    '99999999-9999-4999-8999-999999999999',
+    v_primary_id,
+    '66666666-6666-4666-8666-666666666666'
+  );
+  if v_invite ->> 'status' <> 'sent' then
+    raise exception 'Invitation was not recorded as sent.';
+  end if;
+  v_retry := public.owner_workforce_record_invitation_sent(
+    '99999999-9999-4999-8999-999999999999',
+    v_primary_id,
+    '66666666-6666-4666-8666-666666666666'
+  );
+  if v_retry ->> 'status' <> 'sent' then
+    raise exception 'Recording the same successful Auth invite was not idempotent.';
+  end if;
+
+  -- Verified Auth email is required before workforce membership is activated.
+  v_member := public.owner_workforce_accept_invitation(
+    '66666666-6666-4666-8666-666666666666', v_primary_id
+  );
+  if v_member ->> 'role' <> 'developer'
+     or v_member ->> 'status' <> 'active'
+     or (v_member ->> 'user_id')::uuid <> '66666666-6666-4666-8666-666666666666' then
+    raise exception 'Verified invite acceptance did not create the expected membership.';
+  end if;
+  v_member := public.owner_workforce_accept_invitation(
+    '66666666-6666-4666-8666-666666666666', v_primary_id
+  );
+  if v_member ->> 'role' <> 'developer' then
+    raise exception 'Invitation acceptance retry failed.';
+  end if;
+
+  -- Auth/network ambiguity is quarantined; cancellation never deletes Auth accounts.
   v_invite := public.owner_workforce_mark_invitation_review(
     '99999999-9999-4999-8999-999999999999',
     v_review_id,
@@ -129,7 +167,6 @@ begin
   if v_invite ->> 'status' <> 'needs_review' then
     raise exception 'Ambiguous Auth result was not quarantined.';
   end if;
-
   v_invite := public.owner_workforce_cancel_invitation(
     '99999999-9999-4999-8999-999999999999',
     v_review_id,
@@ -138,8 +175,6 @@ begin
   if v_invite ->> 'status' <> 'cancelled' then
     raise exception 'Owner could not cancel an unresolved invitation.';
   end if;
-
-  -- Cancellation is idempotent and accepted membership cannot be cancelled as an invite.
   v_invite := public.owner_workforce_cancel_invitation(
     '99999999-9999-4999-8999-999999999999',
     v_review_id,
@@ -149,37 +184,15 @@ begin
     raise exception 'Cancellation retry failed.';
   end if;
 
-  begin
-    perform public.owner_workforce_cancel_invitation(
-      '99999999-9999-4999-8999-999999999999',
-      v_invite_id,
-      'Cannot cancel accepted membership.'
-    );
-    raise exception 'Accepted invitation was cancelled instead of requiring member suspension.';
-  exception when invalid_parameter_value then
-    null;
-  end;
-
-  -- An unverified email cannot activate workforce access.
-  v_invite := public.owner_workforce_prepare_invitation(
-    '99999999-9999-4999-8999-999999999999',
-    'unverified.staff@example.com',
-    'qa',
-    array['freelance-hub'],
-    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee3'
-  );
-  v_cancel_id := (v_invite ->> 'id')::uuid;
-  perform public.owner_workforce_claim_invitation_dispatch(
-    '99999999-9999-4999-8999-999999999999', v_cancel_id
-  );
+  -- An unverified Auth email cannot activate workforce access.
   perform public.owner_workforce_record_invitation_sent(
     '99999999-9999-4999-8999-999999999999',
-    v_cancel_id,
+    v_unverified_id,
     '88888888-8888-4888-8888-888888888888'
   );
   begin
     perform public.owner_workforce_accept_invitation(
-      '88888888-8888-4888-8888-888888888888', v_cancel_id
+      '88888888-8888-4888-8888-888888888888', v_unverified_id
     );
     raise exception 'Unverified invited user was accepted.';
   exception when insufficient_privilege then
@@ -187,7 +200,7 @@ begin
   end;
   perform public.owner_workforce_cancel_invitation(
     '99999999-9999-4999-8999-999999999999',
-    v_cancel_id,
+    v_unverified_id,
     'Unverified test invitation closed.'
   );
 
@@ -197,6 +210,18 @@ begin
     raise exception 'Owner invitation list did not return all three test invitations.';
   end if;
 
+  -- Accepted membership cannot be cancelled as an invitation.
+  begin
+    perform public.owner_workforce_cancel_invitation(
+      '99999999-9999-4999-8999-999999999999',
+      v_primary_id,
+      'Cannot cancel accepted membership.'
+    );
+    raise exception 'Accepted invitation was cancelled instead of requiring member suspension.';
+  exception when invalid_parameter_value then
+    null;
+  end;
+
   -- A non-Owner cannot create invitations.
   begin
     perform public.owner_workforce_prepare_invitation(
@@ -204,7 +229,7 @@ begin
       'forbidden@example.com',
       'support',
       array['freelance-hub'],
-      'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee3'
+      'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee4'
     );
     raise exception 'Non-Owner created a workforce invitation.';
   exception when insufficient_privilege then
