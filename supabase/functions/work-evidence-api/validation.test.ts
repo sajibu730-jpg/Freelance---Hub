@@ -22,6 +22,14 @@ Deno.test("only accepts HTTPS links without credentials or local hosts", () => {
   assert(!safeHttpsUrl("javascript:alert(1)"), "javascript URL accepted");
   assert(!safeHttpsUrl("https://user:pass@example.com/proof"), "credential URL accepted");
   assert(!safeHttpsUrl("https://localhost/proof"), "localhost URL accepted");
+  assert(!safeHttpsUrl("https://printer.local/status"), "local hostname accepted");
+  assert(!safeHttpsUrl("https://admin.internal/"), "internal hostname accepted");
+  assert(!safeHttpsUrl("https://127.0.0.1/"), "IPv4 loopback accepted");
+  assert(!safeHttpsUrl("https://2130706433/"), "integer-form loopback accepted");
+  assert(!safeHttpsUrl("https://10.0.0.8/"), "private IPv4 accepted");
+  assert(!safeHttpsUrl("https://169.254.169.254/"), "link-local IPv4 accepted");
+  assert(!safeHttpsUrl("https://[::1]/"), "IPv6 loopback accepted");
+  assert(!safeHttpsUrl("https://intranet/"), "single-label hostname accepted");
 });
 
 Deno.test("rejects unsafe filenames", () => {
