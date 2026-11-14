@@ -35,6 +35,21 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
         self.assertNotIn("grant all on table public.owner_workforce_task_events", SQL)
         self.assertNotIn("grant all on table public.owner_release_events", SQL)
 
+    def test_event_tables_have_unique_request_ids(self):
+        for table in (
+            "owner_workforce_member_events",
+            "owner_workforce_task_events",
+            "owner_release_events",
+        ):
+            section = SQL.split(f"create table public.{table}", 1)[1].split(");", 1)[0]
+            self.assertRegex(section, r"request_id uuid not null unique")
+
+    def test_done_tasks_require_completion_evidence(self):
+        self.assertIn(
+            "check ((status = 'done' and completion_evidence is not null) or status <> 'done')",
+            SQL,
+        )
+
     def test_no_privileged_definer_function_is_hidden_in_draft(self):
         self.assertNotRegex(SQL, r"security\s+definer")
 
