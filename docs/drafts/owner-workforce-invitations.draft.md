@@ -42,8 +42,9 @@ The invitee must complete the Supabase invitation flow, sign in with a verified 
 - Its Deno tests prove one-time claim behavior, no automatic retry on ambiguous Auth outcomes, and preservation of the returned Auth UUID when database finalization fails.
 - `owner_workforce_invitations` and `owner_workforce_invitation_events` are draft tables with RLS enabled; API roles have no direct audit-table access.
 - Server-only RPC drafts cover prepare, one-time dispatch claim, sent/reconciliation recording, verified-email acceptance, cancellation, and bounded Owner listing. The PostgreSQL workflow tests these transitions in a disposable database.
-- The coordinator is not wired to the live Edge Function and has no Auth or database adapter yet.
-- The draft invitation table and atomic prepare/claim/record/review/accept/cancel/list RPCs now exist and are covered by disposable PostgreSQL assertions. The Owner reconciliation UI, Edge Function adapter wiring, and staging Auth tests remain pending.
+- The coordinator is wired into the undeployed `owner-workforce-control` Edge Function through server-side Supabase RPC and Auth Admin adapters. Actions include Owner-AAL2 `invite_member`, `list_invitations`, `cancel_invitation`, and `reconcile_invitation`, plus verified-session `accept_invitation`.
+- The Owner Dashboard now contains invitation and reconciliation controls, but `WORKFORCE_API_ENABLED=false` keeps every Workforce action disabled. The PR gate asserts this activation boundary.
+- The draft invitation table and atomic prepare/claim/record/review/accept/cancel/list RPCs now exist and are covered by disposable PostgreSQL assertions. The Owner reconciliation UI and Edge Function adapters are present in the draft. Staging Auth integration tests, final security review, deployment, and explicit Owner approval remain pending.
 
 ## Activation gate
 
