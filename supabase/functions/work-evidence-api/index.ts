@@ -365,9 +365,14 @@ Deno.serve(async (req: Request) => {
       const { data: signed, error: signedError } = await admin.storage.from(BUCKET)
         .createSignedUploadUrl(uploadPath, { upsert: false });
       if (signedError || !signed?.signedUrl) {
-        await admin.from("work_evidence").update({
+        // Use the persisted row ID: on an idempotent retry, evidenceId above
+        // is newly generated and is not the ID of the existing pending record.
+        const { error: failError } = await admin.from("work_evidence").update({
           status: "upload_failed", submitted_at: new Date().toISOString(),
-        }).eq("id", evidenceId).eq("status", "upload_pending");
+        }).eq("id", pending.id).eq("submitted_by", user.id).eq("status", "upload_pending");
+        if (failError) {
+          throw new HttpError(503, "Upload preparation failed and cleanup could not be queued. Please retry.");
+        }
         throw new HttpError(503, "Could not prepare secure upload. Please retry with a new request ID.");
       }
       return reply({
