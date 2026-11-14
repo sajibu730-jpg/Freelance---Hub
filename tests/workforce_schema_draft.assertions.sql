@@ -62,7 +62,7 @@ begin
   end;
 end $$;
 
-do $
+do $$
 begin
   begin
     insert into public.owner_workforce_tasks (project_key, title, task_kind, created_by)
@@ -71,7 +71,7 @@ begin
   exception when check_violation then
     null;
   end;
-end $;
+end $$;
 
 insert into public.owner_workforce_tasks (project_key, title, created_by)
 values ('freelance-hub', 'Valid draft task', '11111111-1111-4111-8111-111111111111');
