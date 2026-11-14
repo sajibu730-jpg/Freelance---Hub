@@ -23,6 +23,16 @@
 <div class="head"><div><h2>Workforce Control</h2><p class="muted">Owner-managed roles, project scopes, access status and immutable membership history</p></div><button id="refresh-workforce" class="secondary" disabled>Refresh members</button></div>
 <div class="request"><strong>Activation boundary</strong><p id="workforce-status" class="hint">Workforce API is not deployed. Controls are intentionally disabled until the Owner approves a reviewed backend deployment. No staff account is created or changed from this screen yet.</p></div>
 <div class="grid">
+<article class="card"><h3 class="section-title">Invite a new workforce member</h3><p class="hint">Invitation email is sent through Supabase Auth. The person receives workforce access only after accepting with the same verified email.</p>
+<form id="workforce-invitation-form">
+<label for="workforce-invite-email">Staff email address</label><input id="workforce-invite-email" type="email" autocomplete="off" placeholder="staff@example.com" disabled required>
+<label for="workforce-invite-role">Workforce role</label><select id="workforce-invite-role" disabled><option value="developer">Developer</option><option value="qa">QA Tester</option><option value="project_manager">Project Manager</option><option value="support">Support</option></select>
+<label for="workforce-invite-scopes">Project scopes (comma-separated keys)</label><input id="workforce-invite-scopes" placeholder="freelance-hub" disabled required>
+<button id="send-workforce-invite" disabled>Send staff invitation</button>
+</form><div id="workforce-invitation-form-status" class="status"></div></article>
+<article class="card"><h3 class="section-title">Pending and recent invitations</h3><p class="hint">Uncertain dispatches are held for Owner reconciliation. They are never automatically resent.</p><button id="refresh-workforce-invitations" class="secondary" disabled>Refresh invitations</button><div id="workforce-invitation-list"></div></article>
+</div>
+<div class="grid">
 <article class="card"><h3 class="section-title">Add or update an existing account</h3><p class="hint">Use an existing Supabase Auth user UUID. This draft does not send invitations or create Auth accounts.</p>
 <form id="workforce-member-form">
 <label for="workforce-user-id">Existing Auth User UUID</label><input id="workforce-user-id" autocomplete="off" placeholder="xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx" disabled required>
@@ -61,7 +71,7 @@ $("mfa-login-submit").addEventListener("click",async()=>{
  }catch(err){status("mfa-login-status",err.message||"Authenticator verification failed.",true)}
  finally{$("mfa-login-submit").disabled=false}
 });
-function enter(user,access){currentUser=user;currentAccess=access;$("login").classList.add("hidden");$("dashboard").classList.remove("hidden");$("signout").classList.remove("hidden");const isOwner=access.role==="owner";$("owner-email").textContent=(user.email||"Verified account")+" · "+(isOwner?"Primary Owner":"Read-only invited access");document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("hidden",!isOwner&&b.dataset.tab!=="monitor"));if(isOwner){loadOverview();loadQueue();loadSettings();loadDevices();loadSecurity();loadWorkforceMembers()}document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===(isOwner?"overview":"monitor")));["overview","ai","queue","settings","monitor","devices","security","workforce"].forEach(n=>$("panel-"+n).classList.toggle("hidden",n!==(isOwner?"overview":"monitor")));loadMonitorReports()}
+function enter(user,access){currentUser=user;currentAccess=access;$("login").classList.add("hidden");$("dashboard").classList.remove("hidden");$("signout").classList.remove("hidden");const isOwner=access.role==="owner";$("owner-email").textContent=(user.email||"Verified account")+" · "+(isOwner?"Primary Owner":"Read-only invited access");document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("hidden",!isOwner&&b.dataset.tab!=="monitor"));if(isOwner){loadOverview();loadQueue();loadSettings();loadDevices();loadSecurity();loadWorkforceMembers();loadWorkforceInvitations()}document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("active",b.dataset.tab===(isOwner?"overview":"monitor")));["overview","ai","queue","settings","monitor","devices","security","workforce"].forEach(n=>$("panel-"+n).classList.toggle("hidden",n!==(isOwner?"overview":"monitor")));loadMonitorReports()}
 $("forgot-password").addEventListener("click",async()=>{const email=$("email").value.trim();if(!email){status("reset-status","Enter your Owner email above first.",true);$("email").focus();return}$("forgot-password").disabled=true;status("reset-status","Sending password-reset code…");try{const {error}=await supabase.auth.resetPasswordForEmail(email);if(error)throw error;$("reset-code-box").classList.remove("hidden");status("reset-status","A password-reset code was requested. Check Inbox and Spam, then enter the code below.");}catch(err){status("reset-status",err.message||"Could not send reset code.",true)}finally{$("forgot-password").disabled=false}});
 $("verify-reset-code").addEventListener("click",async()=>{const email=$("email").value.trim(),token=$("reset-code").value.trim();if(!email||!token){status("reset-status","Enter your Owner email and the code from your email.",true);return}$("verify-reset-code").disabled=true;status("reset-status","Verifying reset code…");try{const {data,error}=await supabase.auth.verifyOtp({email,token,type:"recovery"});if(error)throw error;if(!data.session)throw Error("Code verified but no reset session was created. Request a new code.");$("reset-code-box").classList.add("hidden");$("password-reset").classList.remove("hidden");status("reset-status","Code verified. Choose a new password.");}catch(err){status("reset-status",err.message||"Invalid or expired reset code.",true)}finally{$("verify-reset-code").disabled=false}});
 const recoveryLink=new URLSearchParams(location.hash.replace(/^#/,"")).get("type")==="recovery";
@@ -199,6 +209,73 @@ async function loadWorkforceMembers(){
  }
  status("workforce-status",members.length+" workforce member(s) loaded.");
 }
+async function loadWorkforceInvitations(){
+ if(!currentUser||currentAccess?.role!=="owner")return;
+ if(!WORKFORCE_API_ENABLED){$("workforce-invitation-list").textContent="Invitation API is not deployed. No email has been sent.";return}
+ const {data,error}=await supabase.functions.invoke("owner-workforce-control",{body:{action:"list_invitations"}});
+ if(error||!data?.success){status("workforce-invitation-form-status",error?.message||data?.error||"Could not load invitations.",true);return}
+ const list=$("workforce-invitation-list");list.replaceChildren();
+ const invitations=data.invitations||[];
+ if(!invitations.length){const empty=document.createElement("p");empty.className="muted";empty.textContent="No staff invitations yet.";list.appendChild(empty)}
+ for(const invite of invitations){
+  const card=document.createElement("article");card.className="request";
+  const head=document.createElement("div");head.className="head";
+  const email=document.createElement("strong");email.textContent=invite.email;
+  const pill=document.createElement("span");pill.className="pill "+(invite.status==="accepted"?"approved":invite.status==="needs_review"||invite.status==="dispatching"?"incomplete":invite.status==="cancelled"?"rejected":"info");pill.textContent=invite.status.replace("_"," ");
+  head.append(email,pill);card.appendChild(head);
+  const meta=document.createElement("p");meta.className="hint";meta.textContent="Role: "+invite.role+" · Projects: "+(invite.project_scopes||[]).join(", ")+" · Created: "+new Date(invite.created_at).toLocaleString();card.appendChild(meta);
+  if(invite.auth_user_id){const authId=document.createElement("p");authId.className="hint";authId.textContent="Auth User: "+invite.auth_user_id;card.appendChild(authId)}
+  if(invite.review_code){const review=document.createElement("p");review.className="hint";review.textContent="Review reason: "+invite.review_code;card.appendChild(review)}
+  const actions=document.createElement("div");actions.className="actions";
+  if(invite.status==="needs_review"||invite.status==="dispatching"){
+   const authId=document.createElement("input");authId.placeholder="Auth User UUID (after Auth review)";authId.setAttribute("aria-label","Auth User UUID for invitation reconciliation");
+   const confirmSent=document.createElement("button");confirmSent.className="success";confirmSent.textContent="Confirm sent";confirmSent.addEventListener("click",()=>reconcileWorkforceInvitation(invite.id,"confirm_sent",authId.value,confirmSent));
+   const cancel=document.createElement("button");cancel.className="danger";cancel.textContent="Cancel invite";cancel.addEventListener("click",()=>reconcileWorkforceInvitation(invite.id,"cancel","",cancel));
+   actions.append(authId,confirmSent,cancel);
+  }else if(invite.status==="sent"){
+   const cancel=document.createElement("button");cancel.className="danger";cancel.textContent="Cancel invite";cancel.addEventListener("click",()=>reconcileWorkforceInvitation(invite.id,"cancel","",cancel));actions.appendChild(cancel);
+  }
+  if(actions.childNodes.length)card.appendChild(actions);
+  list.appendChild(card);
+ }
+}
+async function sendWorkforceInvitation(event){
+ event.preventDefault();
+ if(!workforceApiReady()){status("workforce-invitation-form-status","Invitation API is not deployed. No email was sent.",true);return}
+ const email=$("workforce-invite-email").value.trim();
+ const role=$("workforce-invite-role").value;
+ const scopes=$("workforce-invite-scopes").value.split(",").map(x=>x.trim()).filter(Boolean);
+ if(!email||email.length>254||!email.includes("@")){status("workforce-invitation-form-status","Enter a valid staff email address.",true);return}
+ if(!scopes.length||scopes.length>50||scopes.some(x=>!x||x.length>100)||new Set(scopes).size!==scopes.length){status("workforce-invitation-form-status","Enter 1 to 50 unique project keys.",true);return}
+ $("send-workforce-invite").disabled=true;status("workforce-invitation-form-status","Preparing invitation and sending through Auth…");
+ try{
+  const {data,error}=await supabase.functions.invoke("owner-workforce-control",{body:{action:"invite_member",email,role,project_scopes:scopes,request_id:crypto.randomUUID()}});
+  if(error)throw error;
+  if(data?.outcome==="sent"){status("workforce-invitation-form-status","Invitation sent. Workforce access remains pending until the invitee verifies and accepts.");$("workforce-invite-email").value=""}
+  else if(data?.outcome==="needs_review"){status("workforce-invitation-form-status","Invitation needs Owner review. Do not resend. Refresh the invitation list to reconcile it.",true)}
+  else if(!data?.success){throw Error(data?.error||"Invitation could not be sent.")}
+  await loadWorkforceInvitations();await loadWorkforceMembers();
+ }catch(err){status("workforce-invitation-form-status",err.message||"Invitation failed.",true);await loadWorkforceInvitations()}
+ finally{$("send-workforce-invite").disabled=false}
+}
+async function reconcileWorkforceInvitation(invitationId,resolution,authUserId,button){
+ if(!workforceApiReady())return;
+ let reason="";
+ if(resolution==="confirm_sent"&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authUserId.trim())){status("workforce-invitation-form-status","Enter the Auth User UUID verified in the Supabase Auth user list.",true);return}
+ if(resolution==="cancel"){reason=prompt("Explain why this invitation is being closed:")||"";if(!reason.trim())return;if(!confirm("Cancel workforce access for this invitation? This does not delete the Auth account or recall an email already delivered."))return}
+ button.disabled=true;
+ try{
+  const body={action:"reconcile_invitation",invitation_id:invitationId,resolution};
+  if(resolution==="confirm_sent")body.auth_user_id=authUserId.trim();else body.reason=reason.trim();
+  const {data,error}=await supabase.functions.invoke("owner-workforce-control",{body});
+  if(error)throw error;if(!data?.success)throw Error(data?.error||"Invitation reconciliation failed.");
+  status("workforce-invitation-form-status",resolution==="confirm_sent"?"Invitation marked as sent after Auth identity verification.":"Invitation cancelled; no Auth account was deleted.");
+  await loadWorkforceInvitations();await loadWorkforceMembers();
+ }catch(err){status("workforce-invitation-form-status",err.message||"Invitation reconciliation failed.",true);button.disabled=false}
+}
+$("workforce-invitation-form").addEventListener("submit",sendWorkforceInvitation);
+$("refresh-workforce-invitations").addEventListener("click",loadWorkforceInvitations);
+
 async function loadWorkforceAudit(memberUserId=null){
  if(!workforceApiReady()){status("workforce-status","Workforce API is not deployed; audit access is disabled.",true);return}
  const {data,error}=await supabase.functions.invoke("owner-workforce-control",{body:{action:"list_member_events",member_user_id:memberUserId,limit:50}});
@@ -241,7 +318,7 @@ async function setWorkforceMemberStatus(userId,newStatus,button){
 $("workforce-member-form").addEventListener("submit",saveWorkforceMember);
 $("refresh-workforce").addEventListener("click",loadWorkforceMembers);
 $("refresh-workforce-audit").addEventListener("click",()=>loadWorkforceAudit());
-if(WORKFORCE_API_ENABLED){["refresh-workforce","refresh-workforce-audit","workforce-user-id","workforce-role","workforce-scopes","save-workforce-member"].forEach(id=>$(id).disabled=false)}
+if(WORKFORCE_API_ENABLED){["refresh-workforce","refresh-workforce-audit","workforce-user-id","workforce-role","workforce-scopes","save-workforce-member","workforce-invite-email","workforce-invite-role","workforce-invite-scopes","send-workforce-invite","refresh-workforce-invitations"].forEach(id=>$(id).disabled=false)}
 
 async function loadMonitorReports(){if(!currentUser)return;status("monitor-status","Loading system reports…");const {data,error}=await supabase.from("owner_system_reports").select("id,created_at,trigger_source,status,summary,details").order("created_at",{ascending:false}).limit(20);if(error){status("monitor-status",error.message,true);return}const list=$("monitor-list");list.replaceChildren();if(!data?.length){status("monitor-status","No reports saved yet. Run a check to create the first report.");return}for(const report of data){const card=document.createElement("article");card.className="request";const head=document.createElement("div");head.className="head";const when=document.createElement("strong");when.textContent=new Date(report.created_at).toLocaleString();const pill=document.createElement("span");pill.className="pill "+report.status;pill.textContent=report.status.replace("_"," ");head.append(when,pill);card.appendChild(head);const source=document.createElement("div");source.className="hint";source.textContent="Source: "+(report.trigger_source||"scheduled");card.appendChild(source);const summary=document.createElement("p");summary.textContent=report.summary||"No summary available.";card.appendChild(summary);const checks=Array.isArray(report.details?.checks)?report.details.checks:[];for(const check of checks){const line=document.createElement("div");line.className="request";line.style.marginTop="8px";const row=document.createElement("div");row.className="head";const label=document.createElement("strong");label.textContent=check.label||check.id||"Check";const state=document.createElement("span");state.className="pill "+(check.status||"info");state.textContent=check.status||"unknown";row.append(label,state);line.appendChild(row);const msg=document.createElement("p");msg.textContent=check.message||"";line.appendChild(msg);const url=check.details?.html_url;if(typeof url==="string"&&url.startsWith("https://github.com/")){const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Open GitHub run";link.style.color="#7fcfff";line.appendChild(link)}card.appendChild(line)}list.appendChild(card)}status("monitor-status",data.length+" report(s) loaded · newest first")}
 async function runMonitorNow(){$("run-monitor").disabled=true;status("monitor-status","Running read-only system checks…");try{const {data,error}=await supabase.functions.invoke("owner-system-monitor",{body:{trigger:"manual"}});if(error)throw error;if(!data?.success)throw Error(data?.error||"System check failed.");status("monitor-status","Check completed: "+(data.report?.status||"report saved"));await loadMonitorReports()}catch(err){status("monitor-status",err.message||"Unable to run system check.",true)}finally{$("run-monitor").disabled=false}}
