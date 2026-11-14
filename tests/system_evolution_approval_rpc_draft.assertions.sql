@@ -1,4 +1,4 @@
-\\set ON_ERROR_STOP on
+\set ON_ERROR_STOP on
 
 -- Disposable PostgreSQL only. auth.uid()/auth.jwt() are test doubles for Supabase JWT context.
 create or replace function auth.uid()
