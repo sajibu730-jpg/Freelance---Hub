@@ -1,0 +1,178 @@
+name: Supabase Migration Safety Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "docs/drafts/owner-workforce-schema.draft.sql"
+      - "docs/drafts/owner-workforce-rpcs.draft.sql"
+      - "scripts/check_supabase_migrations.py"
+      - "tests/test_migration_guard.py"
+      - "tests/test_workforce_schema_draft.py"
+      - "tests/workforce_schema_draft.assertions.sql"
+      - "tests/workforce_rpcs_draft.assertions.sql"
+      - "supabase/functions/_shared/workforce-auth.ts"
+      - "supabase/functions/_shared/workforce-auth.test.ts"
+      - "supabase/functions/owner-workforce-control/**"
+      - "docs/drafts/owner-workforce-invitations.draft.md"
+      - "docs/drafts/system-evolution-schema.draft.sql"
+      - "docs/drafts/system-evolution-approval-rpc.draft.sql"
+      - "tests/system_evolution_schema_draft.assertions.sql"
+      - "tests/system_evolution_approval_rpc_draft.assertions.sql"
+      - "tests/workforce_invitations_draft.assertions.sql"
+      - ".github/workflows/supabase-migration-safety.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migration-safety-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-preflight:
+    name: Static migration safety preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proposed changes
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Test Owner AAL2 authorization helper
+        run: deno test supabase/functions/_shared/workforce-auth.test.ts
+
+      - name: Test workforce Edge Function request validation
+        run: deno test supabase/functions/owner-workforce-control/request.test.ts
+
+      - name: Test recoverable workforce invitation dispatch
+        run: deno test supabase/functions/owner-workforce-control/invitation-lifecycle.test.ts
+
+      - name: Type-check the undeployed workforce Edge Function
+        run: deno check supabase/functions/owner-workforce-control/index.ts
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test migration guard
+        run: python -m unittest discover -s tests -p "test_migration_guard.py" -v
+
+      - name: Test workforce schema draft safety
+        run: python -m unittest discover -s tests -p "test_workforce_schema_draft.py" -v
+
+      - name: Check changed Supabase migrations
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python scripts/check_supabase_migrations.py "$BASE_SHA" "$HEAD_SHA"
+
+  workforce-postgres-draft:
+    name: Validate workforce schema in disposable PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout proposed changes
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Prepare isolated Supabase-like roles and auth reference
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+          CREATE SCHEMA auth;
+          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE
+            AS 'SELECT current_setting(''request.jwt.claim.sub'', true)::uuid';
+          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE
+            AS 'SELECT coalesce(current_setting(''request.jwt.claims'', true)::jsonb, ''{}''::jsonb)';
+          CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, invited_at timestamptz, email_confirmed_at timestamptz);
+          CREATE TABLE public.app_admins (user_id uuid PRIMARY KEY REFERENCES auth.users(id), role text NOT NULL, is_active boolean NOT NULL DEFAULT true);
+          INSERT INTO auth.users (id) VALUES ('99999999-9999-4999-8999-999999999999');
+          INSERT INTO public.app_admins (user_id, role, is_active) VALUES ('99999999-9999-4999-8999-999999999999', 'owner', true);
+          SQL
+
+      - name: Apply draft to disposable PostgreSQL only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f docs/drafts/owner-workforce-schema.draft.sql
+
+      - name: Apply System Evolution schema draft to disposable PostgreSQL only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f docs/drafts/system-evolution-schema.draft.sql
+
+      - name: Apply draft Owner AAL2 approval RPC to disposable PostgreSQL only
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f docs/drafts/system-evolution-approval-rpc.draft.sql
+
+      - name: Apply draft atomic workforce RPCs to disposable PostgreSQL only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f docs/drafts/owner-workforce-rpcs.draft.sql
+
+      - name: Verify schema RLS, grants, constraints, and idempotency
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/workforce_schema_draft.assertions.sql
+
+      - name: Verify System Evolution schema safety in disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/system_evolution_schema_draft.assertions.sql
+
+      - name: Verify System Evolution Owner AAL2 approval RPC in disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/system_evolution_approval_rpc_draft.assertions.sql
+
+      - name: Verify atomic workforce RPC permissions and behavior
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/workforce_rpcs_draft.assertions.sql
+
+      - name: Verify recoverable invitation lifecycle in disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/workforce_invitations_draft.assertions.sql
