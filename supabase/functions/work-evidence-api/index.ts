@@ -164,7 +164,7 @@ async function validateRelationship(
     }
     if (jobId && jobId !== contract.job_id) throw new HttpError(400, "Contract and job do not match.");
     jobId = contract.job_id;
-  } else if (jobId) {
+  } else if (jobId && !submissionId) {
     const { data: job, error } = await admin.from("jobs")
       .select("id,owner_id").eq("id", jobId).maybeSingle();
     if (error) throw error;
