@@ -205,8 +205,28 @@ async function validateRelationship(
 }
 
 async function insertEvidence(admin: any, row: Record<string, unknown>) {
-  const { data, error } = await admin.from("work_evidence").insert(row).select("id,status,submitted_at").single();
-  if (error?.code === "23505") throw new HttpError(409, "This request ID has already been used.");
+  const fields = "id,status,submitted_at,storage_path,evidence_type,title,description,origin,job_id,contract_id,submission_id,external_url,original_filename,mime_type,byte_size";
+  const { data, error } = await admin.from("work_evidence").insert(row).select(fields).single();
+  if (error?.code === "23505") {
+    // A network retry with the same key and same payload returns the original
+    // record. Reusing a key for different evidence is always a conflict.
+    const { data: existing, error: lookupError } = await admin.from("work_evidence")
+      .select(fields)
+      .eq("submitted_by", row.submitted_by)
+      .eq("request_id", row.request_id)
+      .maybeSingle();
+    if (lookupError) throw new HttpError(503, "Could not verify the previous evidence request.");
+    if (!existing) throw new HttpError(409, "This request ID has already been used.");
+    const idempotencyFields = [
+      "origin", "evidence_type", "title", "description", "job_id", "contract_id",
+      "submission_id", "external_url", "original_filename", "mime_type", "byte_size",
+    ];
+    const sameRequest = idempotencyFields.every((key) =>
+      (existing[key] ?? null) === (row[key] ?? null)
+    );
+    if (!sameRequest) throw new HttpError(409, "This request ID was already used with different evidence details.");
+    return existing;
+  }
   if (error) throw error;
   return data;
 }
@@ -297,8 +317,12 @@ Deno.serve(async (req: Request) => {
         storage_path: storagePath, original_filename: filename, mime_type: mime,
         byte_size: byteSize, status: "upload_pending", submitted_at: null,
       });
+      if (pending.status !== "upload_pending" || !pending.storage_path) {
+        throw new HttpError(409, "This evidence request has already left the upload-pending state.");
+      }
+      const uploadPath = pending.storage_path;
       const { data: signed, error: signedError } = await admin.storage.from(BUCKET)
-        .createSignedUploadUrl(storagePath, { upsert: false });
+        .createSignedUploadUrl(uploadPath, { upsert: false });
       if (signedError || !signed?.signedUrl) {
         await admin.from("work_evidence").update({
           status: "upload_failed", submitted_at: new Date().toISOString(),
@@ -306,7 +330,7 @@ Deno.serve(async (req: Request) => {
         throw new HttpError(503, "Could not prepare secure upload. Please retry with a new request ID.");
       }
       return reply({
-        success: true, evidence: pending, bucket: BUCKET, path: storagePath,
+        success: true, evidence: pending, bucket: BUCKET, path: uploadPath,
         signed_upload_url: signed.signedUrl,
         upload_url_expires_in_seconds: 7200,
       });
