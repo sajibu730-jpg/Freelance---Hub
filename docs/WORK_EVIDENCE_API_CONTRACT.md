@@ -21,6 +21,7 @@ All requests use JSON and one `action`:
 | --- | --- | --- |
 | `prepare_upload` | Signed-in user | Create an upload-pending evidence record and obtain a signed upload URL |
 | `complete_upload` | Submitting user | Confirm uploaded object, check byte count and file signature, then submit it |
+| `retry_upload` | Submitting user | Renew an expired upload URL if the private object has not arrived yet |
 | `submit_link` | Signed-in user | Submit an HTTPS external evidence link |
 | `submit_note` | Signed-in user | Submit a written work record |
 | `my_evidence` | Signed-in user | Read only that account's evidence status/history |
