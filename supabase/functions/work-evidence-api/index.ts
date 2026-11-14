@@ -13,7 +13,6 @@ import {
 const BUCKET = "work-evidence-private";
 const OWNER_DASHBOARD_ORIGIN = "https://sajibu730-jpg.github.io";
 const MAX_BODY_BYTES = 32 * 1024;
-const DAILY_SUBMISSION_LIMIT = 20;
 const headers = {
   "Access-Control-Allow-Origin": OWNER_DASHBOARD_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -99,13 +98,13 @@ async function requireOwner(admin: any, authClient: any, token: string, userId: 
   }
 }
 
-async function enforceDailyQuota(admin: any, userId: string) {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count, error } = await admin.from("work_evidence")
-    .select("id", { count: "exact", head: true })
-    .eq("submitted_by", userId).gte("created_at", since);
-  if (error) throw error;
-  if ((count ?? 0) >= DAILY_SUBMISSION_LIMIT) {
+async function claimDailyQuota(admin: any, userId: string, requestId: string) {
+  const { data, error } = await admin.rpc("claim_work_evidence_quota", {
+    p_submitted_by: userId,
+    p_request_id: requestId,
+  });
+  if (error) throw new HttpError(503, "Could not confirm the evidence submission quota.");
+  if (data !== true) {
     throw new HttpError(429, "Daily evidence submission limit reached. Try again later.");
   }
 }
@@ -207,7 +206,6 @@ Deno.serve(async (req: Request) => {
     const action = String(body.action || "");
 
     if (action === "submit_link" || action === "submit_note" || action === "prepare_upload") {
-      await enforceDailyQuota(admin, user.id);
       const originValue = body.origin === "off_app" ? "off_app" : body.origin === "in_app" ? "in_app" : "";
       if (!originValue) throw new HttpError(400, "origin must be in_app or off_app.");
       const title = cleanText(body.title, 160);
@@ -221,6 +219,7 @@ Deno.serve(async (req: Request) => {
       if (action === "submit_link") {
         const externalUrl = safeHttpsUrl(body.external_url);
         if (!externalUrl) throw new HttpError(400, "Only safe HTTPS evidence links are accepted.");
+        await claimDailyQuota(admin, user.id, body.request_id);
         const row = await insertEvidence(admin, {
           request_id: body.request_id, submitted_by: user.id, origin: originValue,
           evidence_type: "link", title, description, ...relation,
@@ -231,6 +230,7 @@ Deno.serve(async (req: Request) => {
 
       if (action === "submit_note") {
         if (!description) throw new HttpError(400, "A description is required for note evidence.");
+        await claimDailyQuota(admin, user.id, body.request_id);
         const row = await insertEvidence(admin, {
           request_id: body.request_id, submitted_by: user.id, origin: originValue,
           evidence_type: "note", title, description, ...relation,
@@ -247,6 +247,7 @@ Deno.serve(async (req: Request) => {
       if (!Number.isInteger(byteSize) || byteSize < 1 || byteSize > MAX_FILE_BYTES) {
         throw new HttpError(413, "File size must be between 1 byte and 10 MB.");
       }
+      await claimDailyQuota(admin, user.id, body.request_id);
 
       const evidenceId = crypto.randomUUID();
       const storagePath = `${user.id}/${evidenceId}/proof`;
