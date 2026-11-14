@@ -2,8 +2,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   authorizeAssignedTaskMutation,
+  authorizePrimaryOwner,
   authorizeStaffTaskAction,
   extractBearerToken,
+  type OwnerLookup,
   type StaffMembershipLookup,
 } from "../_shared/workforce-auth.ts";
 import { isUuid, parseWorkforceBody, rpcErrorStatus, taskListPolicy } from "./request.ts";
@@ -42,10 +44,10 @@ Deno.serve(async (req: Request) => {
     const action = body.action;
     const projectKey = text(body.project_key, 100);
     const requestId = body.request_id;
-    if (!projectKey) {
+    if (action !== "list_members" && !projectKey) {
       return json({ success: false, error: "A valid project_key is required." }, 400);
     }
-    if (action !== "list_tasks" && !isUuid(requestId)) {
+    if (action !== "list_tasks" && action !== "list_members" && !isUuid(requestId)) {
       return json({ success: false, error: "A valid request_id is required for this action." }, 400);
     }
 
@@ -71,6 +73,22 @@ Deno.serve(async (req: Request) => {
     });
     // Narrow the large generated Supabase client type to the small lookup contract.
     const membershipClient = admin as unknown as StaffMembershipLookup;
+    const ownerClient = admin as unknown as OwnerLookup;
+
+    if (action === "list_members") {
+      const owner = await authorizePrimaryOwner(token, userClient, ownerClient);
+      if (!owner.ok) return json({ success: false, error: owner.error }, owner.status);
+
+      const { data, error } = await admin.from("owner_workforce_members")
+        .select("user_id,role,status,project_scopes,invited_by,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) {
+        console.error("Workforce list_members query failed", error.code ?? "unknown");
+        return json({ success: false, error: "Workforce members could not be loaded." }, 500);
+      }
+      return json({ success: true, members: data ?? [] });
+    }
 
     if (action === "list_tasks") {
       const authorization = await authorizeStaffTaskAction(
