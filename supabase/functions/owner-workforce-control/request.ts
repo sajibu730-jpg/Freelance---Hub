@@ -32,3 +32,19 @@ export function rpcErrorStatus(error: { code?: string } | null): number {
     default: return 500;
   }
 }
+
+
+export type TaskListRole = "project_manager" | "developer" | "qa" | "support";
+
+export function taskListPolicy(role: TaskListRole, userId: string): {
+  assigneeId: string | null;
+  taskKinds: readonly string[] | null;
+} {
+  if (role === "developer" || role === "qa") {
+    return { assigneeId: userId, taskKinds: null };
+  }
+  if (role === "support") {
+    return { assigneeId: null, taskKinds: ["support", "incident"] };
+  }
+  return { assigneeId: null, taskKinds: null };
+}
