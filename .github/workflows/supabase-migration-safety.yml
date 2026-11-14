@@ -1,0 +1,41 @@
+name: Supabase Migration Safety Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/check_supabase_migrations.py"
+      - "tests/test_migration_guard.py"
+      - ".github/workflows/supabase-migration-safety.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migration-safety-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-preflight:
+    name: Static migration safety preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proposed changes
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test migration guard
+        run: python -m unittest discover -s tests -p "test_migration_guard.py" -v
+
+      - name: Check changed Supabase migrations
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python scripts/check_supabase_migrations.py "$BASE_SHA" "$HEAD_SHA"
