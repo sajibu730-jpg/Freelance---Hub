@@ -3,6 +3,9 @@ import {
   parseWorkforceBody,
   rpcErrorStatus,
   taskListPolicy,
+  parseWorkforceRole,
+  parseProjectScopes,
+  parseMemberStatus,
 } from "./request.ts";
 
 Deno.test("workforce body accepts a JSON object", () => {
@@ -72,5 +75,32 @@ Deno.test("Owner membership roster request does not require project scope or mut
   const body = parseWorkforceBody('{"action":"list_members"}');
   if (!body.ok || body.body.action !== "list_members") {
     throw new Error("valid Owner roster request was rejected");
+  }
+});
+
+
+Deno.test("Owner member role parser allows only workforce roles", () => {
+  for (const role of ["project_manager", "developer", "qa", "support"]) {
+    if (parseWorkforceRole(role) !== role) throw new Error("valid workforce role rejected");
+  }
+  for (const role of ["owner", "admin", "moderator", null, 1]) {
+    if (parseWorkforceRole(role) !== null) throw new Error("privileged or invalid role accepted");
+  }
+});
+
+Deno.test("Owner member project scopes are bounded, trimmed, and unique", () => {
+  const valid = parseProjectScopes(["freelance-hub", "tips-it"]);
+  if (!valid || valid.length !== 2) throw new Error("valid project scopes rejected");
+  for (const scopes of [[], ["freelance-hub", "freelance-hub"], [" freelance-hub"], [""], ["x".repeat(101)], Array(51).fill("p"), "freelance-hub"]) {
+    if (parseProjectScopes(scopes) !== null) throw new Error("invalid project scopes accepted");
+  }
+});
+
+Deno.test("Owner member status parser allows only active and suspended", () => {
+  if (parseMemberStatus("active") !== "active" || parseMemberStatus("suspended") !== "suspended") {
+    throw new Error("valid member status rejected");
+  }
+  for (const status of ["deleted", "owner", null]) {
+    if (parseMemberStatus(status) !== null) throw new Error("invalid member status accepted");
   }
 });
