@@ -20,20 +20,25 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
                 rf"alter table public\.{re.escape(table)} enable row level security",
             )
 
-    def test_tables_are_not_granted_to_public_clients(self):
-        self.assertRegex(SQL, r"revoke all on table[\s\S]*from public, anon, authenticated")
-        self.assertRegex(SQL, r"grant all on table[\s\S]*to service_role")
-        self.assertNotRegex(SQL, r"grant\s+[^;]*\b(?:anon|authenticated)\b")
-
-    def test_audit_tables_are_append_only_for_service_role(self):
+    def test_service_role_is_read_only_on_workforce_tables(self):
         self.assertIn(
-            "grant select, insert on table public.owner_workforce_member_events,",
+            "from public, anon, authenticated, service_role;",
             SQL,
         )
-        self.assertIn("public.owner_release_events\n  to service_role;", SQL)
-        self.assertNotIn("grant all on table public.owner_workforce_member_events", SQL)
-        self.assertNotIn("grant all on table public.owner_workforce_task_events", SQL)
-        self.assertNotIn("grant all on table public.owner_release_events", SQL)
+        self.assertIn(
+            "grant select on table public.owner_workforce_members, public.owner_workforce_tasks,",
+            SQL,
+        )
+        self.assertNotRegex(SQL, r"grant\s+(?:all|insert|update|delete)[^;]*to service_role")
+        self.assertNotRegex(SQL, r"grant\s+[^;]*\b(?:anon|authenticated)\b")
+
+    def test_audit_tables_have_no_direct_api_role_grants(self):
+        self.assertIn("Event tables are inaccessible to API roles.", SQL)
+        self.assertNotRegex(
+            SQL,
+            r"grant\s+[^;]*public\.owner_workforce_(?:member|task)_events",
+        )
+        self.assertNotRegex(SQL, r"grant\s+[^;]*public\.owner_release_events")
 
     def test_event_tables_have_unique_request_ids(self):
         for table in (
@@ -56,7 +61,7 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
             SQL,
         )
 
-    def test_no_privileged_definer_function_is_hidden_in_draft(self):
+    def test_no_privileged_definer_function_is_hidden_in_schema_draft(self):
         self.assertNotRegex(SQL, r"security\s+definer")
 
     def test_audit_event_tables_are_present(self):
