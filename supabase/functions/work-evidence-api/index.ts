@@ -2,10 +2,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   ALLOWED_EVIDENCE_MIME,
+  canReviewEvidence,
   cleanText,
   hasExpectedMagic,
   hasRequiredOwnerMfa,
+  isSoleActiveOwner,
   isUuid,
+  isWorkSubmissionParticipant,
   MAX_FILE_BYTES,
   safeHttpsUrl,
   safeOriginalFilename,
@@ -95,7 +98,7 @@ async function requireOwner(admin: any, authClient: any, token: string, userId: 
   const { data: owners, error } = await admin.from("app_admins")
     .select("user_id").eq("role", "owner").eq("is_active", true);
   if (error) throw error;
-  if (!Array.isArray(owners) || owners.length !== 1 || owners[0].user_id !== userId) {
+  if (!isSoleActiveOwner(owners, userId)) {
     throw new HttpError(403, "Only the single active primary Owner can access evidence review.");
   }
   if (!(await ownerMfaSatisfied(authClient, token))) {
@@ -145,7 +148,7 @@ async function validateRelationship(
       const { data: jobOwner, error: jobOwnerError } = await admin.from("jobs")
         .select("owner_id").eq("id", submission.job_id).maybeSingle();
       if (jobOwnerError) throw jobOwnerError;
-      if (!jobOwner || jobOwner.owner_id !== userId) {
+      if (!jobOwner || !isWorkSubmissionParticipant(userId, submission.freelancer_id, jobOwner.owner_id)) {
         throw new HttpError(403, "You are not a participant in this work submission.");
       }
     }
@@ -159,7 +162,7 @@ async function validateRelationship(
       .eq("id", contractId).maybeSingle();
     if (error) throw error;
     if (!contract) throw new HttpError(404, "Contract not found.");
-    if (userId !== contract.client_id && userId !== contract.freelancer_id) {
+    if (!isWorkSubmissionParticipant(userId, contract.freelancer_id, contract.client_id)) {
       throw new HttpError(403, "You are not a participant in this contract.");
     }
     if (jobId && jobId !== contract.job_id) throw new HttpError(400, "Contract and job do not match.");
@@ -434,7 +437,7 @@ Deno.serve(async (req: Request) => {
       if ((newStatus === "rejected" || newStatus === "needs_info") && !note) {
         throw new HttpError(400, "A review note is required for rejected or needs_info evidence.");
       }
-      if (!["submitted", "needs_info"].includes(evidence.status)) {
+      if (!canReviewEvidence(evidence.status, newStatus)) {
         throw new HttpError(409, "Only submitted or needs_info evidence can be reviewed.");
       }
       const { data: updated, error: updateError } = await admin.from("work_evidence")
