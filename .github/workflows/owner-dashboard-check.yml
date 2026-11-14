@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "owner-dashboard/**"
+      - "scripts/check_system_evolution_draft.py"
+      - "docs/drafts/system-evolution-center.draft.md"
+      - "docs/drafts/system-evolution-backend-release-approval.draft.md"
       - ".github/workflows/owner-dashboard-check.yml"
       - ".github/workflows/deploy-owner-dashboard.yml"
   workflow_dispatch:
