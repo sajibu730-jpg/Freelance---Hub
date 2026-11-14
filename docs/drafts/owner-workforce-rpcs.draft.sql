@@ -706,10 +706,10 @@ begin
      or p_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
      or p_role is null or p_role not in ('project_manager', 'developer', 'qa', 'support')
      or p_project_scopes is null or pg_catalog.cardinality(p_project_scopes) not between 1 and 50
-     or exists (select 1 from pg_catalog.unnest(p_project_scopes) s
-                where s is null or s = '' or s <> pg_catalog.btrim(s) or length(s) > 100)
+     or exists (select 1 from pg_catalog.unnest(p_project_scopes) as x(scope)
+                where scope is null or scope = '' or scope <> pg_catalog.btrim(scope) or length(scope) > 100)
      or (select count(*) from pg_catalog.unnest(p_project_scopes)) <>
-        (select count(distinct s) from pg_catalog.unnest(p_project_scopes) s) then
+        (select count(distinct scope) from pg_catalog.unnest(p_project_scopes) as x(scope)) then
     raise exception using errcode = '22023', message = 'Invalid workforce invitation input.';
   end if;
 
