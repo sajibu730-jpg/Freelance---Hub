@@ -68,7 +68,8 @@ begin
   select m.role, m.status, m.project_scopes
     into v_role, v_status, v_scopes
   from public.owner_workforce_members m
-  where m.user_id = p_actor_user_id;
+  where m.user_id = p_actor_user_id
+  for share;
 
   if not found or v_status <> 'active'
      or not (p_project_key = any(coalesce(v_scopes, array[]::text[]))) then
@@ -156,7 +157,8 @@ begin
   select m.role, m.status, m.project_scopes
     into v_role, v_status, v_scopes
   from public.owner_workforce_members m
-  where m.user_id = p_actor_user_id;
+  where m.user_id = p_actor_user_id
+  for share;
 
   if not found or v_role <> 'project_manager' or v_status <> 'active'
      or v_task.status = 'done'
@@ -167,7 +169,8 @@ begin
   select m.role, m.status, m.project_scopes
     into v_assignee_role, v_assignee_status, v_assignee_scopes
   from public.owner_workforce_members m
-  where m.user_id = p_assignee_id;
+  where m.user_id = p_assignee_id
+  for share;
 
   if not found or v_assignee_status <> 'active'
      or not (v_task.project_key = any(coalesce(v_assignee_scopes, array[]::text[]))) then
@@ -259,7 +262,8 @@ begin
   select m.role, m.status, m.project_scopes
     into v_role, v_member_status, v_scopes
   from public.owner_workforce_members m
-  where m.user_id = p_actor_user_id;
+  where m.user_id = p_actor_user_id
+  for share;
 
   if not found or v_role not in ('developer', 'qa') or v_member_status <> 'active'
      or v_task.assignee_id is distinct from p_actor_user_id
@@ -365,7 +369,8 @@ begin
   select m.role, m.status, m.project_scopes
     into v_role, v_member_status, v_scopes
   from public.owner_workforce_members m
-  where m.user_id = p_actor_user_id;
+  where m.user_id = p_actor_user_id
+  for share;
 
   if not found or v_role not in ('developer', 'qa') or v_member_status <> 'active'
      or v_task.assignee_id is distinct from p_actor_user_id
