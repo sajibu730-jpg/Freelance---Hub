@@ -140,7 +140,14 @@ create or replace function public.guard_work_evidence_update()
 returns trigger
 language plpgsql
 set search_path = ''
-as $$
+as $
+declare
+  v_status_changed boolean := new.status is distinct from old.status;
+  v_review_changed boolean :=
+    new.reviewed_by is distinct from old.reviewed_by
+    or new.reviewed_at is distinct from old.reviewed_at
+    or new.review_note is distinct from old.review_note;
+  v_is_review_status boolean := new.status in ('verified', 'rejected', 'needs_info');
 begin
   if new.id is distinct from old.id
     or new.request_id is distinct from old.request_id
@@ -160,10 +167,43 @@ begin
     or new.created_at is distinct from old.created_at then
     raise exception 'Submitted evidence identity and original proof are immutable';
   end if;
-  new.updated_at := now();
+
+  if v_status_changed and not (
+    (old.status = 'upload_pending' and new.status in ('submitted', 'upload_failed'))
+    or (old.status in ('submitted', 'needs_info')
+      and new.status in ('verified', 'rejected', 'needs_info'))
+  ) then
+    raise exception 'Invalid work evidence status transition: % -> %', old.status, new.status;
+  end if;
+
+  if new.submitted_at is distinct from old.submitted_at then
+    if old.status <> 'upload_pending'
+      or new.status not in ('submitted', 'upload_failed')
+      or new.submitted_at is null then
+      raise exception 'Submission timestamp can only be set when an upload leaves pending state';
+    end if;
+  end if;
+
+  if v_review_changed then
+    if old.status not in ('submitted', 'needs_info')
+      or not v_is_review_status
+      or new.reviewed_by is null
+      or new.reviewed_at is null then
+      raise exception 'Review metadata can only change during an authorized review transition';
+    end if;
+  elsif v_status_changed and v_is_review_status then
+    raise exception 'A review status transition must include reviewer identity and timestamp';
+  end if;
+
+  if old.status = 'upload_pending' and new.status in ('submitted', 'upload_failed')
+    and v_review_changed then
+    raise exception 'Upload completion cannot modify Owner review metadata';
+  end if;
+
+  new.updated_at := pg_catalog.now();
   return new;
 end;
-$$;
+$;
 
 create or replace function public.audit_work_evidence_change()
 returns trigger
