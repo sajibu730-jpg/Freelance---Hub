@@ -151,7 +151,6 @@ create index work_evidence_cleanup_due_idx
   where state = 'pending';
 alter table public.work_evidence_cleanup_queue enable row level security;
 revoke all on table public.work_evidence_cleanup_queue from public, anon, authenticated, service_role;
-grant select, insert, update on table public.work_evidence_cleanup_queue to service_role;
 
 alter table public.work_evidence enable row level security;
 alter table public.work_evidence_events enable row level security;
