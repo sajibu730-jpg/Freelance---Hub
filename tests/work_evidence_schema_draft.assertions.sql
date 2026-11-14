@@ -72,6 +72,13 @@ BEGIN
   END IF;
   SELECT count(*) INTO v_count FROM public.work_evidence_events WHERE evidence_id=v_id;
   IF v_count <> 2 THEN RAISE EXCEPTION 'Review audit event was not recorded'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.work_evidence_events
+    WHERE evidence_id=v_id AND event_type='reviewed'
+      AND details->>'review_note'='Disposable verification'
+  ) THEN
+    RAISE EXCEPTION 'Review decision details were not preserved in the audit event';
+  END IF;
 
   BEGIN
     UPDATE public.work_evidence_events SET to_status='tampered' WHERE evidence_id=v_id;
