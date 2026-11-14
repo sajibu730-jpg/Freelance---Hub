@@ -371,7 +371,7 @@ Deno.serve(async (req: Request) => {
 
       if (action === "owner_list") {
         const page = Math.max(0, Math.min(10000, Number.isInteger(body.page) ? body.page : 0));
-        let query = admin.from("work_evidence").select("*", { count: "exact" })
+        let query = admin.from("work_evidence").select("id,submitted_by,origin,evidence_type,title,description,job_id,contract_id,submission_id,external_url,original_filename,mime_type,byte_size,status,submitted_at,reviewed_by,reviewed_at,review_note,created_at,updated_at", { count: "exact" })
           .order("submitted_at", { ascending: false, nullsFirst: false })
           .range(page * 50, page * 50 + 49);
         const allowedStatuses = ["upload_pending", "submitted", "verified", "rejected", "needs_info", "upload_failed"];
