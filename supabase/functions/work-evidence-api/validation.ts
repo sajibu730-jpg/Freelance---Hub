@@ -76,6 +76,5 @@ export function hasRequiredOwnerMfa(
 ): boolean {
   if (!factors || !Array.isArray(factors.all)) return false;
   const totpFactors = factors.all.filter((factor) => factor.factor_type === "totp");
-  if (totpFactors.length === 0) return true;
   return totpFactors.some((factor) => factor.status === "verified") && aal === "aal2";
 }
