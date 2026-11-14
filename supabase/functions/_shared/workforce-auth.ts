@@ -97,3 +97,82 @@ export async function authorizePrimaryOwner(
 
   return { ok: true, user, aal: "aal2" };
 }
+
+export type WorkforceRole = "project_manager" | "developer" | "qa" | "support";
+export type WorkforceAction =
+  | "list_tasks"
+  | "create_task"
+  | "assign_task"
+  | "reassign_task"
+  | "update_task_status"
+  | "append_task_evidence"
+  | "submit_release_proposal"
+  | "create_support_task";
+
+export type StaffMembershipLookup = {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        maybeSingle(): Promise<{
+          data: {
+            role?: string | null;
+            status?: string | null;
+            project_scopes?: string[] | null;
+          } | null;
+          error: unknown | null;
+        }>;
+      };
+    };
+  };
+};
+
+const STAFF_ACTIONS: Record<WorkforceRole, readonly WorkforceAction[]> = {
+  project_manager: ["list_tasks", "create_task", "assign_task", "reassign_task"],
+  developer: ["list_tasks", "update_task_status", "append_task_evidence", "submit_release_proposal"],
+  qa: ["list_tasks", "update_task_status", "append_task_evidence", "submit_release_proposal"],
+  support: ["list_tasks", "create_support_task"],
+};
+
+export type StaffAuthorization =
+  | { ok: true; userId: string; role: WorkforceRole; projectKey: string }
+  | { ok: false; status: 403; error: string };
+
+/**
+ * Call only after auth.getUser(token) has verified the bearer token.
+ * userId must come from that verified Auth response, never from request JSON.
+ */
+export async function authorizeStaffTaskAction(
+  userId: string,
+  projectKey: string,
+  action: WorkforceAction,
+  membershipClient: StaffMembershipLookup,
+): Promise<StaffAuthorization> {
+  if (!userId || !projectKey || projectKey.length > 100 || projectKey.trim() !== projectKey) {
+    return { ok: false, status: 403, error: "Invalid workforce scope." };
+  }
+
+  const { data: member, error } = await membershipClient
+    .from("owner_workforce_members")
+    .select("role,status,project_scopes")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !member || member.status !== "active") {
+    return { ok: false, status: 403, error: "Active workforce membership is required." };
+  }
+
+  const role = member.role;
+  if (role !== "project_manager" && role !== "developer" && role !== "qa" && role !== "support") {
+    return { ok: false, status: 403, error: "Workforce role is not recognized." };
+  }
+
+  if (!Array.isArray(member.project_scopes) || !member.project_scopes.includes(projectKey)) {
+    return { ok: false, status: 403, error: "This project is outside your assigned scope." };
+  }
+
+  if (!STAFF_ACTIONS[role].includes(action)) {
+    return { ok: false, status: 403, error: "Your workforce role cannot perform this action." };
+  }
+
+  return { ok: true, userId, role, projectKey };
+}
