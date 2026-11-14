@@ -103,9 +103,9 @@ select set_config('test.missing_evidence_candidate_id', (select id::text from pu
 set role authenticated;
 
 -- AAL1 must fail closed.
-select set_config('request.jwt.claim.sub', '88888888-8888-4888-8888-888888888888', true);
+select set_config('request.jwt.claim.sub', '88888888-8888-4888-8888-888888888888', false);
 select set_config('request.jwt.claims',
-  '{"sub":"88888888-8888-4888-8888-888888888888","aal":"aal1"}', true);
+  '{"sub":"88888888-8888-4888-8888-888888888888","aal":"aal1"}', false);
 do $$
 begin
   begin
@@ -120,9 +120,9 @@ begin
 end $$;
 
 -- A non-Owner with AAL2 must also fail.
-select set_config('request.jwt.claim.sub', '77777777-7777-4777-8777-777777777777', true);
+select set_config('request.jwt.claim.sub', '77777777-7777-4777-8777-777777777777', false);
 select set_config('request.jwt.claims',
-  '{"sub":"77777777-7777-4777-8777-777777777777","aal":"aal2"}', true);
+  '{"sub":"77777777-7777-4777-8777-777777777777","aal":"aal2"}', false);
 do $$
 begin
   begin
@@ -137,9 +137,9 @@ begin
 end $$;
 
 -- Active primary Owner with AAL2 cannot approve a candidate with missing evidence.
-select set_config('request.jwt.claim.sub', '88888888-8888-4888-8888-888888888888', true);
+select set_config('request.jwt.claim.sub', '88888888-8888-4888-8888-888888888888', false);
 select set_config('request.jwt.claims',
-  '{"sub":"88888888-8888-4888-8888-888888888888","aal":"aal2"}', true);
+  '{"sub":"88888888-8888-4888-8888-888888888888","aal":"aal2"}', false);
 do $$
 begin
   begin
