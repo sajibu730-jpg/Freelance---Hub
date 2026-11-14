@@ -13,7 +13,7 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
 
     def test_all_six_tables_enable_rls(self):
         tables = re.findall(r"create table public\.(owner_[a-z_]+)", SQL, re.I)
-        self.assertEqual(6, len(tables), tables)
+        self.assertEqual(8, len(tables), tables)
         for table in tables:
             self.assertRegex(
                 SQL,
@@ -29,11 +29,14 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
             "grant select on table public.owner_workforce_members, public.owner_workforce_tasks,",
             SQL,
         )
+        self.assertIn("public.owner_workforce_invitations", SQL
+        )
         self.assertNotRegex(SQL, r"grant\s+(?:all|insert|update|delete)[^;]*to service_role")
         self.assertNotRegex(SQL, r"grant\s+[^;]*\b(?:anon|authenticated)\b")
 
     def test_audit_tables_have_no_direct_api_role_grants(self):
         self.assertIn("Event tables are inaccessible to API roles.", SQL)
+        self.assertIn("public.owner_workforce_invitation_events", SQL)
         self.assertNotRegex(
             SQL,
             r"grant\s+[^;]*public\.owner_workforce_(?:member|task)_events",
@@ -45,6 +48,7 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
             "owner_workforce_member_events",
             "owner_workforce_task_events",
             "owner_release_events",
+            "owner_workforce_invitation_events",
         ):
             section = SQL.split(f"create table public.{table}", 1)[1].split(");", 1)[0]
             self.assertRegex(section, r"request_id uuid not null unique")
@@ -69,6 +73,7 @@ class WorkforceSchemaDraftTests(unittest.TestCase):
             "owner_workforce_member_events",
             "owner_workforce_task_events",
             "owner_release_events",
+            "owner_workforce_invitation_events",
         ):
             self.assertIn(f"create table public.{table}", SQL)
 
