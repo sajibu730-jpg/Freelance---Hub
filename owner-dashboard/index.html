@@ -232,8 +232,8 @@ async function loadWorkforceInvitations(){
    const confirmSent=document.createElement("button");confirmSent.className="success";confirmSent.textContent="Confirm sent";confirmSent.addEventListener("click",()=>reconcileWorkforceInvitation(invite.id,"confirm_sent",authId.value,confirmSent));
    const cancel=document.createElement("button");cancel.className="danger";cancel.textContent="Cancel invite";cancel.addEventListener("click",()=>reconcileWorkforceInvitation(invite.id,"cancel","",cancel));
    actions.append(authId,confirmSent,cancel);
-  }else if(invite.status==="sent"){
-   const cancel=document.createElement("button");cancel.className="danger";cancel.textContent="Cancel invite";cancel.addEventListener("click",()=>reconcileWorkforceInvitation(invite.id,"cancel","",cancel));actions.appendChild(cancel);
+  }else if(invite.status==="prepared"||invite.status==="sent"){
+   const cancel=document.createElement("button");cancel.className="danger";cancel.textContent=invite.status==="prepared"?"Cancel prepared invite":"Cancel invite";cancel.addEventListener("click",()=>reconcileWorkforceInvitation(invite.id,"cancel","",cancel));actions.appendChild(cancel);
   }
   if(actions.childNodes.length)card.appendChild(actions);
   list.appendChild(card);
