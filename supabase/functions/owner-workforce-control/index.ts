@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
 
       const { data, error } = await admin.rpc("owner_workforce_create_task", {
         p_actor_user_id: actorId,
-        p_project_key: projectKey,
+        p_project_key: scopedProjectKey,
         p_title: title,
         p_description: description,
         p_task_kind: taskKind,
