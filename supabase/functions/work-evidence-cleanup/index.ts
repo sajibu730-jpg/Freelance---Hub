@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
   if (!url || !serviceRoleKey) {
     return reply({ success: false, error: "Server configuration is incomplete." }, 503);
   }
-  const bearer = req.headers.get("Authorization")?.match(/^Bearer\\s+(.+)$/i)?.[1] || "";
+  const bearer = req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1] || "";
   if (!constantTimeEqual(bearer, serviceRoleKey)) {
     return reply({ success: false, error: "Unauthorized." }, 401);
   }
