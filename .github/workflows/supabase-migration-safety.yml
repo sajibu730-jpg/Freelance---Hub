@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - "supabase/migrations/**"
+      - "docs/drafts/owner-workforce-schema.draft.sql"
       - "scripts/check_supabase_migrations.py"
       - "tests/test_migration_guard.py"
+      - "tests/test_workforce_schema_draft.py"
       - ".github/workflows/supabase-migration-safety.yml"
 
 permissions:
@@ -33,6 +35,9 @@ jobs:
 
       - name: Test migration guard
         run: python -m unittest discover -s tests -p "test_migration_guard.py" -v
+
+      - name: Test workforce schema draft safety
+        run: python -m unittest discover -s tests -p "test_workforce_schema_draft.py" -v
 
       - name: Check changed Supabase migrations
         env:
