@@ -97,6 +97,9 @@ begin
   ) returning id into v_missing_evidence_candidate;
 end $$;
 
+select set_config('test.approval_candidate_id', (select id::text from public.evolution_candidates where title = 'AAL2 Owner approval fixture'), false);
+select set_config('test.missing_evidence_candidate_id', (select id::text from public.evolution_candidates where title = 'Missing evidence fixture'), false);
+
 set role authenticated;
 
 -- AAL1 must fail closed.
@@ -107,7 +110,7 @@ do $$
 begin
   begin
     perform public.approve_evolution_release(
-      (select id from public.evolution_candidates where title = 'AAL2 Owner approval fixture'),
+      current_setting('test.approval_candidate_id')::uuid,
       'Risk accepted', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'
     );
     raise exception 'AAL1 session unexpectedly approved a release.';
@@ -141,7 +144,7 @@ do $$
 begin
   begin
     perform public.approve_evolution_release(
-      (select id from public.evolution_candidates where title = 'Missing evidence fixture'),
+      current_setting('test.missing_evidence_candidate_id')::uuid,
       'Risk accepted', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3'
     );
     raise exception 'Candidate with missing evidence unexpectedly approved.';
