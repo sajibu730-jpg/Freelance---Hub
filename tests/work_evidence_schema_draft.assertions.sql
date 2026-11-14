@@ -17,8 +17,11 @@ BEGIN
   IF NOT has_table_privilege('service_role', 'public.work_evidence', 'SELECT')
     OR NOT has_table_privilege('service_role', 'public.work_evidence', 'INSERT')
     OR NOT has_table_privilege('service_role', 'public.work_evidence', 'UPDATE')
-    OR NOT has_table_privilege('service_role', 'public.work_evidence_events', 'INSERT') THEN
-    RAISE EXCEPTION 'Edge Function service role grants are incomplete';
+    OR NOT has_table_privilege('service_role', 'public.work_evidence_events', 'INSERT')
+    OR has_table_privilege('service_role', 'public.work_evidence', 'DELETE')
+    OR has_table_privilege('service_role', 'public.work_evidence_events', 'UPDATE')
+    OR has_table_privilege('service_role', 'public.work_evidence_events', 'DELETE') THEN
+    RAISE EXCEPTION 'Edge Function service role grants are incomplete or overly broad';
   END IF;
   IF has_table_privilege('anon', 'public.work_evidence_quota_events', 'SELECT')
     OR has_table_privilege('authenticated', 'public.work_evidence_quota_events', 'SELECT')
@@ -31,9 +34,12 @@ BEGIN
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM storage.buckets
-    WHERE id='work-evidence-private' AND public=false AND file_size_limit=10485760
+    WHERE id='work-evidence-private'
+      AND public=false
+      AND file_size_limit=10485760
+      AND allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/png', 'image/webp']::text[]
   ) THEN
-    RAISE EXCEPTION 'Private evidence bucket configuration is missing or unsafe';
+    RAISE EXCEPTION 'Private evidence bucket configuration or MIME allowlist is missing or unsafe';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='work_evidence_audit' AND NOT tgisinternal)
     OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='work_evidence_events_no_update' AND NOT tgisinternal) THEN
@@ -136,9 +142,16 @@ BEGIN
 
   BEGIN
     UPDATE public.work_evidence_events SET to_status='tampered' WHERE evidence_id=v_id;
-    RAISE EXCEPTION 'Audit event mutation unexpectedly succeeded';
+    RAISE EXCEPTION 'Audit event UPDATE unexpectedly succeeded';
   EXCEPTION WHEN raise_exception THEN
-    IF SQLERRM = 'Audit event mutation unexpectedly succeeded' THEN RAISE; END IF;
+    IF SQLERRM = 'Audit event UPDATE unexpectedly succeeded' THEN RAISE; END IF;
+  END;
+
+  BEGIN
+    DELETE FROM public.work_evidence_events WHERE evidence_id=v_id;
+    RAISE EXCEPTION 'Audit event DELETE unexpectedly succeeded';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM = 'Audit event DELETE unexpectedly succeeded' THEN RAISE; END IF;
   END;
 
   IF (SELECT count(*) FROM public.work_evidence_events WHERE evidence_id=v_id) <> 2 THEN
