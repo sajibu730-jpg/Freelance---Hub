@@ -18,6 +18,7 @@ import {
   parseProjectScopes,
   parseMemberStatus,
   parseInvitationEmail,
+  isWorkforceApiEnabled,
 } from "./request.ts";
 
 const corsHeaders = {
@@ -52,6 +53,9 @@ Deno.serve(async (req: Request) => {
     const body = parsed.body;
 
     const action = body.action;
+    if (!isWorkforceApiEnabled(Deno.env.get("WORKFORCE_API_ENABLED"))) {
+      return json({ success: false, error: "Workforce controls are not activated by the Owner." }, 503);
+    }
     const projectKey = text(body.project_key, 100);
     const requestId = body.request_id;
     const noProjectActions = [
