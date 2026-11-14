@@ -703,7 +703,7 @@ begin
   if p_actor_user_id is null or p_request_id is null
      or p_email is null or p_email <> pg_catalog.lower(pg_catalog.btrim(p_email))
      or length(p_email) not between 5 and 254
-     or p_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
+     or p_email !~ '^[a-z0-9.!#$%&''*+/=?^_`{|}~-]+@[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
      or p_role is null or p_role not in ('project_manager', 'developer', 'qa', 'support')
      or p_project_scopes is null or pg_catalog.cardinality(p_project_scopes) not between 1 and 50
      or exists (select 1 from pg_catalog.unnest(p_project_scopes) as x(scope)
