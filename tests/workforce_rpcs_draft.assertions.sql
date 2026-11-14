@@ -31,7 +31,7 @@ begin
     'public.owner_workforce_set_member(uuid,uuid,text,text[],uuid)'::regprocedure,
     'public.owner_workforce_set_member_status(uuid,uuid,text,uuid)'::regprocedure,
     'public.owner_workforce_list_member_events(uuid,uuid,integer)'::regprocedure,
-    'public.owner_workforce_prepare_invitation(uuid,text,text[],uuid)'::regprocedure,
+    'public.owner_workforce_prepare_invitation(uuid,text,text,text[],uuid)'::regprocedure,
     'public.owner_workforce_claim_invitation_dispatch(uuid,uuid)'::regprocedure,
     'public.owner_workforce_record_invitation_sent(uuid,uuid,uuid)'::regprocedure,
     'public.owner_workforce_mark_invitation_review(uuid,uuid,text,uuid)'::regprocedure,
