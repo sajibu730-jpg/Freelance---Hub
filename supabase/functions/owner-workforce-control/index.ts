@@ -42,8 +42,11 @@ Deno.serve(async (req: Request) => {
     const action = body.action;
     const projectKey = text(body.project_key, 100);
     const requestId = body.request_id;
-    if (!projectKey || !isUuid(requestId)) {
-      return json({ success: false, error: "A valid project_key and request_id are required." }, 400);
+    if (!projectKey) {
+      return json({ success: false, error: "A valid project_key is required." }, 400);
+    }
+    if (action !== "list_tasks" && !isUuid(requestId)) {
+      return json({ success: false, error: "A valid request_id is required for this action." }, 400);
     }
 
     const url = Deno.env.get("SUPABASE_URL");
@@ -68,6 +71,35 @@ Deno.serve(async (req: Request) => {
     });
     // Narrow the large generated Supabase client type to the small lookup contract.
     const membershipClient = admin as unknown as StaffMembershipLookup;
+
+    if (action === "list_tasks") {
+      const authorization = await authorizeStaffTaskAction(
+        actorId, projectKey, "list_tasks", membershipClient,
+      );
+      if (!authorization.ok) {
+        return json({ success: false, error: authorization.error }, authorization.status);
+      }
+
+      // Read-only listing is constrained server-side by verified membership and role.
+      let query = admin.from("owner_workforce_tasks")
+        .select("id,project_key,title,description,task_kind,priority,status,created_by,assignee_id,due_at,blocked_reason,completion_evidence,completed_at,created_at,updated_at")
+        .eq("project_key", projectKey)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (authorization.role === "developer" || authorization.role === "qa") {
+        query = query.eq("assignee_id", actorId);
+      } else if (authorization.role === "support") {
+        query = query.in("task_kind", ["support", "incident"]);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error("Workforce list_tasks query failed", error.code ?? "unknown");
+        return json({ success: false, error: "Tasks could not be loaded." }, 500);
+      }
+      return json({ success: true, tasks: data ?? [] });
+    }
 
     if (action === "create_task") {
       const title = text(body.title, 180);
