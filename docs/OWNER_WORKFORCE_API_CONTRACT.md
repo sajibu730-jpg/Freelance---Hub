@@ -9,7 +9,7 @@ This document is not a migration and must not be applied to Production.
 - All workforce and release-control reads/writes go through authenticated Edge Functions.
 - Every request validates the bearer token with Supabase Auth `getUser(token)`.
 - The server reads the actor's current access record from the database. Never authorize from `user_metadata`, client-supplied role names, or UI visibility.
-- The primary Owner is the active `app_admins` row with role `owner`. Owner-only mutations also require an AAL2 session.
+- The primary Owner is the active `app_admins` row with role `owner`. Owner-only mutations also require an AAL2 session. The bearer token must first pass Supabase Auth `getUser(token)`; only then may its `sub` and `aal` claims be used, and `sub` must match the verified Auth user ID.
 - Staff permissions come from a server-owned workforce membership record. Staff cannot grant themselves roles or broaden their own scope.
 - Database tables use RLS. Tables intentionally accessible only through the trusted Edge Function service role must have no client grants/policies and must have table-scoped RLS exception documentation in the migration review.
 - Every mutation writes an immutable audit event with actor, action, target, timestamp, and a minimal before/after summary. The data mutation and audit insert must be atomic in one database transaction; separate REST calls are not sufficient. Never log tokens, passwords, or sensitive profile data.
@@ -24,14 +24,14 @@ This document is not a migration and must not be applied to Production.
 | QA | Read assigned test tasks, record test results and blockers | Cannot approve own code for Production or deploy |
 | Support | Read permitted operational summaries, create support tasks and incident reports | No source/database secrets, staff administration, or Production access |
 
-No role is granted by a client payload. A staff user with no active membership has no workforce access.
+No role is granted by a client payload. A staff user with no active membership has no workforce access. The shared authorization helper and Deno tests now encode the Owner+AAL2 check, the staff role matrix, project scopes, and assignee ownership; they are not yet wired to a deployed Edge Function.
 
 ## Proposed data model
 
 The proposed SQL structure is recorded in `docs/drafts/owner-workforce-schema.draft.sql`. It is a non-migration design artifact and must not be executed. Convert it into a real migration only after the project has a disposable local/staging database and verified migration workflow.
 
 - `owner_workforce_members`: auth user ID, role, active/suspended status, project scope, inviter, timestamps.
-- `owner_workforce_tasks`: title, description, project scope, priority, lifecycle status, creator, assignee, due date, completion evidence.
+- `owner_workforce_tasks`: title, description, task kind (`general`, `support`, `incident`), project scope, priority, lifecycle status, creator, assignee, due date, completion evidence.
 - `owner_workforce_task_events`: append-only assignment/status/comment/evidence audit events.
 - `owner_release_proposals`: source commit, change summary, risk, test evidence, approval status, approved actor/time, release and rollback references.
 - `owner_release_events`: append-only CI, staging, approval, deployment, monitor, block, and rollback events.
@@ -93,7 +93,7 @@ Mode changes are Owner-only, AAL2, audited, and default to the safest mode if co
 
 - Anonymous and ordinary authenticated users cannot read/write any workforce or release table directly.
 - Staff cannot read another project's tasks or modify another member's role.
-- Suspended staff lose function access immediately on the next request.
+- Suspended staff lose function access immediately on the next request.\n- Developers and QA cannot update a task unless the database-fetched task is assigned to their verified Auth user ID.\n- Support can create only support/incident task kinds; it cannot create general tasks.
 - Only primary Owner + AAL2 can invite/suspend staff, change operating mode, and approve releases.
 - Invalid state transitions, duplicate retries, forged actor IDs, and cross-project assignment are rejected.
 - Every accepted mutation produces exactly one audit event.
