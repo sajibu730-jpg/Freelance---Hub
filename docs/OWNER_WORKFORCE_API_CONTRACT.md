@@ -118,3 +118,8 @@ Mode changes are Owner-only, AAL2, audited, and default to the safest mode if co
 ## Activation boundary
 
 The current Supabase account has one Production project and no development branches. Until a disposable database is available and these tests pass, keep the workforce UI and actions unavailable. Do not apply the draft SQL or a migration to the current production Supabase project as a substitute for staging.
+
+
+## Read-only task listing (draft Edge Function)
+
+The undeployed `owner-workforce-control` handler now supports `action: "list_tasks"`. It validates the bearer token through Supabase Auth, checks active membership and project scope, then applies role-specific server-side filters: Project Managers see tasks in their scoped project, Developers and QA see only tasks assigned to their verified account, and Support sees only support/incident tasks. Results are limited to the latest 50 records and expose no audit-event table. This endpoint is still draft source; it is not deployed and has not been integration-tested against a real Supabase staging project.
