@@ -4,6 +4,7 @@ DO $$
 DECLARE
   v_table text;
   v_candidate uuid;
+  v_mismatch_candidate uuid;
   v_owner uuid := '99999999-9999-4999-8999-999999999999';
   v_approval uuid;
 BEGIN
@@ -72,13 +73,28 @@ BEGIN
     now() + interval '1 hour'
   ) RETURNING id INTO v_approval;
 
+  INSERT INTO public.evolution_candidates (
+    created_by, title, description, change_category, risk_level,
+    impact_summary, privacy_security_impact, cost_impact,
+    repository, source_branch, source_commit_sha, artifact_name,
+    artifact_sha256, artifact_size_bytes, build_run_id,
+    recovery_plan, recovery_plan_digest
+  ) VALUES (
+    v_owner, 'Mismatch fixture', 'A separate candidate for FK test',
+    'dashboard_web', 'low', 'No live user impact',
+    'No personal data change', 'No new cost',
+    'sajibu730-jpg/Freelance---Hub', 'test/mismatch',
+    repeat('a', 40), 'fixture-mismatch.apk', repeat('b', 64), 12345, 124,
+    'Restore previous known-good artifact', repeat('c', 64)
+  ) RETURNING id INTO v_mismatch_candidate;
+
   BEGIN
     INSERT INTO public.evolution_approvals (
       candidate_id, candidate_version, owner_user_id,
       approved_commit_sha, approved_artifact_sha256, evidence_set_digest,
       risk_acknowledgement, recovery_plan_digest, approved_risk_level, expires_at
     ) VALUES (
-      v_candidate, 1, v_owner, repeat('f', 40), repeat('b', 64),
+      v_mismatch_candidate, 1, v_owner, repeat('f', 40), repeat('b', 64),
       repeat('f', 64), 'Mismatched commit must be rejected', repeat('c', 64), 'low',
       now() + interval '1 hour'
     );
