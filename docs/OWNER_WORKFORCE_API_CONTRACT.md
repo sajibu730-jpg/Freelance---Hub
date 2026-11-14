@@ -59,7 +59,10 @@ The draft and its disposable PostgreSQL tests are not a Supabase migration and h
 Single function family: `owner-workforce-control`. Accept POST JSON only; reject unknown actions and oversized fields. Suggested actions:
 
 - `list_members` — Owner only.
-- `invite_member` — Owner only; create invitation and membership in a recoverable sequence.
+- `invite_member` — Owner only, AAL2; create a durable invitation intent, claim dispatch once, call Auth Admin server-side, and quarantine uncertain results.
+- `list_invitations` — Owner only, AAL2; return bounded invitation state and Auth identity references.
+- `accept_invitation` — verified invitee session only; require exact Auth UUID and confirmed email before membership activation.
+- `cancel_invitation` / `reconcile_invitation` — Owner only, AAL2; cancel workforce access or reconcile a known Auth user UUID after manual review. Cancellation never deletes the Auth user or recalls an email.
 - `change_member_role` / `suspend_member` — Owner only; require AAL2 and write audit event.
 - `list_tasks` — return only tasks within the actor's server-calculated scope.
 - `create_task` — Owner or Project Manager within scope.
@@ -143,4 +146,4 @@ The Owner-only \`list_member_events\` action returns a bounded, newest-first mem
 
 ## Staff invitation safety extension (draft)
 
-The recoverable dispatch design is documented in `docs/drafts/owner-workforce-invitations.draft.md` and its side-effect-injected coordinator is in `supabase/functions/owner-workforce-control/invitation-lifecycle.ts`. Invitation email delivery is an external Auth side effect and cannot be made atomic with a database transaction. The dispatch coordinator therefore requires a durable compare-and-set claim before Auth is called, records the returned Auth user UUID, and quarantines ambiguous Auth/network/database outcomes for Owner reconciliation. It never automatically retries an uncertain send and never deletes an Auth user as compensation. The coordinator is tested with Deno fakes but is not wired to the Edge Function or deployed. Draft invitation persistence RPCs and verified-email acceptance now exist and are exercised against disposable PostgreSQL. Owner reconciliation UI, Edge Function adapter wiring, and real staging Auth integration remain pending.
+The recoverable dispatch design is documented in `docs/drafts/owner-workforce-invitations.draft.md` and its side-effect-injected coordinator is in `supabase/functions/owner-workforce-control/invitation-lifecycle.ts`. Invitation email delivery is an external Auth side effect and cannot be made atomic with a database transaction. The dispatch coordinator therefore requires a durable compare-and-set claim before Auth is called, records the returned Auth user UUID, and quarantines ambiguous Auth/network/database outcomes for Owner reconciliation. It never automatically retries an uncertain send and never deletes an Auth user as compensation. The coordinator is tested with Deno fakes but is not wired to the Edge Function or deployed. Draft invitation persistence RPCs and verified-email acceptance now exist and are exercised against disposable PostgreSQL. Owner reconciliation UI and Edge Function adapters are present but disabled in the draft. Real staging Auth integration, deployment, and explicit Owner approval remain pending.
