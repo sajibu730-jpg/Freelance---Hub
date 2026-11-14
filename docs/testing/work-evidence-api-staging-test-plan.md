@@ -83,7 +83,7 @@ Verify every Owner endpoint independently: `owner_list`, `owner_review`, `owner_
 - [ ] A user can claim 20 unique requests in a rolling 24-hour window.
 - [ ] The 21st unique request is rejected with 429.
 - [ ] Repeating the same request ID does not consume another quota slot.
-- [ ] Replay an identical request ID after 24 hours, when its quota-ledger event has aged out; confirm the existing evidence is returned and no new quota slot is claimed.
+- [ ] Replay identical `submit_link`, `submit_note`, and `prepare_upload` requests after 24 hours, when their quota-ledger events have aged out; confirm each existing evidence record is returned and no new quota slot is claimed.
 - [ ] Reuse an existing request ID with any changed evidence field; confirm HTTP 409 and no quota slot is consumed.
 - [ ] Two users have independent quotas.
 - [ ] Forty concurrent claims for one user yield exactly 20 accepted and 20 rejected.
