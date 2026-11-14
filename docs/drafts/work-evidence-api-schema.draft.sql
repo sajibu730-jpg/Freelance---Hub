@@ -50,6 +50,70 @@ create index work_evidence_job_idx
 create index work_evidence_contract_idx
   on public.work_evidence (contract_id, created_at desc) where contract_id is not null;
 
+-- Atomic per-user rolling 24-hour quota. The Edge Function can call only this
+-- SECURITY DEFINER function; API roles cannot read or write the quota ledger.
+create table public.work_evidence_quota_events (
+  id uuid primary key default gen_random_uuid(),
+  submitted_by uuid not null references auth.users(id) on delete restrict,
+  request_id uuid not null,
+  created_at timestamptz not null default now(),
+  unique (submitted_by, request_id)
+);
+create index work_evidence_quota_events_window_idx
+  on public.work_evidence_quota_events (submitted_by, created_at desc);
+alter table public.work_evidence_quota_events enable row level security;
+revoke all on table public.work_evidence_quota_events from public, anon, authenticated, service_role;
+
+create or replace function public.claim_work_evidence_quota(
+  p_submitted_by uuid,
+  p_request_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_count integer;
+begin
+  if p_submitted_by is null or p_request_id is null then
+    raise exception using errcode = '22023', message = 'Submitter and request ID are required';
+  end if;
+
+  -- Serialize quota claims for this account so concurrent requests cannot exceed 20.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_submitted_by::text, 0)
+  );
+
+  delete from public.work_evidence_quota_events
+  where submitted_by = p_submitted_by
+    and created_at < pg_catalog.now() - interval '24 hours';
+
+  if exists (
+    select 1 from public.work_evidence_quota_events
+    where submitted_by = p_submitted_by and request_id = p_request_id
+  ) then
+    return true;
+  end if;
+
+  select count(*) into v_count
+  from public.work_evidence_quota_events
+  where submitted_by = p_submitted_by
+    and created_at >= pg_catalog.now() - interval '24 hours';
+
+  if v_count >= 20 then
+    return false;
+  end if;
+
+  insert into public.work_evidence_quota_events (submitted_by, request_id)
+  values (p_submitted_by, p_request_id);
+  return true;
+end;
+$;
+
+revoke all on function public.claim_work_evidence_quota(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.claim_work_evidence_quota(uuid, uuid) to service_role;
+
 create table public.work_evidence_events (
   id uuid primary key default gen_random_uuid(),
   evidence_id uuid not null references public.work_evidence(id) on delete restrict,
