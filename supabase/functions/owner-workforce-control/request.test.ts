@@ -8,6 +8,7 @@ import {
   parseMemberStatus,
   parseInvitationEmail,
   parseInvitationReviewReason,
+  isWorkforceApiEnabled,
 } from "./request.ts";
 
 Deno.test("workforce body accepts a JSON object", () => {
@@ -135,4 +136,12 @@ Deno.test("invitation reconciliation reason parser allows only fixed safe codes"
   for (const reason of ["arbitrary", "delete_user", null, 1]) {
     if (parseInvitationReviewReason(reason) !== null) throw new Error("invalid review reason accepted");
   }
+});
+
+
+Deno.test("Workforce server feature flag fails closed unless explicitly true", () => {
+  for (const value of [undefined, "", "false", "TRUE", "1", "yes"]) {
+    if (isWorkforceApiEnabled(value)) throw new Error("Workforce API enabled without exact true flag");
+  }
+  if (!isWorkforceApiEnabled("true")) throw new Error("explicit true flag did not enable Workforce API");
 });
