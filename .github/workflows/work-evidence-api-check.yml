@@ -1,0 +1,136 @@
+name: Work Evidence API Draft Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/WORK_EVIDENCE_API_CONTRACT.md"
+      - "docs/drafts/work-evidence-api-schema.draft.sql"
+      - "supabase/functions/work-evidence-api/**"
+      - "supabase/functions/work-evidence-cleanup/**"
+      - "tests/work_evidence_schema_draft.assertions.sql"
+      - ".github/workflows/work-evidence-api-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: work-evidence-api-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-function:
+    name: Validate Edge Function and input tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run pure validation tests
+        run: deno test supabase/functions/work-evidence-api/validation.test.ts
+      - name: Run cleanup worker policy tests
+        run: deno test supabase/functions/work-evidence-cleanup/validation.test.ts
+      - name: Type-check Edge Function
+        run: deno check supabase/functions/work-evidence-api/index.ts
+      - name: Type-check cleanup worker
+        run: deno check supabase/functions/work-evidence-cleanup/index.ts
+
+  validate-schema:
+    name: Validate schema in disposable PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Prepare disposable Supabase-like schemas and roles
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+          CREATE SCHEMA auth;
+          CREATE TABLE auth.users (id uuid PRIMARY KEY);
+          CREATE SCHEMA storage;
+          CREATE TABLE storage.buckets (
+            id text PRIMARY KEY,
+            name text NOT NULL,
+            public boolean NOT NULL DEFAULT false,
+            file_size_limit bigint,
+            allowed_mime_types text[]
+          );
+          CREATE TABLE public.jobs (id uuid PRIMARY KEY);
+          CREATE TABLE public.contracts (id uuid PRIMARY KEY);
+          CREATE TABLE public.work_submissions (id uuid PRIMARY KEY);
+          SQL
+      - name: Apply draft schema only to disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f docs/drafts/work-evidence-api-schema.draft.sql
+      - name: Verify RLS, grants, private bucket, immutability, and audit trail
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/work_evidence_schema_draft.assertions.sql
+      - name: Verify atomic quota under concurrent submissions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "INSERT INTO auth.users(id) VALUES ('66666666-6666-4666-8666-666666666666')"
+          python3 - <<'PY'
+          import concurrent.futures
+          import subprocess
+          import uuid
+
+          user_id = "66666666-6666-4666-8666-666666666666"
+          requests = [str(uuid.uuid4()) for _ in range(40)]
+
+          def claim(request_id):
+              sql = (
+                  "SET ROLE service_role; "
+                  f"SELECT public.claim_work_evidence_quota('{user_id}', '{request_id}');"
+              )
+              result = subprocess.run(
+                  [
+                      "psql", "-h", "127.0.0.1", "-U", "postgres", "-d", "postgres",
+                      "-At", "-v", "ON_ERROR_STOP=1", "-c", sql,
+                  ],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              return result.stdout.strip().splitlines()[-1]
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=40) as pool:
+              outcomes = list(pool.map(claim, requests))
+
+          accepted = outcomes.count("t")
+          rejected = outcomes.count("f")
+          if accepted != 20 or rejected != 20:
+              raise SystemExit(
+                  f"Atomic quota failed: expected 20 accepted/20 rejected, got {accepted}/{rejected}"
+              )
+          print("Concurrent quota assertion passed: exactly 20 of 40 submissions accepted.")
+          PY
