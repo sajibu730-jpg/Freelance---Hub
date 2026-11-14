@@ -22,7 +22,7 @@ export type OwnerLookup = {
   from(table: string): {
     select(columns: string): {
       eq(column: string, value: string): {
-        maybeSingle(): Promise<{
+        maybeSingle(): PromiseLike<{
           data: { role?: string | null; is_active?: boolean | null } | null;
           error: unknown | null;
         }>;
@@ -113,7 +113,7 @@ export type StaffMembershipLookup = {
   from(table: string): {
     select(columns: string): {
       eq(column: string, value: string): {
-        maybeSingle(): Promise<{
+        maybeSingle(): PromiseLike<{
           data: {
             role?: string | null;
             status?: string | null;
