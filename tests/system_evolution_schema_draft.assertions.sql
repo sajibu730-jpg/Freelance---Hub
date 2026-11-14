@@ -65,10 +65,10 @@ BEGIN
   INSERT INTO public.evolution_approvals (
     candidate_id, candidate_version, owner_user_id,
     approved_commit_sha, approved_artifact_sha256, evidence_set_digest,
-    risk_acknowledgement, recovery_plan_digest, expires_at
+    risk_acknowledgement, recovery_plan_digest, approved_risk_level, expires_at
   ) VALUES (
     v_candidate, 1, v_owner, repeat('a', 40), repeat('b', 64),
-    repeat('e', 64), 'I acknowledge low risk', repeat('c', 64),
+    repeat('e', 64), 'I acknowledge low risk', repeat('c', 64), 'low',
     now() + interval '1 hour'
   ) RETURNING id INTO v_approval;
 
@@ -76,10 +76,25 @@ BEGIN
     INSERT INTO public.evolution_approvals (
       candidate_id, candidate_version, owner_user_id,
       approved_commit_sha, approved_artifact_sha256, evidence_set_digest,
-      risk_acknowledgement, recovery_plan_digest, expires_at
+      risk_acknowledgement, recovery_plan_digest, approved_risk_level, expires_at
+    ) VALUES (
+      v_candidate, 1, v_owner, repeat('f', 40), repeat('b', 64),
+      repeat('f', 64), 'Mismatched commit must be rejected', repeat('c', 64), 'low',
+      now() + interval '1 hour'
+    );
+    RAISE EXCEPTION 'Approval for a different commit unexpectedly succeeded';
+  EXCEPTION WHEN foreign_key_violation THEN
+    NULL;
+  END;
+
+  BEGIN
+    INSERT INTO public.evolution_approvals (
+      candidate_id, candidate_version, owner_user_id,
+      approved_commit_sha, approved_artifact_sha256, evidence_set_digest,
+      risk_acknowledgement, recovery_plan_digest, approved_risk_level, expires_at
     ) VALUES (
       v_candidate, 1, v_owner, repeat('a', 40), repeat('b', 64),
-      repeat('f', 64), 'Duplicate must be rejected', repeat('c', 64),
+      repeat('f', 64), 'Duplicate must be rejected', repeat('c', 64), 'low',
       now() + interval '1 hour'
     );
     RAISE EXCEPTION 'Duplicate active approval unexpectedly succeeded';
