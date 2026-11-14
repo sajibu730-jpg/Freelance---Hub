@@ -1,6 +1,7 @@
 import {
   ALLOWED_EVIDENCE_MIME,
   hasExpectedMagic,
+  hasRequiredOwnerMfa,
   isUuid,
   MAX_FILE_BYTES,
   safeHttpsUrl,
@@ -54,4 +55,15 @@ Deno.test("checks file signatures rather than trusting the MIME label", () => {
   assert(hasExpectedMagic("image/png", new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])), "PNG signature rejected");
   assert(hasExpectedMagic("image/webp", new TextEncoder().encode("RIFF0000WEBP")), "WebP signature rejected");
   assert(!hasExpectedMagic("application/pdf", new TextEncoder().encode("<html>")), "spoofed PDF accepted");
+});
+
+Deno.test("Owner MFA fails closed for unverified TOTP and requires AAL2", () => {
+  assert(hasRequiredOwnerMfa({ all: [] }, "aal1"), "Owner without TOTP enrollment should not be blocked");
+  assert(!hasRequiredOwnerMfa(undefined, "aal2"), "missing factor response must fail closed");
+  assert(!hasRequiredOwnerMfa({ all: [{ factor_type: "totp", status: "unverified" }] }, "aal1"),
+    "unverified TOTP enrollment must not bypass MFA");
+  assert(!hasRequiredOwnerMfa({ all: [{ factor_type: "totp", status: "verified" }] }, "aal1"),
+    "verified TOTP must require AAL2");
+  assert(hasRequiredOwnerMfa({ all: [{ factor_type: "totp", status: "verified" }] }, "aal2"),
+    "verified TOTP with AAL2 should pass");
 });
