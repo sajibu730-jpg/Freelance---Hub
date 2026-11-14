@@ -85,14 +85,27 @@ function optionalUuid(value: unknown, field: string): string | null {
   return value;
 }
 
-async function ownerMfaSatisfied(authClient: any, token: string): Promise<boolean> {
+async function ownerMfaSatisfied(
+  admin: any,
+  authClient: any,
+  token: string,
+  userId: string,
+): Promise<boolean> {
+  // The request-scoped auth client has no persisted browser session. Use the
+  // server-only Admin MFA endpoint to list this exact user's factors, while
+  // independently checking AAL2 against the presented, verified user JWT.
   const [{ data: factors, error: factorError }, { data: assurance, error: assuranceError }] =
     await Promise.all([
-      authClient.auth.mfa.listFactors(),
+      admin.auth.admin.mfa.listFactors({ userId }),
       authClient.auth.mfa.getAuthenticatorAssuranceLevel(token),
     ]);
-  if (factorError || assuranceError) throw new HttpError(503, "Could not verify Owner MFA status.");
-  return hasRequiredOwnerMfa(factors, assurance?.currentLevel);
+  if (factorError || assuranceError) {
+    throw new HttpError(503, "Could not verify Owner MFA status.");
+  }
+  return hasRequiredOwnerMfa(
+    factors ? { all: factors.factors } : null,
+    assurance?.currentLevel,
+  );
 }
 
 async function requireOwner(admin: any, authClient: any, token: string, userId: string) {
@@ -104,7 +117,7 @@ async function requireOwner(admin: any, authClient: any, token: string, userId: 
   if (!isSoleActiveOwner(owners, userId)) {
     throw new HttpError(403, "Only the single active primary Owner can access evidence review.");
   }
-  if (!(await ownerMfaSatisfied(authClient, token))) {
+  if (!(await ownerMfaSatisfied(admin, authClient, token, userId))) {
     throw new HttpError(403, "Complete Owner TOTP enrollment and verify MFA (AAL2) before continuing.");
   }
 }
