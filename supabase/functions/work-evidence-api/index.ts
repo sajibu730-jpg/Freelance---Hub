@@ -129,7 +129,7 @@ async function validateRelationship(
       if (!proposal) throw new HttpError(403, "You are not linked to this job.");
     }
   }
-  return { jobId, contractId, submissionId };
+  return { job_id: jobId, contract_id: contractId, submission_id: submissionId };
 }
 
 async function insertEvidence(admin: any, row: Record<string, unknown>) {
