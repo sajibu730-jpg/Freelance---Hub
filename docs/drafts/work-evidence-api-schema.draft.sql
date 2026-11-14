@@ -381,7 +381,7 @@ begin
       next_attempt_at = case
         when p_succeeded then next_attempt_at
         else pg_catalog.now() + pg_catalog.make_interval(
-          secs => least(3600, (30 * pg_catalog.power(2, least(attempts, 7)))::integer)
+          secs => least(3600, (30 * pg_catalog.power(2, least(greatest(attempts - 1, 0), 7)))::integer)
         )
       end,
       last_error = case when p_succeeded then null else left(coalesce(p_error, 'Storage cleanup failed'), 500) end,
