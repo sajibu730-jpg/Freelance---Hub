@@ -615,3 +615,53 @@ comment on function public.owner_workforce_set_member(uuid, uuid, text, text[], 
   is 'DRAFT ONLY. Owner AAL2 Edge Function required; DB also checks active app_admins Owner. Adds or updates existing Auth accounts and writes an atomic member audit event. Does not send invitations.';
 comment on function public.owner_workforce_set_member_status(uuid, uuid, text, uuid)
   is 'DRAFT ONLY. Owner AAL2 Edge Function required; DB also checks active app_admins Owner. Suspends/reactivates workforce access with an atomic audit event.';
+
+
+create or replace function public.owner_workforce_list_member_events(
+  p_actor_user_id uuid,
+  p_member_user_id uuid,
+  p_limit integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_owner_role text;
+  v_owner_active boolean;
+  v_events jsonb;
+begin
+  if p_actor_user_id is null or p_limit is null or p_limit not between 1 and 100 then
+    raise exception using errcode = '22023', message = 'Invalid member audit query.';
+  end if;
+
+  select a.role, a.is_active into v_owner_role, v_owner_active
+  from public.app_admins a
+  where a.user_id = p_actor_user_id
+  for share;
+  if not found or v_owner_role <> 'owner' or v_owner_active is distinct from true then
+    raise exception using errcode = '42501', message = 'Active primary Owner authorization is required.';
+  end if;
+
+  select coalesce(
+    pg_catalog.jsonb_agg(pg_catalog.to_jsonb(event_row) order by event_row.created_at desc),
+    '[]'::jsonb
+  )
+  into v_events
+  from (
+    select e.id, e.member_user_id, e.actor_user_id, e.event_type, e.details, e.created_at
+    from public.owner_workforce_member_events e
+    where p_member_user_id is null or e.member_user_id = p_member_user_id
+    order by e.created_at desc
+    limit p_limit
+  ) as event_row;
+
+  return v_events;
+end;
+$function$;
+
+revoke all on function public.owner_workforce_list_member_events(uuid, uuid, integer) from public, anon, authenticated;
+grant execute on function public.owner_workforce_list_member_events(uuid, uuid, integer) to service_role;
+comment on function public.owner_workforce_list_member_events(uuid, uuid, integer)
+  is 'DRAFT ONLY. Owner AAL2 Edge Function required; DB independently checks active app_admins Owner. Read-only bounded membership audit history.';
