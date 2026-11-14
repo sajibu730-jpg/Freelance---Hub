@@ -237,7 +237,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $audit$
 declare
   v_actor uuid;
   v_event text;
@@ -279,7 +279,7 @@ begin
   end if;
   return new;
 end;
-$$;
+$audit$;
 
 create or replace function public.prevent_work_evidence_event_mutation()
 returns trigger
