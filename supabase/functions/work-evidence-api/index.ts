@@ -316,7 +316,7 @@ Deno.serve(async (req: Request) => {
       return reply({ success: true, evidence: data || [], page, page_size: 50 });
     }
 
-    if (action === "owner_list" || action === "owner_review" || action === "owner_download") {
+    if (action === "owner_list" || action === "owner_review" || action === "owner_download" || action === "owner_events") {
       await requireOwner(admin, authClient, token, user.id);
 
       if (action === "owner_list") {
@@ -324,7 +324,11 @@ Deno.serve(async (req: Request) => {
         let query = admin.from("work_evidence").select("*", { count: "exact" })
           .order("submitted_at", { ascending: false, nullsFirst: false })
           .range(page * 50, page * 50 + 49);
-        if (typeof body.status === "string" && ["upload_pending", "submitted", "verified", "rejected", "needs_info", "upload_failed"].includes(body.status)) {
+        const allowedStatuses = ["upload_pending", "submitted", "verified", "rejected", "needs_info", "upload_failed"];
+        if (body.status !== undefined && body.status !== null && body.status !== "") {
+          if (typeof body.status !== "string" || !allowedStatuses.includes(body.status)) {
+            throw new HttpError(400, "Unsupported evidence status filter.");
+          }
           query = query.eq("status", body.status);
         }
         const { data, error, count } = await query;
@@ -339,13 +343,29 @@ Deno.serve(async (req: Request) => {
           if (accountError) throw accountError;
           return { id, email: account.user?.email || null };
         }));
+        const jobIds = [...new Set((data || []).map((item: any) => item.job_id).filter(Boolean))];
+        const contractIds = [...new Set((data || []).map((item: any) => item.contract_id).filter(Boolean))];
+        const [{ data: jobs, error: jobsError }, { data: contracts, error: contractsError }] = await Promise.all([
+          jobIds.length ? admin.from("jobs").select("id,title,status").in("id", jobIds) : { data: [], error: null },
+          contractIds.length ? admin.from("contracts").select("id,job_id,status,client_id,freelancer_id").in("id", contractIds) : { data: [], error: null },
+        ]);
+        if (jobsError) throw jobsError;
+        if (contractsError) throw contractsError;
         return reply({
           success: true, evidence: data || [], profiles: profiles || [], accounts,
+          jobs: jobs || [], contracts: contracts || [],
           total: count || 0, page, page_size: 50,
         });
       }
 
       if (!isUuid(body.evidence_id)) throw new HttpError(400, "evidence_id must be a UUID.");
+      if (action === "owner_events") {
+        const { data: events, error: eventsError } = await admin.from("work_evidence_events")
+          .select("id,evidence_id,actor_user_id,event_type,from_status,to_status,details,created_at")
+          .eq("evidence_id", body.evidence_id).order("created_at", { ascending: true });
+        if (eventsError) throw eventsError;
+        return reply({ success: true, events: events || [] });
+      }
       const { data: evidence, error } = await admin.from("work_evidence")
         .select("id,status,storage_path,original_filename")
         .eq("id", body.evidence_id).maybeSingle();
