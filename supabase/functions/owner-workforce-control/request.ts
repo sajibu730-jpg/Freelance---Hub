@@ -48,3 +48,27 @@ export function taskListPolicy(role: TaskListRole, userId: string): {
   }
   return { assigneeId: null, taskKinds: null };
 }
+
+
+export type WorkforceRole = "project_manager" | "developer" | "qa" | "support";
+export type WorkforceMemberStatus = "active" | "suspended";
+
+export function parseWorkforceRole(value: unknown): WorkforceRole | null {
+  return value === "project_manager" || value === "developer" || value === "qa" || value === "support"
+    ? value
+    : null;
+}
+
+export function parseProjectScopes(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 50) return null;
+  if (!value.every((item) => typeof item === "string"
+      && item.length >= 1 && item.length <= 100
+      && item.trim() === item)) return null;
+  const scopes = value as string[];
+  if (new Set(scopes).size !== scopes.length) return null;
+  return scopes;
+}
+
+export function parseMemberStatus(value: unknown): WorkforceMemberStatus | null {
+  return value === "active" || value === "suspended" ? value : null;
+}
