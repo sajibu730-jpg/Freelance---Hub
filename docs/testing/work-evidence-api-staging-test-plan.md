@@ -60,6 +60,8 @@ Verify every Owner endpoint independently: `owner_list`, `owner_review`, `owner_
 - [ ] Confirm another user cannot call retry/complete for the evidence ID.
 - [ ] Confirm a second upload to the same path is rejected (`upsert=false`).
 - [ ] Confirm expired upload URL cannot upload; retry issues a fresh URL only while the record is eligible.
+- [ ] Replay the same `prepare_upload` request after the 21h45m cutoff with no object present; confirm no new signed URL is issued and the API returns 409.
+- [ ] If the same pending request already has its proof object after the renewal cutoff, confirm the API returns `complete_upload_required` without issuing another upload URL.
 - [ ] Owner download returns a signed URL with a 300-second expiry; non-Owner cannot obtain one.
 - [ ] Confirm no public URL or permanent Storage URL is returned by any endpoint.
 
@@ -81,6 +83,8 @@ Verify every Owner endpoint independently: `owner_list`, `owner_review`, `owner_
 - [ ] A user can claim 20 unique requests in a rolling 24-hour window.
 - [ ] The 21st unique request is rejected with 429.
 - [ ] Repeating the same request ID does not consume another quota slot.
+- [ ] Replay an identical request ID after 24 hours, when its quota-ledger event has aged out; confirm the existing evidence is returned and no new quota slot is claimed.
+- [ ] Reuse an existing request ID with any changed evidence field; confirm HTTP 409 and no quota slot is consumed.
 - [ ] Two users have independent quotas.
 - [ ] Forty concurrent claims for one user yield exactly 20 accepted and 20 rejected.
 - [ ] A failed insert or upload preparation does not permit duplicate evidence creation.
