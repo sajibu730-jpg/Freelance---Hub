@@ -8,6 +8,10 @@ insert into auth.users (id) values
   ('44444444-4444-4444-8444-444444444444')
 on conflict (id) do nothing;
 
+update public.owner_workforce_members
+set project_scopes = array['freelance-hub']
+where user_id = '11111111-1111-4111-8111-111111111111';
+
 insert into public.owner_workforce_members (user_id, role, status, project_scopes, invited_by)
 values
   ('22222222-2222-4222-8222-222222222222', 'project_manager', 'active', array['freelance-hub'], '11111111-1111-4111-8111-111111111111'),
