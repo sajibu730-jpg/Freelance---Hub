@@ -205,7 +205,7 @@ async function validateRelationship(
   return { job_id: jobId, contract_id: contractId, submission_id: submissionId };
 }
 
-const EVIDENCE_FIELDS = "id,status,submitted_at,storage_path,evidence_type,title,description,origin,job_id,contract_id,submission_id,external_url,original_filename,mime_type,byte_size";
+const EVIDENCE_FIELDS = "id,status,submitted_at,storage_path,evidence_type,title,description,origin,job_id,contract_id,submission_id,external_url,original_filename,mime_type,byte_size,created_at";
 
 async function findExistingEvidence(
   admin: any,
@@ -358,6 +358,9 @@ Deno.serve(async (req: Request) => {
           success: true, evidence: pending, bucket: BUCKET, path: uploadPath,
           upload_already_present: true, complete_upload_required: true,
         });
+      }
+      if (!canRenewPendingUpload(pending.created_at)) {
+        throw new HttpError(409, "The upload URL renewal window has closed. Create a new evidence request.");
       }
       const { data: signed, error: signedError } = await admin.storage.from(BUCKET)
         .createSignedUploadUrl(uploadPath, { upsert: false });
