@@ -268,6 +268,28 @@ begin
     null;
   end;
 
+
+  -- Owner can read a bounded audit trail through the protected RPC only.
+  if jsonb_array_length(public.owner_workforce_list_member_events(
+      '99999999-9999-4999-8999-999999999999',
+      v_member_id,
+      20
+    )) <> 4 then
+    raise exception 'Owner member audit history did not return the four expected events.';
+  end if;
+
+  -- A non-Owner cannot read the audit history through the RPC.
+  begin
+    perform public.owner_workforce_list_member_events(
+      '22222222-2222-4222-8222-222222222222',
+      v_member_id,
+      20
+    );
+    raise exception 'Project Manager was able to read Owner member audit history.';
+  exception when insufficient_privilege then
+    null;
+  end;
+
   -- Owner cannot accidentally remove their own workforce membership through this API.
   begin
     perform public.owner_workforce_set_member_status(
