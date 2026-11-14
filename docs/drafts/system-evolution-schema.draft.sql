@@ -71,14 +71,16 @@ create table public.evolution_evidence (
 
 create table public.evolution_approvals (
   id uuid primary key default gen_random_uuid(),
-  candidate_id uuid not null references public.evolution_candidates(id) on delete restrict,
+  candidate_id uuid not null,
   candidate_version integer not null check (candidate_version > 0),
   owner_user_id uuid not null references auth.users(id) on delete restrict,
   approved_commit_sha text not null check (approved_commit_sha ~ '^[0-9a-f]{40}([0-9a-f]{24})?$'),
   approved_artifact_sha256 text not null check (approved_artifact_sha256 ~ '^[0-9a-f]{64}$'),
   evidence_set_digest text not null check (evidence_set_digest ~ '^[0-9a-f]{64}$'),
   risk_acknowledgement text not null check (length(btrim(risk_acknowledgement)) between 1 and 2000),
-  recovery_plan_digest text not null check (recovery_plan_digest ~ '^[0-9a-f]{64} timestamptz not null default now(),
+  recovery_plan_digest text not null check (recovery_plan_digest ~ '^[0-9a-f]{64}$'),
+  approved_risk_level text not null check (approved_risk_level in ('low', 'medium', 'high', 'critical')),
+  approved_at timestamptz not null default now(),
   expires_at timestamptz not null,
   consumed_at timestamptz,
   invalidated_at timestamptz,
