@@ -79,10 +79,16 @@ export type InvitationReviewReason = "auth_error" | "auth_exception" | "record_s
 export function parseInvitationEmail(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const email = value.trim().toLowerCase();
-  if (email.length < 5 || email.length > 254 || /\\s/.test(email)) return null;
+  if (email.length < 5 || email.length > 254 || /\s/.test(email)) return null;
   const parts = email.split("@");
-  if (parts.length !== 2 || !parts[0] || !parts[1] || !parts[1].includes(".")) return null;
-  if (parts[0].length > 64 || parts[1].length > 253) return null;
+  if (parts.length !== 2) return null;
+  const [local, domain] = parts;
+  if (!local || local.length > 64 || !domain || domain.length > 253) return null;
+  if (local.startsWith(".") || local.endsWith(".") || local.includes("..")
+      || !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)) return null;
+  const labels = domain.split(".");
+  if (labels.length < 2 || labels.some(label => label.length < 1 || label.length > 63
+      || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))) return null;
   return email;
 }
 
