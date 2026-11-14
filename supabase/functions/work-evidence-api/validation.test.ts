@@ -1,6 +1,9 @@
 import {
   ALLOWED_EVIDENCE_MIME,
   canReviewEvidence,
+  canRenewPendingUpload,
+  UPLOAD_PENDING_TTL_MS,
+  UPLOAD_RETRY_CUTOFF_MS,
   hasExpectedMagic,
   hasRequiredOwnerMfa,
   isSoleActiveOwner,
@@ -106,4 +109,19 @@ Deno.test("review policy allows only submitted or needs-info evidence", () => {
   assert(!canReviewEvidence("upload_pending", "verified"), "pending upload can be reviewed");
   assert(!canReviewEvidence("upload_failed", "verified"), "failed upload can be reviewed");
   assert(!canReviewEvidence("verified", "rejected"), "final review can be overwritten");
+});
+
+Deno.test("upload retry URLs stop before the 24-hour pending expiry", () => {
+  const now = Date.parse("2026-11-14T12:00:00.000Z");
+  const recent = new Date(now - 60 * 60 * 1000).toISOString();
+  const justBeforeCutoff = new Date(now - UPLOAD_RETRY_CUTOFF_MS + 1000).toISOString();
+  const atCutoff = new Date(now - UPLOAD_RETRY_CUTOFF_MS).toISOString();
+  const expired = new Date(now - UPLOAD_PENDING_TTL_MS).toISOString();
+  assert(canRenewPendingUpload(recent, now), "recent pending upload should be renewable");
+  assert(canRenewPendingUpload(justBeforeCutoff, now), "last safe renewal second should pass");
+  assert(!canRenewPendingUpload(atCutoff, now), "renewal at cutoff must be blocked");
+  assert(!canRenewPendingUpload(expired, now), "expired pending upload must not be renewable");
+  assert(!canRenewPendingUpload("not-a-date", now), "invalid creation timestamp must fail closed");
+  assert(!canRenewPendingUpload(new Date(now + 1000).toISOString(), now),
+    "future creation timestamp must fail closed");
 });
