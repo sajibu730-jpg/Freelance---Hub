@@ -1,6 +1,6 @@
 # System Evolution Backend & Release Approval — Draft Specification
 
-Status: design-only. No SQL migration, RPC, Edge Function, credential, or deployment adapter is created or activated by this document.
+Status: design-only. A separate DRAFT SQL file (`system-evolution-approval-rpc.draft.sql`) contains the proposed authenticated Owner AAL2 approval RPC and is applied only to disposable PostgreSQL in CI. No Supabase migration, Edge Function, credential, or deployment adapter is deployed or activated.
 
 ## Security boundary
 
@@ -64,7 +64,7 @@ Terminal or exceptional states: `blocked`, `rejected`, `expired`, `deployment_un
 2. `submit_evolution_candidate`: server validates immutable source identity; records submission; starts trusted evidence collection.
 3. `record_evolution_evidence`: service-to-service only; verifies signed/provider-origin evidence and exact commit/artifact match.
 4. `mark_staging_verified`: service-to-service only; confirms isolated staging target, deployed SHA, health checks, and critical-flow tests.
-5. `approve_evolution_release`: primary Owner only; fresh AAL2 verified from trusted auth context; show exact commit, artifact digest, risk, evidence, and recovery plan; atomically revalidate every gate and consume one-use approval.
+5. `approve_evolution_release`: a draft-only SQL RPC now reads `auth.uid()` and `auth.jwt()->>'aal'` directly, checks the active `app_admins` Owner row in the transaction, validates all nine required fresh evidence types against the exact source commit and artifact digest, then atomically writes the one-use 15-minute approval, candidate state, and audit event. It does not deploy or queue a release.
 6. `queue_evolution_release`: server only; re-check approval freshness, candidate version, idempotency key, concurrency lock, and target allow-list. It may enqueue a future adapter but must not deploy in this draft phase.
 7. `record_evolution_release_result`: trusted adapter only; reconcile provider deployment identity and health result; ambiguous results become `deployment_uncertain`.
 8. `invalidate_evolution_approval`: automatic on any material candidate/evidence change or expiry; append audit event.
