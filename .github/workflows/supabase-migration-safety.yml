@@ -139,3 +139,10 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f tests/workforce_rpcs_draft.assertions.sql
+
+      - name: Verify recoverable invitation lifecycle in disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/workforce_invitations_draft.assertions.sql
