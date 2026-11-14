@@ -130,6 +130,29 @@ BEGIN
   IF (SELECT title FROM public.work_evidence WHERE id=v_id) <> 'Disposable evidence test' THEN
     RAISE EXCEPTION 'Immutable evidence title changed';
   END IF;
+
+  -- The database must reject a second, contradictory review after verification.
+  BEGIN
+    UPDATE public.work_evidence
+      SET status='rejected',
+          reviewed_by='33333333-3333-4333-8333-333333333333',
+          reviewed_at=now(),
+          review_note='Contradictory second review'
+    WHERE id=v_id;
+    RAISE EXCEPTION 'Verified evidence was allowed to transition to rejected';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM = 'Verified evidence was allowed to transition to rejected' THEN RAISE; END IF;
+  END;
+
+  -- Review metadata cannot be edited independently of a valid review transition.
+  BEGIN
+    UPDATE public.work_evidence
+      SET review_note='Tampered audit note'
+    WHERE id=v_id;
+    RAISE EXCEPTION 'Review metadata was editable without a valid transition';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM = 'Review metadata was editable without a valid transition' THEN RAISE; END IF;
+  END;
   SELECT count(*) INTO v_count FROM public.work_evidence_events WHERE evidence_id=v_id;
   IF v_count <> 2 THEN RAISE EXCEPTION 'Review audit event was not recorded'; END IF;
   IF NOT EXISTS (
