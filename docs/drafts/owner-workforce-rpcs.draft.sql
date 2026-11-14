@@ -439,18 +439,18 @@ declare
 begin
   if p_actor_user_id is null or p_member_user_id is null or p_request_id is null
      or p_actor_user_id = p_member_user_id
-     or p_role not in ('project_manager', 'developer', 'qa', 'support')
+     or p_role is null or p_role not in ('project_manager', 'developer', 'qa', 'support')
      or p_project_scopes is null or cardinality(p_project_scopes) < 1
      or cardinality(p_project_scopes) > 50 then
     raise exception using errcode = '22023', message = 'Invalid workforce member details.';
   end if;
 
   select count(*) into v_invalid_scopes
-  from pg_catalog.unnest(p_project_scopes) as scope
-  where scope is null or length(scope) not between 1 and 100 or scope <> btrim(scope);
+  from pg_catalog.unnest(p_project_scopes) as scopes(scope_value)
+  where scope_value is null or length(scope_value) not between 1 and 100 or scope_value <> btrim(scope_value);
   if v_invalid_scopes > 0
      or cardinality(p_project_scopes) <> (
-       select count(distinct scope) from pg_catalog.unnest(p_project_scopes) as scope
+       select count(distinct scope_value) from pg_catalog.unnest(p_project_scopes) as scopes(scope_value)
      ) then
     raise exception using errcode = '22023', message = 'Project scopes must be unique, trimmed keys of 1 to 100 characters.';
   end if;
@@ -545,7 +545,7 @@ declare
 begin
   if p_actor_user_id is null or p_member_user_id is null or p_request_id is null
      or p_actor_user_id = p_member_user_id
-     or p_new_status not in ('active', 'suspended') then
+     or p_new_status is null or p_new_status not in ('active', 'suspended') then
     raise exception using errcode = '22023', message = 'Invalid workforce status request.';
   end if;
 
