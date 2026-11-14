@@ -90,9 +90,14 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, members: data ?? [] });
     }
 
+    if (!projectKey) {
+      return json({ success: false, error: "A valid project_key is required." }, 400);
+    }
+    const scopedProjectKey = projectKey;
+
     if (action === "list_tasks") {
       const authorization = await authorizeStaffTaskAction(
-        actorId, projectKey, "list_tasks", membershipClient,
+        actorId, scopedProjectKey, "list_tasks", membershipClient,
       );
       if (!authorization.ok) {
         return json({ success: false, error: authorization.error }, authorization.status);
@@ -101,7 +106,7 @@ Deno.serve(async (req: Request) => {
       // Read-only listing is constrained server-side by verified membership and role.
       let query = admin.from("owner_workforce_tasks")
         .select("id,project_key,title,description,task_kind,priority,status,created_by,assignee_id,due_at,blocked_reason,completion_evidence,completed_at,created_at,updated_at")
-        .eq("project_key", projectKey)
+        .eq("project_key", scopedProjectKey)
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -135,7 +140,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const membershipAction = taskKind === "general" ? "create_task" : "create_support_task";
-      const authorization = await authorizeStaffTaskAction(actorId, projectKey, membershipAction, membershipClient);
+      const authorization = await authorizeStaffTaskAction(actorId, scopedProjectKey, membershipAction, membershipClient);
       if (!authorization.ok) return json({ success: false, error: authorization.error }, authorization.status);
 
       const { data, error } = await admin.rpc("owner_workforce_create_task", {
@@ -161,7 +166,7 @@ Deno.serve(async (req: Request) => {
       if (!isUuid(taskId) || !isUuid(assigneeId)) {
         return json({ success: false, error: "Valid task_id and assignee_id are required." }, 400);
       }
-      const authorization = await authorizeStaffTaskAction(actorId, projectKey, "assign_task", membershipClient);
+      const authorization = await authorizeStaffTaskAction(actorId, scopedProjectKey, "assign_task", membershipClient);
       if (!authorization.ok) return json({ success: false, error: authorization.error }, authorization.status);
 
       const { data, error } = await admin.rpc("owner_workforce_assign_task", {
@@ -182,7 +187,7 @@ Deno.serve(async (req: Request) => {
       if (!isUuid(taskId)) return json({ success: false, error: "A valid task_id is required." }, 400);
 
       const membershipAction = action === "update_task_status" ? "update_task_status" : "append_task_evidence";
-      const authorization = await authorizeStaffTaskAction(actorId, projectKey, membershipAction, membershipClient);
+      const authorization = await authorizeStaffTaskAction(actorId, scopedProjectKey, membershipAction, membershipClient);
       if (!authorization.ok) return json({ success: false, error: authorization.error }, authorization.status);
 
       const { data: task, error: taskError } = await admin.from("owner_workforce_tasks")
