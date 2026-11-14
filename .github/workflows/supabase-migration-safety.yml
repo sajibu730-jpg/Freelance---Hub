@@ -16,8 +16,6 @@ on:
       - "supabase/functions/_shared/workforce-auth.test.ts"
       - "supabase/functions/owner-workforce-control/**"
       - "docs/drafts/owner-workforce-invitations.draft.md"
-      - "docs/drafts/owner-workforce-schema.draft.sql"
-      - "docs/drafts/owner-workforce-rpcs.draft.sql"
       - "tests/workforce_invitations_draft.assertions.sql"
       - ".github/workflows/supabase-migration-safety.yml"
 
