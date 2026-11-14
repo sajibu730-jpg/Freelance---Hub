@@ -61,10 +61,16 @@ BEGIN
   IF NOT (SELECT prosecdef FROM pg_proc WHERE oid='public.audit_work_evidence_change()'::regprocedure) THEN
     RAISE EXCEPTION 'Evidence audit trigger must run with narrowly scoped definer privileges';
   END IF;
-  IF has_function_privilege('anon', 'public.audit_work_evidence_change()', 'EXECUTE')
+  IF has_function_privilege('anon', 'public.guard_work_evidence_update()', 'EXECUTE')
+    OR has_function_privilege('authenticated', 'public.guard_work_evidence_update()', 'EXECUTE')
+    OR has_function_privilege('service_role', 'public.guard_work_evidence_update()', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.audit_work_evidence_change()', 'EXECUTE')
     OR has_function_privilege('authenticated', 'public.audit_work_evidence_change()', 'EXECUTE')
-    OR has_function_privilege('service_role', 'public.audit_work_evidence_change()', 'EXECUTE') THEN
-    RAISE EXCEPTION 'Trigger-only audit function is directly executable by API roles';
+    OR has_function_privilege('service_role', 'public.audit_work_evidence_change()', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.prevent_work_evidence_event_mutation()', 'EXECUTE')
+    OR has_function_privilege('authenticated', 'public.prevent_work_evidence_event_mutation()', 'EXECUTE')
+    OR has_function_privilege('service_role', 'public.prevent_work_evidence_event_mutation()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Trigger-only functions are directly executable by API roles';
   END IF;
 END;
 $$;
