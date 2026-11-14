@@ -16,7 +16,9 @@ begin
     'owner_workforce_member_events',
     'owner_workforce_task_events',
     'owner_release_proposals',
-    'owner_release_events'
+    'owner_release_events',
+    'owner_workforce_invitations',
+    'owner_workforce_invitation_events'
   ] loop
     if not exists (
       select 1 from pg_class c
@@ -33,6 +35,7 @@ begin
 
   if not has_table_privilege('service_role', 'public.owner_workforce_members', 'SELECT')
     or not has_table_privilege('service_role', 'public.owner_workforce_tasks', 'SELECT')
+    or not has_table_privilege('service_role', 'public.owner_workforce_invitations', 'SELECT')
     or has_table_privilege('service_role', 'public.owner_workforce_tasks', 'INSERT')
     or has_table_privilege('service_role', 'public.owner_workforce_tasks', 'UPDATE')
     or has_table_privilege('service_role', 'public.owner_workforce_tasks', 'DELETE') then
@@ -44,6 +47,13 @@ begin
     or has_table_privilege('service_role', 'public.owner_workforce_task_events', 'UPDATE')
     or has_table_privilege('service_role', 'public.owner_workforce_task_events', 'DELETE') then
     raise exception 'Task audit history must not be directly accessible to service_role';
+  end if;
+
+  if has_table_privilege('service_role', 'public.owner_workforce_invitation_events', 'SELECT')
+    or has_table_privilege('service_role', 'public.owner_workforce_invitation_events', 'INSERT')
+    or has_table_privilege('service_role', 'public.owner_workforce_invitation_events', 'UPDATE')
+    or has_table_privilege('service_role', 'public.owner_workforce_invitation_events', 'DELETE') then
+    raise exception 'Invitation audit history must not be directly accessible to service_role';
   end if;
 
   if has_table_privilege('service_role', 'public.owner_workforce_member_events', 'SELECT')
