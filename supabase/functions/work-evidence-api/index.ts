@@ -205,14 +205,34 @@ async function validateRelationship(
   return { job_id: jobId, contract_id: contractId, submission_id: submissionId };
 }
 
+const EVIDENCE_FIELDS = "id,status,submitted_at,storage_path,evidence_type,title,description,origin,job_id,contract_id,submission_id,external_url,original_filename,mime_type,byte_size";
+
+async function findExistingEvidence(
+  admin: any,
+  userId: string,
+  requestId: string,
+  requested: Record<string, unknown>,
+) {
+  const { data: existing, error } = await admin.from("work_evidence")
+    .select(EVIDENCE_FIELDS)
+    .eq("submitted_by", userId)
+    .eq("request_id", requestId)
+    .maybeSingle();
+  if (error) throw new HttpError(503, "Could not verify the previous evidence request.");
+  if (!existing) return null;
+  if (!sameEvidenceRequest(existing, requested)) {
+    throw new HttpError(409, "This request ID was already used with different evidence details.");
+  }
+  return existing;
+}
+
 async function insertEvidence(admin: any, row: Record<string, unknown>) {
-  const fields = "id,status,submitted_at,storage_path,evidence_type,title,description,origin,job_id,contract_id,submission_id,external_url,original_filename,mime_type,byte_size";
-  const { data, error } = await admin.from("work_evidence").insert(row).select(fields).single();
+  const { data, error } = await admin.from("work_evidence").insert(row).select(EVIDENCE_FIELDS).single();
   if (error?.code === "23505") {
     // A network retry with the same key and same payload returns the original
     // record. Reusing a key for different evidence is always a conflict.
     const { data: existing, error: lookupError } = await admin.from("work_evidence")
-      .select(fields)
+      .select(EVIDENCE_FIELDS)
       .eq("submitted_by", row.submitted_by)
       .eq("request_id", row.request_id)
       .maybeSingle();
@@ -274,23 +294,29 @@ Deno.serve(async (req: Request) => {
       if (action === "submit_link") {
         const externalUrl = safeHttpsUrl(body.external_url);
         if (!externalUrl) throw new HttpError(400, "Only safe HTTPS evidence links are accepted.");
-        await claimDailyQuota(admin, user.id, body.request_id);
-        const row = await insertEvidence(admin, {
+        const requested = {
           request_id: body.request_id, submitted_by: user.id, origin: originValue,
           evidence_type: "link", title, description, ...relation,
           external_url: externalUrl, status: "submitted", submitted_at: new Date().toISOString(),
-        });
+        };
+        const existing = await findExistingEvidence(admin, user.id, body.request_id, requested);
+        if (existing) return reply({ success: true, evidence: existing, idempotent_replay: true });
+        await claimDailyQuota(admin, user.id, body.request_id);
+        const row = await insertEvidence(admin, requested);
         return reply({ success: true, evidence: row });
       }
 
       if (action === "submit_note") {
         if (!description) throw new HttpError(400, "A description is required for note evidence.");
-        await claimDailyQuota(admin, user.id, body.request_id);
-        const row = await insertEvidence(admin, {
+        const requested = {
           request_id: body.request_id, submitted_by: user.id, origin: originValue,
           evidence_type: "note", title, description, ...relation,
           status: "submitted", submitted_at: new Date().toISOString(),
-        });
+        };
+        const existing = await findExistingEvidence(admin, user.id, body.request_id, requested);
+        if (existing) return reply({ success: true, evidence: existing, idempotent_replay: true });
+        await claimDailyQuota(admin, user.id, body.request_id);
+        const row = await insertEvidence(admin, requested);
         return reply({ success: true, evidence: row });
       }
 
@@ -302,18 +328,21 @@ Deno.serve(async (req: Request) => {
       if (!Number.isInteger(byteSize) || byteSize < 1 || byteSize > MAX_FILE_BYTES) {
         throw new HttpError(413, "File size must be between 1 byte and 10 MB.");
       }
-      await claimDailyQuota(admin, user.id, body.request_id);
-
       const evidenceId = crypto.randomUUID();
       const storagePath = `${user.id}/${evidenceId}/proof`;
-      const pending = await insertEvidence(admin, {
+      const requested = {
         id: evidenceId, request_id: body.request_id, submitted_by: user.id, origin: originValue,
         evidence_type: "file", title, description, ...relation,
         storage_path: storagePath, original_filename: filename, mime_type: mime,
         byte_size: byteSize, status: "upload_pending", submitted_at: null,
-      });
+      };
+      let pending = await findExistingEvidence(admin, user.id, body.request_id, requested);
+      if (!pending) {
+        await claimDailyQuota(admin, user.id, body.request_id);
+        pending = await insertEvidence(admin, requested);
+      }
       if (pending.status !== "upload_pending" || !pending.storage_path) {
-        throw new HttpError(409, "This evidence request has already left the upload-pending state.");
+        return reply({ success: true, evidence: pending, idempotent_replay: true });
       }
       const uploadPath = pending.storage_path;
       // A retried submit request may arrive after the original client uploaded
