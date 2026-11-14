@@ -194,6 +194,13 @@ begin
     raise exception 'Submitted evidence identity and original proof are immutable';
   end if;
 
+  -- Enforce the 24-hour upload deadline inside the same database transaction
+  -- as the status change; an API-side check alone is vulnerable to slow downloads.
+  if old.status = 'upload_pending' and new.status = 'submitted'
+    and old.created_at <= pg_catalog.now() - interval '24 hours' then
+    raise exception 'Pending evidence upload has expired';
+  end if;
+
   if v_status_changed and not (
     (old.status = 'upload_pending' and new.status in ('submitted', 'upload_failed'))
     or (old.status in ('submitted', 'needs_info')
