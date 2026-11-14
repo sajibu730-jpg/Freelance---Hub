@@ -106,13 +106,6 @@ begin
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6'
   );
 
-  select count(*) into v_event_count
-  from public.owner_workforce_task_events e
-  where e.task_id = v_task_id;
-  if v_event_count <> 6 then
-    raise exception 'Expected exactly 6 task audit events, found %', v_event_count;
-  end if;
-
   -- QA cannot mutate a task assigned to a different user.
   begin
     perform public.owner_workforce_update_task_status(
@@ -178,5 +171,27 @@ begin
 end $$;
 
 reset role;
+
+-- The service role cannot read or tamper with the append-only audit log directly.
+-- The disposable database owner verifies that each mutation wrote one audit row.
+do $
+declare
+  v_task_id uuid;
+  v_event_count integer;
+begin
+  select t.id into v_task_id
+  from public.owner_workforce_tasks t
+  where t.title = 'Build workforce RPC tests'
+  order by t.created_at desc
+  limit 1;
+
+  select count(*) into v_event_count
+  from public.owner_workforce_task_events e
+  where e.task_id = v_task_id;
+
+  if v_event_count <> 6 then
+    raise exception 'Expected exactly 6 task audit events, found %', v_event_count;
+  end if;
+end $;
 
 select 'Atomic workforce RPC disposable PostgreSQL tests passed.' as result;
