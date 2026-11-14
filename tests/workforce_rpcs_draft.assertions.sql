@@ -30,7 +30,14 @@ begin
     'public.owner_workforce_append_task_evidence(uuid,uuid,text,uuid)'::regprocedure,
     'public.owner_workforce_set_member(uuid,uuid,text,text[],uuid)'::regprocedure,
     'public.owner_workforce_set_member_status(uuid,uuid,text,uuid)'::regprocedure,
-    'public.owner_workforce_list_member_events(uuid,uuid,integer)'::regprocedure
+    'public.owner_workforce_list_member_events(uuid,uuid,integer)'::regprocedure,
+    'public.owner_workforce_prepare_invitation(uuid,text,text[],uuid)'::regprocedure,
+    'public.owner_workforce_claim_invitation_dispatch(uuid,uuid)'::regprocedure,
+    'public.owner_workforce_record_invitation_sent(uuid,uuid,uuid)'::regprocedure,
+    'public.owner_workforce_mark_invitation_review(uuid,uuid,text,uuid)'::regprocedure,
+    'public.owner_workforce_accept_invitation(uuid,uuid)'::regprocedure,
+    'public.owner_workforce_cancel_invitation(uuid,uuid,text)'::regprocedure,
+    'public.owner_workforce_list_invitations(uuid,integer)'::regprocedure
   ] loop
     if has_function_privilege('anon', fn, 'EXECUTE')
        or has_function_privilege('authenticated', fn, 'EXECUTE')
