@@ -9,6 +9,7 @@ on:
       - "scripts/check_supabase_migrations.py"
       - "tests/test_migration_guard.py"
       - "tests/test_workforce_schema_draft.py"
+      - "tests/workforce_schema_draft.assertions.sql"
       - ".github/workflows/supabase-migration-safety.yml"
 
 permissions:
@@ -86,12 +87,12 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \\
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f docs/drafts/owner-workforce-schema.draft.sql
 
       - name: Verify RLS, grants, constraints, and idempotency
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \\
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f tests/workforce_schema_draft.assertions.sql
