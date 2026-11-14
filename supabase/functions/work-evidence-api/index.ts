@@ -15,6 +15,7 @@ import {
   MAX_FILE_BYTES,
   safeHttpsUrl,
   safeOriginalFilename,
+  sameEvidenceRequest,
 } from "./validation.ts";
 
 const BUCKET = "work-evidence-private";
@@ -217,13 +218,7 @@ async function insertEvidence(admin: any, row: Record<string, unknown>) {
       .maybeSingle();
     if (lookupError) throw new HttpError(503, "Could not verify the previous evidence request.");
     if (!existing) throw new HttpError(409, "This request ID has already been used.");
-    const idempotencyFields = [
-      "origin", "evidence_type", "title", "description", "job_id", "contract_id",
-      "submission_id", "external_url", "original_filename", "mime_type", "byte_size",
-    ];
-    const sameRequest = idempotencyFields.every((key) =>
-      (existing[key] ?? null) === (row[key] ?? null)
-    );
+    const sameRequest = sameEvidenceRequest(existing, row);
     if (!sameRequest) throw new HttpError(409, "This request ID was already used with different evidence details.");
     return existing;
   }
