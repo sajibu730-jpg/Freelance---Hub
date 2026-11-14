@@ -12,7 +12,7 @@ This document is not a migration and must not be applied to Production.
 - The primary Owner is the active `app_admins` row with role `owner`. Owner-only mutations also require an AAL2 session.
 - Staff permissions come from a server-owned workforce membership record. Staff cannot grant themselves roles or broaden their own scope.
 - Database tables use RLS. Tables intentionally accessible only through the trusted Edge Function service role must have no client grants/policies and must have table-scoped RLS exception documentation in the migration review.
-- Every mutation writes an immutable audit event with actor, action, target, timestamp, and a minimal before/after summary. Never log tokens, passwords, or sensitive profile data.
+- Every mutation writes an immutable audit event with actor, action, target, timestamp, and a minimal before/after summary. The data mutation and audit insert must be atomic in one database transaction; separate REST calls are not sufficient. Never log tokens, passwords, or sensitive profile data.
 
 ## Roles and scope
 
@@ -28,7 +28,7 @@ No role is granted by a client payload. A staff user with no active membership h
 
 ## Proposed data model
 
-The following tables are proposed; create them only after the project has a disposable local/staging database and verified migration workflow.
+The proposed SQL structure is recorded in `docs/drafts/owner-workforce-schema.draft.sql`. It is a non-migration design artifact and must not be executed. Convert it into a real migration only after the project has a disposable local/staging database and verified migration workflow.
 
 - `owner_workforce_members`: auth user ID, role, active/suspended status, project scope, inviter, timestamps.
 - `owner_workforce_tasks`: title, description, project scope, priority, lifecycle status, creator, assignee, due date, completion evidence.
@@ -102,4 +102,4 @@ Mode changes are Owner-only, AAL2, audited, and default to the safest mode if co
 
 ## Activation boundary
 
-Until a disposable database is available and these tests pass, keep the workforce UI and actions unavailable. Do not apply a migration to the current production Supabase project as a substitute for staging.
+The current Supabase account has one Production project and no development branches. Until a disposable database is available and these tests pass, keep the workforce UI and actions unavailable. Do not apply the draft SQL or a migration to the current production Supabase project as a substitute for staging.
