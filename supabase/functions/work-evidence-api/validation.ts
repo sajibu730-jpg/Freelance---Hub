@@ -78,3 +78,23 @@ export function hasRequiredOwnerMfa(
   const totpFactors = factors.all.filter((factor) => factor.factor_type === "totp");
   return totpFactors.some((factor) => factor.status === "verified") && aal === "aal2";
 }
+
+export function isSoleActiveOwner(
+  owners: Array<{ user_id?: string }> | null | undefined,
+  userId: string,
+): boolean {
+  return Array.isArray(owners) && owners.length === 1 && owners[0].user_id === userId;
+}
+
+export function isWorkSubmissionParticipant(
+  userId: string,
+  freelancerId: string,
+  jobOwnerId: string | null | undefined,
+): boolean {
+  return userId === freelancerId || (!!jobOwnerId && userId === jobOwnerId);
+}
+
+export function canReviewEvidence(currentStatus: string, nextStatus: string): boolean {
+  return ["submitted", "needs_info"].includes(currentStatus)
+    && ["verified", "rejected", "needs_info"].includes(nextStatus);
+}
