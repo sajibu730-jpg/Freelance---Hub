@@ -45,6 +45,13 @@ begin
     or has_table_privilege('service_role', 'public.owner_workforce_task_events', 'DELETE') then
     raise exception 'Task audit history must not be directly accessible to service_role';
   end if;
+
+  if has_table_privilege('service_role', 'public.owner_workforce_member_events', 'SELECT')
+    or has_table_privilege('service_role', 'public.owner_workforce_member_events', 'INSERT')
+    or has_table_privilege('service_role', 'public.owner_workforce_member_events', 'UPDATE')
+    or has_table_privilege('service_role', 'public.owner_workforce_member_events', 'DELETE') then
+    raise exception 'Member audit history must not be directly accessible to service_role';
+  end if;
 end $$;
 
 insert into public.owner_workforce_members (user_id, role, invited_by)
