@@ -4,6 +4,7 @@ import {
   authorizeAssignedTaskMutation,
   authorizeStaffTaskAction,
   extractBearerToken,
+  type StaffMembershipLookup,
 } from "../_shared/workforce-auth.ts";
 import { isUuid, parseWorkforceBody, rpcErrorStatus } from "./request.ts";
 
@@ -65,6 +66,8 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(url, service, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    // Narrow the large generated Supabase client type to the small lookup contract.
+    const membershipClient = admin as unknown as StaffMembershipLookup;
 
     if (action === "create_task") {
       const title = text(body.title, 180);
@@ -80,7 +83,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const membershipAction = taskKind === "general" ? "create_task" : "create_support_task";
-      const authorization = await authorizeStaffTaskAction(actorId, projectKey, membershipAction, admin);
+      const authorization = await authorizeStaffTaskAction(actorId, projectKey, membershipAction, membershipClient);
       if (!authorization.ok) return json({ success: false, error: authorization.error }, authorization.status);
 
       const { data, error } = await admin.rpc("owner_workforce_create_task", {
@@ -106,7 +109,7 @@ Deno.serve(async (req: Request) => {
       if (!isUuid(taskId) || !isUuid(assigneeId)) {
         return json({ success: false, error: "Valid task_id and assignee_id are required." }, 400);
       }
-      const authorization = await authorizeStaffTaskAction(actorId, projectKey, "assign_task", admin);
+      const authorization = await authorizeStaffTaskAction(actorId, projectKey, "assign_task", membershipClient);
       if (!authorization.ok) return json({ success: false, error: authorization.error }, authorization.status);
 
       const { data, error } = await admin.rpc("owner_workforce_assign_task", {
@@ -127,7 +130,7 @@ Deno.serve(async (req: Request) => {
       if (!isUuid(taskId)) return json({ success: false, error: "A valid task_id is required." }, 400);
 
       const membershipAction = action === "update_task_status" ? "update_task_status" : "append_task_evidence";
-      const authorization = await authorizeStaffTaskAction(actorId, projectKey, membershipAction, admin);
+      const authorization = await authorizeStaffTaskAction(actorId, projectKey, membershipAction, membershipClient);
       if (!authorization.ok) return json({ success: false, error: authorization.error }, authorization.status);
 
       const { data: task, error: taskError } = await admin.from("owner_workforce_tasks")
