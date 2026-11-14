@@ -123,7 +123,7 @@ Deno.test("invitation email parser trims and normalizes valid email addresses", 
 });
 
 Deno.test("invitation email parser rejects malformed or oversized addresses", () => {
-  for (const value of [null, 12, "", "missing-at.example.com", "staff@", "@example.com", "staff@example", "two@@example.com", "bad space@example.com", "x".repeat(255) + "@example.com"]) {
+  for (const value of [null, 12, "", "missing-at.example.com", "staff@", "@example.com", "staff@example", "two@@example.com", "bad space@example.com", "foo..bar@example.com", "staff@-example.com", "staff@example..com", "x".repeat(255) + "@example.com"]) {
     if (parseInvitationEmail(value) !== null) throw new Error("invalid invitation email accepted");
   }
 });
