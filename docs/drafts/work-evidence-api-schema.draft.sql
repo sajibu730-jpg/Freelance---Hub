@@ -118,7 +118,7 @@ create table public.work_evidence_events (
   id uuid primary key default gen_random_uuid(),
   evidence_id uuid not null references public.work_evidence(id) on delete restrict,
   actor_user_id uuid references auth.users(id) on delete restrict,
-  event_type text not null check (event_type in ('created', 'upload_completed', 'upload_failed', 'submitted', 'reviewed')),
+  event_type text not null check (event_type in ('created', 'upload_completed', 'upload_failed', 'submitted', 'reviewed', 'storage_cleanup_completed', 'storage_cleanup_retry')),
   from_status text,
   to_status text not null,
   details jsonb not null default '{}'::jsonb check (jsonb_typeof(details) = 'object'),
@@ -126,6 +126,31 @@ create table public.work_evidence_events (
 );
 create index work_evidence_events_timeline_idx
   on public.work_evidence_events (evidence_id, created_at asc);
+
+-- Durable, retryable queue for removing abandoned private Storage objects.
+-- The evidence row and its audit history are retained permanently.
+create table public.work_evidence_cleanup_queue (
+  evidence_id uuid primary key references public.work_evidence(id) on delete restrict,
+  storage_path text not null unique check (length(storage_path) <= 500),
+  state text not null default 'pending' check (state in ('pending', 'processing', 'completed')),
+  attempts integer not null default 0 check (attempts >= 0),
+  next_attempt_at timestamptz not null default now(),
+  lease_started_at timestamptz,
+  last_error text check (last_error is null or length(last_error) <= 500),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  completed_at timestamptz,
+  check ((state = 'processing' and lease_started_at is not null)
+      or (state <> 'processing' and lease_started_at is null)),
+  check ((state = 'completed' and completed_at is not null)
+      or (state <> 'completed' and completed_at is null))
+);
+create index work_evidence_cleanup_due_idx
+  on public.work_evidence_cleanup_queue (next_attempt_at, created_at)
+  where state = 'pending';
+alter table public.work_evidence_cleanup_queue enable row level security;
+revoke all on table public.work_evidence_cleanup_queue from public, anon, authenticated, service_role;
+grant select, insert, update on table public.work_evidence_cleanup_queue to service_role;
 
 alter table public.work_evidence enable row level security;
 alter table public.work_evidence_events enable row level security;
@@ -234,6 +259,14 @@ begin
     (evidence_id, actor_user_id, event_type, from_status, to_status, details)
   values
     (new.id, v_actor, v_event, v_from, new.status, v_details);
+
+  -- Any failed pending upload is queued transactionally for idempotent Storage cleanup.
+  if tg_op = 'UPDATE' and old.status = 'upload_pending'
+    and new.status = 'upload_failed' and new.storage_path is not null then
+    insert into public.work_evidence_cleanup_queue (evidence_id, storage_path)
+    values (new.id, new.storage_path)
+    on conflict (evidence_id) do nothing;
+  end if;
   return new;
 end;
 $$;
@@ -259,6 +292,111 @@ for each row execute function public.audit_work_evidence_change();
 create trigger work_evidence_events_no_update
 before update or delete on public.work_evidence_events
 for each row execute function public.prevent_work_evidence_event_mutation();
+
+-- Claim an atomic batch of due cleanup jobs. Expire uploads only after 24 hours;
+-- retry_upload is separately capped so no fresh two-hour URL overlaps this deadline.
+create or replace function public.claim_work_evidence_cleanup_batch(p_limit integer default 50)
+returns table (evidence_id uuid, storage_path text, attempt_count integer)
+language plpgsql
+security definer
+set search_path = ''
+as $cleanup_claim$
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100 then
+    raise exception using errcode = '22023', message = 'Cleanup batch size must be between 1 and 100';
+  end if;
+
+  update public.work_evidence
+  set status = 'upload_failed',
+      submitted_at = pg_catalog.now()
+  where status = 'upload_pending'
+    and created_at <= pg_catalog.now() - interval '24 hours';
+
+  update public.work_evidence_cleanup_queue
+  set state = 'pending',
+      lease_started_at = null,
+      updated_at = pg_catalog.now()
+  where state = 'processing'
+    and lease_started_at <= pg_catalog.now() - interval '15 minutes';
+
+  return query
+  with candidates as (
+    select q.evidence_id
+    from public.work_evidence_cleanup_queue q
+    where q.state = 'pending'
+      and q.next_attempt_at <= pg_catalog.now()
+    order by q.created_at, q.evidence_id
+    for update skip locked
+    limit p_limit
+  ),
+  claimed as (
+    update public.work_evidence_cleanup_queue q
+    set state = 'processing',
+        attempts = q.attempts + 1,
+        lease_started_at = pg_catalog.now(),
+        updated_at = pg_catalog.now()
+    from candidates c
+    where q.evidence_id = c.evidence_id
+    returning q.evidence_id, q.storage_path, q.attempts
+  )
+  select claimed.evidence_id, claimed.storage_path, claimed.attempts
+  from claimed;
+end;
+$cleanup_claim$;
+
+create or replace function public.finish_work_evidence_cleanup(
+  p_evidence_id uuid,
+  p_succeeded boolean,
+  p_error text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $cleanup_finish$
+declare
+  v_job public.work_evidence_cleanup_queue%rowtype;
+begin
+  if p_evidence_id is null or p_succeeded is null then
+    raise exception using errcode = '22023', message = 'Evidence ID and cleanup result are required';
+  end if;
+
+  update public.work_evidence_cleanup_queue
+  set state = case when p_succeeded then 'completed' else 'pending' end,
+      lease_started_at = null,
+      next_attempt_at = case
+        when p_succeeded then next_attempt_at
+        else pg_catalog.now() + pg_catalog.make_interval(
+          secs => least(3600, (30 * pg_catalog.power(2, least(attempts, 7)))::integer)
+        )
+      end,
+      last_error = case when p_succeeded then null else left(coalesce(p_error, 'Storage cleanup failed'), 500) end,
+      updated_at = pg_catalog.now(),
+      completed_at = case when p_succeeded then pg_catalog.now() else null end
+  where evidence_id = p_evidence_id
+    and state = 'processing'
+  returning * into v_job;
+
+  if not found then return false; end if;
+
+  insert into public.work_evidence_events
+    (evidence_id, actor_user_id, event_type, from_status, to_status, details)
+  values (
+    v_job.evidence_id,
+    null,
+    case when p_succeeded then 'storage_cleanup_completed' else 'storage_cleanup_retry' end,
+    'upload_failed',
+    'upload_failed',
+    jsonb_build_object('attempt', v_job.attempts)
+  );
+  return true;
+end;
+$cleanup_finish$;
+
+revoke all on function public.claim_work_evidence_cleanup_batch(integer) from public, anon, authenticated;
+revoke all on function public.finish_work_evidence_cleanup(uuid, boolean, text) from public, anon, authenticated;
+grant execute on function public.claim_work_evidence_cleanup_batch(integer) to service_role;
+grant execute on function public.finish_work_evidence_cleanup(uuid, boolean, text) to service_role;
 
 -- Private bucket; no client Storage policies are created. Upload/download access
 -- is granted only through short-lived signed URLs after Edge Function checks.
