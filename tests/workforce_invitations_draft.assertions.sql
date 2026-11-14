@@ -2,8 +2,8 @@
 -- Assumes the draft schema and RPC files have been applied by the CI workflow.
 
 insert into auth.users (id, email, invited_at, email_confirmed_at) values
-  ('66666666-6666-4666-8666-666666666666', 'new.staff@example.com', null, null),
-  ('77777777-7777-4777-8777-777777777777', 'recovery.staff@example.com', null, null)
+  ('66666666-6666-4666-8666-666666666666', 'new.staff@example.com', pg_catalog.now(), null),
+  ('77777777-7777-4777-8777-777777777777', 'recovery.staff@example.com', pg_catalog.now(), null)
 on conflict (id) do nothing;
 
 set role service_role;
@@ -72,10 +72,6 @@ begin
   end if;
 
   -- Auth user is created by the Auth Admin API outside this SQL transaction.
-  update auth.users
-  set invited_at = pg_catalog.now()
-  where id = '66666666-6666-4666-8666-666666666666';
-
   v_invite := public.owner_workforce_record_invitation_sent(
     '99999999-9999-4999-8999-999999999999',
     v_invite_id,
@@ -95,9 +91,11 @@ begin
     null;
   end;
 
+  reset role;
   update auth.users
   set email_confirmed_at = pg_catalog.now()
   where id = '66666666-6666-4666-8666-666666666666';
+  set role service_role;
 
   v_member := public.owner_workforce_accept_invitation(
     '66666666-6666-4666-8666-666666666666', v_invite_id
