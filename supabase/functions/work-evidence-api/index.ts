@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   ALLOWED_EVIDENCE_MIME,
   canReviewEvidence,
+  canRenewPendingUpload,
   cleanText,
   hasExpectedMagic,
   hasRequiredOwnerMfa,
@@ -300,11 +301,14 @@ Deno.serve(async (req: Request) => {
     if (action === "retry_upload") {
       if (!isUuid(body.evidence_id)) throw new HttpError(400, "evidence_id must be a UUID.");
       const { data: evidence, error } = await admin.from("work_evidence")
-        .select("id,submitted_by,storage_path,status")
+        .select("id,submitted_by,storage_path,status,created_at")
         .eq("id", body.evidence_id).eq("submitted_by", user.id).maybeSingle();
       if (error) throw error;
       if (!evidence) throw new HttpError(404, "Evidence upload not found.");
       if (evidence.status !== "upload_pending") throw new HttpError(409, "Evidence is not awaiting upload.");
+      if (!canRenewPendingUpload(evidence.created_at)) {
+        throw new HttpError(409, "The upload window has expired. Create a new evidence request.");
+      }
       const parentPath = `${user.id}/${evidence.id}`;
       const { data: objects, error: listError } = await admin.storage.from(BUCKET)
         .list(parentPath, { limit: 10 });
