@@ -271,6 +271,30 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "retry_upload") {
+      if (!isUuid(body.evidence_id)) throw new HttpError(400, "evidence_id must be a UUID.");
+      const { data: evidence, error } = await admin.from("work_evidence")
+        .select("id,submitted_by,storage_path,status")
+        .eq("id", body.evidence_id).eq("submitted_by", user.id).maybeSingle();
+      if (error) throw error;
+      if (!evidence) throw new HttpError(404, "Evidence upload not found.");
+      if (evidence.status !== "upload_pending") throw new HttpError(409, "Evidence is not awaiting upload.");
+      const parentPath = `${user.id}/${evidence.id}`;
+      const { data: objects, error: listError } = await admin.storage.from(BUCKET)
+        .list(parentPath, { limit: 10 });
+      if (listError) throw new HttpError(503, "Could not verify the current upload state.");
+      if ((objects || []).some((item: any) => item.name === "proof")) {
+        throw new HttpError(409, "The file is already uploaded. Call complete_upload instead.");
+      }
+      const { data: signed, error: signedError } = await admin.storage.from(BUCKET)
+        .createSignedUploadUrl(evidence.storage_path, { upsert: false });
+      if (signedError || !signed?.signedUrl) throw new HttpError(503, "Could not renew the secure upload URL.");
+      return reply({
+        success: true, bucket: BUCKET, path: evidence.storage_path,
+        signed_upload_url: signed.signedUrl, upload_url_expires_in_seconds: 7200,
+      });
+    }
+
     if (action === "complete_upload") {
       if (!isUuid(body.evidence_id)) throw new HttpError(400, "evidence_id must be a UUID.");
       const { data: evidence, error } = await admin.from("work_evidence")
