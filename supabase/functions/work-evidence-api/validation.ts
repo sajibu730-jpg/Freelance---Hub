@@ -69,3 +69,13 @@ export function hasExpectedMagic(mime: string, bytes: Uint8Array): boolean {
   }
   return false;
 }
+
+export function hasRequiredOwnerMfa(
+  factors: { all?: Array<{ factor_type?: string; status?: string }> } | null | undefined,
+  aal: string | null | undefined,
+): boolean {
+  if (!factors || !Array.isArray(factors.all)) return false;
+  const totpFactors = factors.all.filter((factor) => factor.factor_type === "totp");
+  if (totpFactors.length === 0) return true;
+  return totpFactors.some((factor) => factor.status === "verified") && aal === "aal2";
+}
