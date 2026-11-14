@@ -233,6 +233,7 @@ DECLARE
   v_ok boolean;
   v_failed_token uuid;
   v_expired_token uuid;
+  v_reclaimed_token uuid;
 BEGIN
   WITH claimed AS MATERIALIZED (
     SELECT * FROM public.claim_work_evidence_cleanup_batch(10)
@@ -254,14 +255,24 @@ BEGIN
     RAISE EXCEPTION 'Expired upload was not atomically marked upload_failed';
   END IF;
 
-  -- A stale worker must not be able to finish a job using an obsolete token.
+  -- Reclaim an expired lease, then prove the previous worker cannot finalize it.
+  UPDATE public.work_evidence_cleanup_queue
+  SET lease_started_at=now() - interval '16 minutes'
+  WHERE evidence_id='66666666-6666-4666-8666-666666666666';
+  SELECT lease_token INTO v_reclaimed_token
+  FROM public.claim_work_evidence_cleanup_batch(10)
+  WHERE evidence_id='66666666-6666-4666-8666-666666666666';
+  IF v_reclaimed_token IS NULL OR v_reclaimed_token = v_failed_token THEN
+    RAISE EXCEPTION 'Expired cleanup lease was not replaced with a new token';
+  END IF;
+
   SELECT public.finish_work_evidence_cleanup(
-    '66666666-6666-4666-8666-666666666666', gen_random_uuid(), true, null
+    '66666666-6666-4666-8666-666666666666', v_failed_token, true, null
   ) INTO v_ok;
   IF v_ok THEN RAISE EXCEPTION 'Stale cleanup lease token was accepted'; END IF;
 
   SELECT public.finish_work_evidence_cleanup(
-    '66666666-6666-4666-8666-666666666666', v_failed_token, true, null
+    '66666666-6666-4666-8666-666666666666', v_reclaimed_token, true, null
   ) INTO v_ok;
   IF NOT v_ok THEN RAISE EXCEPTION 'Cleanup success could not be committed'; END IF;
 
