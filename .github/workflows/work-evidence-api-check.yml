@@ -7,6 +7,7 @@ on:
       - "docs/WORK_EVIDENCE_API_CONTRACT.md"
       - "docs/drafts/work-evidence-api-schema.draft.sql"
       - "supabase/functions/work-evidence-api/**"
+      - "supabase/functions/work-evidence-cleanup/**"
       - "tests/work_evidence_schema_draft.assertions.sql"
       - ".github/workflows/work-evidence-api-check.yml"
   workflow_dispatch:
@@ -31,6 +32,8 @@ jobs:
         run: deno test supabase/functions/work-evidence-api/validation.test.ts
       - name: Type-check Edge Function
         run: deno check supabase/functions/work-evidence-api/index.ts
+      - name: Type-check cleanup worker
+        run: deno check supabase/functions/work-evidence-cleanup/index.ts
 
   validate-schema:
     name: Validate schema in disposable PostgreSQL
