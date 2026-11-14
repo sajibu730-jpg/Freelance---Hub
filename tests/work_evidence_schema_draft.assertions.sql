@@ -257,7 +257,6 @@ INSERT INTO public.work_evidence (
   now() - interval '24 hours', now() - interval '24 hours'
 );
 
-SET ROLE service_role;
 DO $cleanup_test$
 DECLARE
   v_claimed integer;
@@ -342,6 +341,5 @@ BEGIN
   END IF;
 END;
 $cleanup_test$;
-RESET ROLE;
 
 SELECT 'work evidence schema assertions passed' AS result;
