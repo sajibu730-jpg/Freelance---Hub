@@ -87,14 +87,14 @@ begin
     (request_id, member_user_id, actor_user_id, event_type)
   values
     (request_key, '11111111-1111-4111-8111-111111111111',
-     '11111111-1111-4111-8111-111111111111', 'invited');
+     '11111111-1111-4111-8111-111111111111', 'added');
 
   begin
     insert into public.owner_workforce_member_events
       (request_id, member_user_id, actor_user_id, event_type)
     values
       (request_key, '11111111-1111-4111-8111-111111111111',
-       '11111111-1111-4111-8111-111111111111', 'invited');
+       '11111111-1111-4111-8111-111111111111', 'added');
     raise exception 'Duplicate request_id was accepted';
   exception when unique_violation then
     null;
