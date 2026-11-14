@@ -135,3 +135,6 @@ The handler now supports `action: "list_members"` as a read-only Owner roster. I
 The undeployed Edge Function now supports Owner-only \`set_member\` and \`set_member_status\` actions. The Owner can add an existing Supabase Auth account to the workforce, change its role/project scopes, suspend it, or reactivate it. Every request requires a verified primary Owner AAL2 session; the database RPC independently checks the actor against the active \`app_admins\` Owner row and writes the membership change plus audit event atomically.
 
 This first safe phase intentionally does not create Auth users or send invitation emails. It only manages an existing Auth user UUID, preventing an email invite from being sent before the membership transaction is committed. A separate invitation workflow must later handle email delivery and compensating cleanup/reconciliation.
+
+
+The Owner-only \`list_member_events\` action returns a bounded, newest-first membership audit history (maximum 100 records). The event table remains inaccessible to API roles; the read is performed by a SECURITY DEFINER function that checks the active primary Owner row, while the Edge Function separately requires AAL2.
