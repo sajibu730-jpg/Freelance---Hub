@@ -33,11 +33,12 @@ create table public.owner_workforce_tasks (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check ((status = 'blocked' and blocked_reason is not null) or status <> 'blocked'),
-  check ((status = 'done' and (completion_evidence is not null or completed_at is not null)) or status <> 'done')
+  check ((status = 'done' and completion_evidence is not null) or status <> 'done')
 );
 
 create table public.owner_workforce_member_events (
   id uuid primary key default gen_random_uuid(),
+  request_id uuid not null unique default gen_random_uuid(),
   member_user_id uuid not null references auth.users(id) on delete restrict,
   actor_user_id uuid not null references auth.users(id) on delete restrict,
   event_type text not null check (event_type in ('invited', 'role_changed', 'scope_changed', 'suspended', 'reactivated')),
@@ -47,6 +48,7 @@ create table public.owner_workforce_member_events (
 
 create table public.owner_workforce_task_events (
   id uuid primary key default gen_random_uuid(),
+  request_id uuid not null unique default gen_random_uuid(),
   task_id uuid not null references public.owner_workforce_tasks(id) on delete restrict,
   project_key text not null,
   actor_user_id uuid not null references auth.users(id) on delete restrict,
@@ -67,6 +69,7 @@ create table public.owner_release_proposals (
       'production_deployed', 'monitored', 'blocked', 'rollback_requested', 'rolled_back', 'rejected')),
   test_evidence jsonb not null default '{}'::jsonb check (jsonb_typeof(test_evidence) = 'object'),
   recovery_plan text not null check (length(btrim(recovery_plan)) between 1 and 4000),
+  rejection_reason text check (rejection_reason is null or length(rejection_reason) <= 2000),
   created_by uuid not null references auth.users(id) on delete restrict,
   approved_by uuid references auth.users(id) on delete restrict,
   approved_at timestamptz,
@@ -78,6 +81,7 @@ create table public.owner_release_proposals (
 
 create table public.owner_release_events (
   id uuid primary key default gen_random_uuid(),
+  request_id uuid not null unique default gen_random_uuid(),
   proposal_id uuid not null references public.owner_release_proposals(id) on delete restrict,
   actor_user_id uuid references auth.users(id) on delete restrict,
   event_type text not null check (event_type in ('submitted', 'check_started', 'check_passed', 'check_failed',
