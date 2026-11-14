@@ -66,3 +66,11 @@ Deno.test("task list policy leaves Project Manager within the project-level quer
     throw new Error("Project Manager task list should include all task kinds in their scoped project");
   }
 });
+
+
+Deno.test("Owner membership roster request does not require project scope or mutation id", () => {
+  const body = parseWorkforceBody('{"action":"list_members"}');
+  if (!body.ok || body.body.action !== "list_members") {
+    throw new Error("valid Owner roster request was rejected");
+  }
+});
