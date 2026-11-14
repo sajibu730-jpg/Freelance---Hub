@@ -14,6 +14,7 @@ on:
       - "tests/workforce_rpcs_draft.assertions.sql"
       - "supabase/functions/_shared/workforce-auth.ts"
       - "supabase/functions/_shared/workforce-auth.test.ts"
+      - "supabase/functions/owner-workforce-control/**"
       - ".github/workflows/supabase-migration-safety.yml"
 
 permissions:
@@ -40,6 +41,12 @@ jobs:
 
       - name: Test Owner AAL2 authorization helper
         run: deno test supabase/functions/_shared/workforce-auth.test.ts
+
+      - name: Test workforce Edge Function request validation
+        run: deno test supabase/functions/owner-workforce-control/request.test.ts
+
+      - name: Type-check the undeployed workforce Edge Function
+        run: deno check supabase/functions/owner-workforce-control/index.ts
 
       - name: Set up Python
         uses: actions/setup-python@v5
