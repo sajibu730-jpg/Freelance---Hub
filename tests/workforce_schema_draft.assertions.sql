@@ -31,16 +31,19 @@ begin
     end if;
   end loop;
 
-  if not has_table_privilege('service_role', 'public.owner_workforce_tasks', 'SELECT')
-    or not has_table_privilege('service_role', 'public.owner_workforce_tasks', 'INSERT') then
-    raise exception 'service_role is missing task access';
+  if not has_table_privilege('service_role', 'public.owner_workforce_members', 'SELECT')
+    or not has_table_privilege('service_role', 'public.owner_workforce_tasks', 'SELECT')
+    or has_table_privilege('service_role', 'public.owner_workforce_tasks', 'INSERT')
+    or has_table_privilege('service_role', 'public.owner_workforce_tasks', 'UPDATE')
+    or has_table_privilege('service_role', 'public.owner_workforce_tasks', 'DELETE') then
+    raise exception 'service_role must have read-only access to workforce tables';
   end if;
 
-  if not has_table_privilege('service_role', 'public.owner_workforce_task_events', 'SELECT')
-    or not has_table_privilege('service_role', 'public.owner_workforce_task_events', 'INSERT')
+  if has_table_privilege('service_role', 'public.owner_workforce_task_events', 'SELECT')
+    or has_table_privilege('service_role', 'public.owner_workforce_task_events', 'INSERT')
     or has_table_privilege('service_role', 'public.owner_workforce_task_events', 'UPDATE')
     or has_table_privilege('service_role', 'public.owner_workforce_task_events', 'DELETE') then
-    raise exception 'Task audit history is not append-only for service_role';
+    raise exception 'Task audit history must not be directly accessible to service_role';
   end if;
 end $$;
 
