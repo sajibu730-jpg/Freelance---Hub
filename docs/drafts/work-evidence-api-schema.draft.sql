@@ -54,7 +54,7 @@ create table public.work_evidence_events (
   id uuid primary key default gen_random_uuid(),
   evidence_id uuid not null references public.work_evidence(id) on delete restrict,
   actor_user_id uuid references auth.users(id) on delete restrict,
-  event_type text not null check (event_type in ('created', 'upload_completed', 'submitted', 'reviewed')),
+  event_type text not null check (event_type in ('created', 'upload_completed', 'upload_failed', 'submitted', 'reviewed')),
   from_status text,
   to_status text not null,
   details jsonb not null default '{}'::jsonb check (jsonb_typeof(details) = 'object'),
@@ -120,6 +120,7 @@ begin
     v_from := old.status;
     v_event := case
       when old.status = 'upload_pending' and new.status = 'submitted' then 'upload_completed'
+      when new.status = 'upload_failed' then 'upload_failed'
       when new.status in ('verified', 'rejected', 'needs_info') then 'reviewed'
       else 'submitted'
     end;
