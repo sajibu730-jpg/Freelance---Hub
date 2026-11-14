@@ -157,10 +157,21 @@ Deno.test("evidence request retries are idempotent only for an identical payload
     "identical retry should reuse the original evidence record");
   assert(sameEvidenceRequest({ ...original, job_id: undefined }, { ...original, job_id: null }),
     "missing and null optional relationship fields should be equivalent");
-  assert(!sameEvidenceRequest({ ...original }, { ...original, title: "Different title" }),
-    "changed title must conflict");
-  assert(!sameEvidenceRequest({ ...original }, { ...original, byte_size: 2048 }),
-    "changed file size must conflict");
-  assert(!sameEvidenceRequest({ ...original }, { ...original, external_url: "https://example.com" }),
-    "changed evidence source must conflict");
+  const identityFields: Record<string, unknown> = {
+    origin: "in_app",
+    evidence_type: "note",
+    title: "Different title",
+    description: "Different description",
+    job_id: "11111111-1111-4111-8111-111111111111",
+    contract_id: "22222222-2222-4222-8222-222222222222",
+    submission_id: "33333333-3333-4333-8333-333333333333",
+    external_url: "https://example.com",
+    original_filename: "other.pdf",
+    mime_type: "image/png",
+    byte_size: 2048,
+  };
+  for (const [field, changedValue] of Object.entries(identityFields)) {
+    assert(!sameEvidenceRequest({ ...original }, { ...original, [field]: changedValue }),
+      `changed ${field} must conflict`);
+  }
 });
