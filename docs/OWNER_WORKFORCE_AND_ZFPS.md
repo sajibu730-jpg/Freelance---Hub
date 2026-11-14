@@ -110,3 +110,8 @@ This specification and PR checks do not themselves activate Workforce Mode, crea
 - The Owner Dashboard contains a Workforce Control panel, but its API feature flag is deliberately `false`; controls remain disabled until an explicitly approved backend deployment.
 - The first version manages existing Auth user UUIDs only. It does not create accounts or send invitation emails; that workflow needs a separate recoverable invitation design.
 - None of these draft APIs or tables are active in the Production Supabase project.
+
+
+## Staff invitation implementation progress (2026-11-14)
+
+A draft-only, side-effect-injected invitation dispatcher and Deno tests have been added. It requires a one-time database claim before calling Auth Admin, records the returned Auth user ID, and sends ambiguous outcomes to manual Owner reconciliation rather than retrying or deleting accounts. The implementation is not wired to the live Edge Function; no email or Auth user is created. See `docs/drafts/owner-workforce-invitations.draft.md`. CI now runs its isolated Deno tests.
