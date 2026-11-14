@@ -119,17 +119,14 @@ alter table public.owner_release_events enable row level security;
 revoke all on table public.owner_workforce_members, public.owner_workforce_tasks,
   public.owner_workforce_member_events, public.owner_workforce_task_events,
   public.owner_release_proposals, public.owner_release_events
-  from public, anon, authenticated;
-grant all on table public.owner_workforce_members, public.owner_workforce_tasks,
+  from public, anon, authenticated, service_role;
+
+-- The Edge Function may read current membership and task rows, but cannot mutate
+-- them directly. All task mutations and audit inserts must use the atomic RPCs.
+grant select on table public.owner_workforce_members, public.owner_workforce_tasks,
   public.owner_release_proposals
   to service_role;
 
--- Audit/event history is append-only even for the service-role API client.
-grant select, insert on table public.owner_workforce_member_events,
-  public.owner_workforce_task_events, public.owner_release_events
-  to service_role;
-
--- IMPORTANT: this draft intentionally omits mutation functions and policies.
--- A later implementation must add transaction-safe, server-only RPC operations
--- that validate the actor, enforce scope/AAL2, and append exactly one immutable
--- audit event in the same transaction. Never expose these tables directly.
+-- Event tables are inaccessible to API roles. SECURITY DEFINER RPCs owned by the
+-- trusted database owner append events atomically with their corresponding changes.
+-- No service_role INSERT/UPDATE/DELETE grants are needed.
