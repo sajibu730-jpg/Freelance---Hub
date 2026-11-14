@@ -23,11 +23,16 @@ export function safeHttpsUrl(value: unknown): string | null {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || !url.hostname || url.username || url.password) return null;
-    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-    if (host === "localhost" || host.endsWith(".localhost") || host === "127.0.0.1"
-      || host === "::1" || host.startsWith("10.") || host.startsWith("192.168.")
-      || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")
-      || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host)) return null;
+
+    // Evidence links are opened by a human reviewer, never fetched by this API.
+    // Still reject IP literals and local/reserved hostnames to avoid exposing
+    // reviewers to links aimed at loopback, private networks, or local services.
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+    const localSuffixes = [".localhost", ".local", ".internal", ".test", ".invalid", ".example", ".home.arpa"];
+    const isIpLiteral = host.includes(":") || /^\d+(?:\.\d+){0,3}$/.test(host);
+    if (!host.includes(".") || isIpLiteral || host === "localhost"
+      || localSuffixes.some((suffix) => host.endsWith(suffix))) return null;
+
     return url.toString();
   } catch {
     return null;
