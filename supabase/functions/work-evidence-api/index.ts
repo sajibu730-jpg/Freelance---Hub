@@ -9,6 +9,7 @@ import {
   isSoleActiveOwner,
   isUuid,
   isWorkSubmissionParticipant,
+  submissionMatchesContract,
   MAX_FILE_BYTES,
   safeHttpsUrl,
   safeOriginalFilename,
@@ -128,6 +129,7 @@ async function validateRelationship(
   let jobId = optionalUuid(rawJobId, "job_id");
   let contractId = optionalUuid(rawContractId, "contract_id");
   const submissionId = optionalUuid(rawSubmissionId, "submission_id");
+  let submissionFreelancerId: string | null = null;
   if (origin === "in_app" && !jobId && !contractId && !submissionId) {
     throw new HttpError(400, "In-app evidence must reference a job, contract, or submission.");
   }
@@ -138,6 +140,7 @@ async function validateRelationship(
       .eq("id", submissionId).maybeSingle();
     if (error) throw error;
     if (!submission) throw new HttpError(404, "Work submission not found.");
+    submissionFreelancerId = submission.freelancer_id;
     if (jobId && jobId !== submission.job_id) throw new HttpError(400, "Submission and job do not match.");
     if (contractId && contractId !== submission.contract_id) {
       throw new HttpError(400, "Submission and contract do not match.");
@@ -162,6 +165,10 @@ async function validateRelationship(
       .eq("id", contractId).maybeSingle();
     if (error) throw error;
     if (!contract) throw new HttpError(404, "Contract not found.");
+    if (submissionFreelancerId !== null
+      && !submissionMatchesContract(submissionFreelancerId, contract.freelancer_id)) {
+      throw new HttpError(403, "This work submission does not belong to the linked contract freelancer.");
+    }
     if (!isWorkSubmissionParticipant(userId, contract.freelancer_id, contract.client_id)) {
       throw new HttpError(403, "You are not a participant in this contract.");
     }
