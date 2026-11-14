@@ -135,9 +135,7 @@ jobs:
       - name: Apply draft Owner AAL2 approval RPC to disposable PostgreSQL only
         env:
           PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \\
-            -f docs/drafts/system-evolution-approval-rpc.draft.sql
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f docs/drafts/system-evolution-approval-rpc.draft.sql
 
       - name: Apply draft atomic workforce RPCs to disposable PostgreSQL only
         env:
@@ -163,9 +161,7 @@ jobs:
       - name: Verify System Evolution Owner AAL2 approval RPC in disposable PostgreSQL
         env:
           PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \\
-            -f tests/system_evolution_approval_rpc_draft.assertions.sql
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/system_evolution_approval_rpc_draft.assertions.sql
 
       - name: Verify atomic workforce RPC permissions and behavior
         env:
