@@ -197,6 +197,8 @@ END;
 $$;
 
 -- Database-level completion guard closes the API download-time race.
+-- Roll back this fixture so the cleanup worker test starts with only its own two jobs.
+BEGIN;
 INSERT INTO public.work_evidence (
   id, request_id, submitted_by, origin, evidence_type, title, description,
   storage_path, original_filename, mime_type, byte_size, status, submitted_at,
@@ -223,6 +225,7 @@ BEGIN
   END;
 END;
 $expiry_guard$;
+ROLLBACK;
 
 -- Verify failed and expired uploads enter a durable, retryable cleanup queue.
 INSERT INTO public.work_evidence (
