@@ -48,7 +48,7 @@ INSERT INTO auth.users(id) VALUES
 
 -- Exercise the atomic quota RPC through the only permitted API role.
 SET ROLE service_role;
-DO $
+DO $quota_test$
 DECLARE
   i integer;
   v_request uuid;
@@ -84,7 +84,7 @@ BEGIN
     RAISE EXCEPTION 'Quota should be isolated per user';
   END IF;
 END;
-$;
+$quota_test$;
 RESET ROLE;
 
 
