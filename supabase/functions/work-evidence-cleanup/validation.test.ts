@@ -10,7 +10,7 @@ const PATH = `${USER_ID}/${EVIDENCE_ID}/proof`;
 
 Deno.test("cleanup accepts only the exact user/evidence/proof object path", () => {
   assert(isExpectedEvidenceStoragePath(PATH, USER_ID, EVIDENCE_ID), "canonical evidence path rejected");
-  assert(isExpectedEvidenceStoragePath(PATH.toUpperCase(), USER_ID, EVIDENCE_ID), "UUID case variation rejected");
+  assert(!isExpectedEvidenceStoragePath(PATH.toUpperCase(), USER_ID, EVIDENCE_ID), "non-canonical path casing accepted");
   assert(!isExpectedEvidenceStoragePath(PATH, "33333333-3333-4333-8333-333333333333", EVIDENCE_ID),
     "path belonging to another user accepted");
   assert(!isExpectedEvidenceStoragePath(PATH, USER_ID, "44444444-4444-4444-8444-444444444444"),
