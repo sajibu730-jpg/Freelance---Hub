@@ -88,3 +88,44 @@ jobs:
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -f tests/work_evidence_schema_draft.assertions.sql
+      - name: Verify atomic quota under concurrent submissions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "INSERT INTO auth.users(id) VALUES ('66666666-6666-4666-8666-666666666666')"
+          python3 - <<'PY'
+          import concurrent.futures
+          import subprocess
+          import uuid
+
+          user_id = "66666666-6666-4666-8666-666666666666"
+          requests = [str(uuid.uuid4()) for _ in range(40)]
+
+          def claim(request_id):
+              sql = (
+                  "SET ROLE service_role; "
+                  f"SELECT public.claim_work_evidence_quota('{user_id}', '{request_id}');"
+              )
+              result = subprocess.run(
+                  [
+                      "psql", "-h", "127.0.0.1", "-U", "postgres", "-d", "postgres",
+                      "-At", "-v", "ON_ERROR_STOP=1", "-c", sql,
+                  ],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              return result.stdout.strip().splitlines()[-1]
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=40) as pool:
+              outcomes = list(pool.map(claim, requests))
+
+          accepted = outcomes.count("t")
+          rejected = outcomes.count("f")
+          if accepted != 20 or rejected != 20:
+              raise SystemExit(
+                  f"Atomic quota failed: expected 20 accepted/20 rejected, got {accepted}/{rejected}"
+              )
+          print("Concurrent quota assertion passed: exactly 20 of 40 submissions accepted.")
+          PY
