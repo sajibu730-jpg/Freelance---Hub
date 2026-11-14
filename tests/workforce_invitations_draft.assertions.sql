@@ -81,6 +81,14 @@ begin
   if v_invite ->> 'status' <> 'sent' then
     raise exception 'Invitation was not recorded as sent.';
   end if;
+  v_retry := public.owner_workforce_record_invitation_sent(
+    '99999999-9999-4999-8999-999999999999',
+    v_invite_id,
+    '66666666-6666-4666-8666-666666666666'
+  );
+  if v_retry ->> 'status' <> 'sent' then
+    raise exception 'Recording the same successful Auth invite was not idempotent.';
+  end if;
 
   -- The Auth user is already verified in this isolated fixture.
   v_member := public.owner_workforce_accept_invitation(
@@ -182,6 +190,12 @@ begin
     v_cancel_id,
     'Unverified test invitation closed.'
   );
+
+  if jsonb_array_length(public.owner_workforce_list_invitations(
+      '99999999-9999-4999-8999-999999999999', 100
+    )) <> 3 then
+    raise exception 'Owner invitation list did not return all three test invitations.';
+  end if;
 
   -- A non-Owner cannot create invitations.
   begin
