@@ -6,7 +6,7 @@ import {
   extractBearerToken,
   type StaffMembershipLookup,
 } from "../_shared/workforce-auth.ts";
-import { isUuid, parseWorkforceBody, rpcErrorStatus } from "./request.ts";
+import { isUuid, parseWorkforceBody, rpcErrorStatus, taskListPolicy } from "./request.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,10 +87,12 @@ Deno.serve(async (req: Request) => {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      if (authorization.role === "developer" || authorization.role === "qa") {
-        query = query.eq("assignee_id", actorId);
-      } else if (authorization.role === "support") {
-        query = query.in("task_kind", ["support", "incident"]);
+      const policy = taskListPolicy(authorization.role, actorId);
+      if (policy.assigneeId) {
+        query = query.eq("assignee_id", policy.assigneeId);
+      }
+      if (policy.taskKinds) {
+        query = query.in("task_kind", [...policy.taskKinds]);
       }
 
       const { data, error } = await query;
