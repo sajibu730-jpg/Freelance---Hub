@@ -189,7 +189,7 @@ end $$;
 
 reset role;
 
-do $
+do $verify$
 declare
   v_candidate uuid := current_setting('test.approval_candidate_id')::uuid;
   v_state text;
@@ -213,6 +213,6 @@ begin
   if v_event_count <> 1 then
     raise exception 'Approval audit event missing or duplicated.';
   end if;
-end $;
+end $verify$;
 
 select 'System Evolution Owner AAL2 approval RPC disposable PostgreSQL tests passed.' as result;
