@@ -321,6 +321,20 @@ Deno.serve(async (req: Request) => {
         throw new HttpError(409, "This evidence request has already left the upload-pending state.");
       }
       const uploadPath = pending.storage_path;
+      // A retried submit request may arrive after the original client uploaded
+      // the object but before it called complete_upload. Never issue a second
+      // non-upsert upload token for an object that already exists.
+      const { data: existingObjects, error: existingObjectsError } = await admin.storage.from(BUCKET)
+        .list(`${user.id}/${pending.id}`, { limit: 10 });
+      if (existingObjectsError) {
+        throw new HttpError(503, "Could not verify the current evidence upload state.");
+      }
+      if ((existingObjects || []).some((item: any) => item.name === "proof")) {
+        return reply({
+          success: true, evidence: pending, bucket: BUCKET, path: uploadPath,
+          upload_already_present: true, complete_upload_required: true,
+        });
+      }
       const { data: signed, error: signedError } = await admin.storage.from(BUCKET)
         .createSignedUploadUrl(uploadPath, { upsert: false });
       if (signedError || !signed?.signedUrl) {
