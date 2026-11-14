@@ -31,9 +31,9 @@ BEGIN
     OR NOT has_table_privilege('service_role', 'public.work_evidence_cleanup_queue', 'UPDATE')
     OR has_table_privilege('service_role', 'public.work_evidence_cleanup_queue', 'DELETE')
     OR NOT has_function_privilege('service_role', 'public.claim_work_evidence_cleanup_batch(integer)', 'EXECUTE')
-    OR NOT has_function_privilege('service_role', 'public.finish_work_evidence_cleanup(uuid,boolean,text)', 'EXECUTE')
+    OR NOT has_function_privilege('service_role', 'public.finish_work_evidence_cleanup(uuid,uuid,boolean,text)', 'EXECUTE')
     OR has_function_privilege('authenticated', 'public.claim_work_evidence_cleanup_batch(integer)', 'EXECUTE')
-    OR has_function_privilege('anon', 'public.finish_work_evidence_cleanup(uuid,boolean,text)', 'EXECUTE') THEN
+    OR has_function_privilege('anon', 'public.finish_work_evidence_cleanup(uuid,uuid,boolean,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Edge Function service role grants are incomplete or overly broad';
   END IF;
   IF has_table_privilege('anon', 'public.work_evidence_quota_events', 'SELECT')
@@ -231,11 +231,19 @@ DO $cleanup_test$
 DECLARE
   v_claimed integer;
   v_ok boolean;
+  v_failed_token uuid;
+  v_expired_token uuid;
 BEGIN
-  SELECT count(*) INTO v_claimed
+  SELECT count(*),
+         max(lease_token) FILTER (WHERE evidence_id='66666666-6666-4666-8666-666666666666'),
+         max(lease_token) FILTER (WHERE evidence_id='77777777-7777-4777-8777-777777777777')
+    INTO v_claimed, v_failed_token, v_expired_token
   FROM public.claim_work_evidence_cleanup_batch(10);
   IF v_claimed <> 2 THEN
     RAISE EXCEPTION 'Expected two cleanup jobs (failed + expired), got %', v_claimed;
+  END IF;
+  IF v_failed_token IS NULL OR v_expired_token IS NULL THEN
+    RAISE EXCEPTION 'Cleanup claim did not issue unique lease tokens';
   END IF;
 
   IF (SELECT status FROM public.work_evidence
@@ -243,13 +251,19 @@ BEGIN
     RAISE EXCEPTION 'Expired upload was not atomically marked upload_failed';
   END IF;
 
+  -- A stale worker must not be able to finish a job using an obsolete token.
   SELECT public.finish_work_evidence_cleanup(
-    '66666666-6666-4666-8666-666666666666', true, null
+    '66666666-6666-4666-8666-666666666666', gen_random_uuid(), true, null
+  ) INTO v_ok;
+  IF v_ok THEN RAISE EXCEPTION 'Stale cleanup lease token was accepted'; END IF;
+
+  SELECT public.finish_work_evidence_cleanup(
+    '66666666-6666-4666-8666-666666666666', v_failed_token, true, null
   ) INTO v_ok;
   IF NOT v_ok THEN RAISE EXCEPTION 'Cleanup success could not be committed'; END IF;
 
   SELECT public.finish_work_evidence_cleanup(
-    '77777777-7777-4777-8777-777777777777', false, 'Disposable retry test'
+    '77777777-7777-4777-8777-777777777777', v_expired_token, false, 'Disposable retry test'
   ) INTO v_ok;
   IF NOT v_ok THEN RAISE EXCEPTION 'Cleanup retry could not be committed'; END IF;
 
