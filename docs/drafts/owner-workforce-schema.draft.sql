@@ -21,6 +21,7 @@ create table public.owner_workforce_tasks (
   project_key text not null check (length(btrim(project_key)) between 1 and 100),
   title text not null check (length(btrim(title)) between 1 and 180),
   description text not null default '' check (length(description) <= 8000),
+  task_kind text not null default 'general' check (task_kind in ('general', 'support', 'incident')),
   priority text not null default 'normal' check (priority in ('low', 'normal', 'high', 'urgent')),
   status text not null default 'backlog'
     check (status in ('backlog', 'assigned', 'in_progress', 'blocked', 'in_review', 'done')),
