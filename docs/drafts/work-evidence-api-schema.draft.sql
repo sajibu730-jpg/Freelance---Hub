@@ -140,7 +140,7 @@ create or replace function public.guard_work_evidence_update()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 declare
   v_status_changed boolean := new.status is distinct from old.status;
   v_review_changed boolean :=
@@ -195,15 +195,10 @@ begin
     raise exception 'A review status transition must include reviewer identity and timestamp';
   end if;
 
-  if old.status = 'upload_pending' and new.status in ('submitted', 'upload_failed')
-    and v_review_changed then
-    raise exception 'Upload completion cannot modify Owner review metadata';
-  end if;
-
   new.updated_at := pg_catalog.now();
   return new;
 end;
-$;
+$$;
 
 create or replace function public.audit_work_evidence_change()
 returns trigger
