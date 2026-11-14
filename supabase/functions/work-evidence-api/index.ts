@@ -8,6 +8,7 @@ import {
   hasExpectedMagic,
   hasRequiredOwnerMfa,
   isSoleActiveOwner,
+  isPendingUploadWithinTtl,
   isUuid,
   isWorkSubmissionParticipant,
   submissionMatchesContract,
@@ -328,11 +329,17 @@ Deno.serve(async (req: Request) => {
     if (action === "complete_upload") {
       if (!isUuid(body.evidence_id)) throw new HttpError(400, "evidence_id must be a UUID.");
       const { data: evidence, error } = await admin.from("work_evidence")
-        .select("id,submitted_by,storage_path,mime_type,byte_size,status")
+        .select("id,submitted_by,storage_path,mime_type,byte_size,status,created_at")
         .eq("id", body.evidence_id).eq("submitted_by", user.id).maybeSingle();
       if (error) throw error;
       if (!evidence) throw new HttpError(404, "Evidence upload not found.");
       if (evidence.status !== "upload_pending") throw new HttpError(409, "Evidence is not awaiting upload.");
+      if (!isPendingUploadWithinTtl(evidence.created_at)) {
+        await admin.from("work_evidence").update({
+          status: "upload_failed", submitted_at: new Date().toISOString(),
+        }).eq("id", evidence.id).eq("submitted_by", user.id).eq("status", "upload_pending");
+        throw new HttpError(409, "The upload window has expired. Create a new evidence request.");
+      }
 
       const { data: fileBlob, error: fileError } = await admin.storage.from(BUCKET).download(evidence.storage_path);
       if (fileError || !fileBlob) throw new HttpError(409, "Uploaded file is not available yet.");
