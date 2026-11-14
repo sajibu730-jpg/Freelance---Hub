@@ -19,7 +19,7 @@ values
   ('44444444-4444-4444-8444-444444444444', 'support', 'active', array['freelance-hub'], '11111111-1111-4111-8111-111111111111');
 
 -- RPC execution is limited to the trusted server role; client roles cannot execute.
-do $$
+do $$$
 declare
   fn regprocedure;
 begin
@@ -35,11 +35,11 @@ begin
       raise exception 'Incorrect RPC EXECUTE grants: %', fn;
     end if;
   end loop;
-end $$;
+end $$$;
 
 set role service_role;
 
-do $$
+do $$$
 declare
   v_task jsonb;
   v_task_id uuid;
@@ -168,13 +168,13 @@ begin
   exception when unique_violation then
     null;
   end;
-end $$;
+end $$$;
 
 reset role;
 
 -- The service role cannot read or tamper with the append-only audit log directly.
 -- The disposable database owner verifies that each mutation wrote one audit row.
-do $
+do $$
 declare
   v_task_id uuid;
   v_event_count integer;
@@ -192,6 +192,6 @@ begin
   if v_event_count <> 6 then
     raise exception 'Expected exactly 6 task audit events, found %', v_event_count;
   end if;
-end $;
+end $$;
 
 select 'Atomic workforce RPC disposable PostgreSQL tests passed.' as result;
