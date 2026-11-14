@@ -2,8 +2,9 @@
 -- Assumes the draft schema and RPC files have been applied by the CI workflow.
 
 insert into auth.users (id, email, invited_at, email_confirmed_at) values
-  ('66666666-6666-4666-8666-666666666666', 'new.staff@example.com', pg_catalog.now(), null),
-  ('77777777-7777-4777-8777-777777777777', 'recovery.staff@example.com', pg_catalog.now(), null)
+  ('66666666-6666-4666-8666-666666666666', 'new.staff@example.com', pg_catalog.now(), pg_catalog.now()),
+  ('77777777-7777-4777-8777-777777777777', 'recovery.staff@example.com', pg_catalog.now(), null),
+  ('88888888-8888-4888-8888-888888888888', 'unverified.staff@example.com', pg_catalog.now(), null)
 on conflict (id) do nothing;
 
 set role service_role;
@@ -81,22 +82,7 @@ begin
     raise exception 'Invitation was not recorded as sent.';
   end if;
 
-  -- An unverified email cannot activate workforce access.
-  begin
-    perform public.owner_workforce_accept_invitation(
-      '66666666-6666-4666-8666-666666666666', v_invite_id
-    );
-    raise exception 'Unverified invited user was accepted.';
-  exception when insufficient_privilege then
-    null;
-  end;
-
-  reset role;
-  update auth.users
-  set email_confirmed_at = pg_catalog.now()
-  where id = '66666666-6666-4666-8666-666666666666';
-  set role service_role;
-
+  -- The Auth user is already verified in this isolated fixture.
   v_member := public.owner_workforce_accept_invitation(
     '66666666-6666-4666-8666-666666666666', v_invite_id
   );
@@ -166,6 +152,37 @@ begin
     null;
   end;
 
+  -- An unverified email cannot activate workforce access.
+  v_invite := public.owner_workforce_prepare_invitation(
+    '99999999-9999-4999-8999-999999999999',
+    'unverified.staff@example.com',
+    'qa',
+    array['freelance-hub'],
+    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee3'
+  );
+  v_cancel_id := (v_invite ->> 'id')::uuid;
+  perform public.owner_workforce_claim_invitation_dispatch(
+    '99999999-9999-4999-8999-999999999999', v_cancel_id
+  );
+  perform public.owner_workforce_record_invitation_sent(
+    '99999999-9999-4999-8999-999999999999',
+    v_cancel_id,
+    '88888888-8888-4888-8888-888888888888'
+  );
+  begin
+    perform public.owner_workforce_accept_invitation(
+      '88888888-8888-4888-8888-888888888888', v_cancel_id
+    );
+    raise exception 'Unverified invited user was accepted.';
+  exception when insufficient_privilege then
+    null;
+  end;
+  perform public.owner_workforce_cancel_invitation(
+    '99999999-9999-4999-8999-999999999999',
+    v_cancel_id,
+    'Unverified test invitation closed.'
+  );
+
   -- A non-Owner cannot create invitations.
   begin
     perform public.owner_workforce_prepare_invitation(
@@ -191,10 +208,10 @@ begin
   from public.owner_workforce_invitation_events e
   where e.invitation_id in (
     select i.id from public.owner_workforce_invitations i
-    where i.email in ('new.staff@example.com', 'recovery.staff@example.com')
+    where i.email in ('new.staff@example.com', 'recovery.staff@example.com', 'unverified.staff@example.com')
   );
-  if v_count <> 8 then
-    raise exception 'Expected 8 invitation audit events across two invitations, found %', v_count;
+  if v_count <> 12 then
+    raise exception 'Expected 12 invitation audit events across three invitations, found %', v_count;
   end if;
 
   if has_table_privilege('service_role', 'public.owner_workforce_invitation_events', 'SELECT')
