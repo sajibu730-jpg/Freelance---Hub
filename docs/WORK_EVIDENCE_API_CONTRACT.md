@@ -62,7 +62,7 @@ The database trigger enforces this state machine and prevents review metadata ch
 
 ### Pending-upload expiry and private Storage cleanup
 
-- A file upload remains `upload_pending` for at most **24 hours** from record creation. The evidence record is retained; it is not deleted by cleanup.
+- A file upload remains `upload_pending` for at most **24 hours** from record creation. The evidence record is retained; it is not deleted by cleanup. `complete_upload` also checks this deadline directly, so a delayed cleanup schedule cannot allow a late completion.
 - The API stops issuing renewed two-hour signed upload URLs after **21 hours 45 minutes**, leaving a safety margin before the 24-hour expiry.
 - The cleanup worker first atomically changes expired `upload_pending` rows to `upload_failed`. The same database transaction creates a durable cleanup-queue row and the normal audit event. A concurrent `complete_upload` can win only if its conditional status update commits first; once expiry wins, completion is rejected.
 - The worker claims queue entries with `FOR UPDATE SKIP LOCKED`, a 15-minute processing lease, a fresh random lease token (fencing token), and batches of at most 50. Finalization must present the exact current token, so a stale worker cannot overwrite a newer worker's result. It removes only the exact expected `{user_uuid}/{evidence_uuid}/proof` object from the private bucket.
