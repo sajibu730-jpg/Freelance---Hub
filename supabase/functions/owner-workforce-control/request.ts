@@ -97,3 +97,8 @@ export function parseInvitationReviewReason(value: unknown): InvitationReviewRea
     ? value
     : null;
 }
+
+
+export function isWorkforceApiEnabled(value: string | undefined): boolean {
+  return value === "true";
+}
