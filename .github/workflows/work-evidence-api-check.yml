@@ -23,8 +23,11 @@ jobs:
   validate-function:
     name: Validate Edge Function and input tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -40,6 +43,7 @@ jobs:
   validate-schema:
     name: Validate schema in disposable PostgreSQL
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:17-alpine
@@ -55,6 +59,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
