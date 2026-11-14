@@ -69,7 +69,7 @@ Original submission fields and evidence identity are immutable after creation. R
 
 ## Owner authorization
 
-Only an active primary Owner account may list, review, or download evidence. When the Owner has a verified TOTP factor, the JWT must have AAL2. Invited dashboard viewers and workforce roles are not granted access by this draft.
+Only the single active `app_admins` record with `role = owner` may list, review, or download evidence. Because the existing `app_admins` schema has no primary-owner flag, the API fails closed if more than one active Owner record exists; invited dashboard viewers and workforce roles are not granted access by this draft. If a TOTP factor is enrolled, it must be verified and the request JWT must have AAL2. An unverified TOTP enrollment cannot bypass the MFA gate. If no TOTP factor is enrolled, MFA is not yet enforced by this draft; mandatory enrollment before production rollout remains a release gate.
 
 ## Audit fields
 
