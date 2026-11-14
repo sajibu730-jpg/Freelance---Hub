@@ -52,7 +52,15 @@ Statuses:
 - `needs_info`: Owner requested more information.
 - `upload_failed`: upload failed or the file did not pass integrity checks.
 
-Original submission fields and evidence identity are immutable after creation. Review decisions are separate updates. Database triggers append an audit event in the same transaction as each insert/update; audit events reject UPDATE and DELETE.
+Allowed status transitions:
+- `upload_pending` → `submitted` or `upload_failed`.
+- `submitted` → `verified`, `rejected`, or `needs_info`.
+- `needs_info` → `verified`, `rejected`, or `needs_info` (the Owner may request clarification again).
+- `verified` and `rejected` are final; no further review transition is allowed.
+
+The database trigger enforces this state machine and prevents review metadata changes outside a valid review transition. Original submission fields and evidence identity are immutable after creation. Database triggers append an audit event in the same transaction as each insert/update; audit events reject UPDATE and DELETE.
+
+**Open lifecycle item:** pending uploads do not yet have an automatic expiry/cleanup worker. Before release, define the retention window and implement a scheduled Staging-tested process that marks expired pending records as `upload_failed`, removes any orphaned private object through the Storage API, and records the cleanup event.
 
 ## File and privacy controls
 
