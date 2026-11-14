@@ -1,8 +1,11 @@
 import {
   ALLOWED_EVIDENCE_MIME,
+  canReviewEvidence,
   hasExpectedMagic,
   hasRequiredOwnerMfa,
+  isSoleActiveOwner,
   isUuid,
+  isWorkSubmissionParticipant,
   MAX_FILE_BYTES,
   safeHttpsUrl,
   safeOriginalFilename,
@@ -66,4 +69,33 @@ Deno.test("Owner MFA fails closed for unverified TOTP and requires AAL2", () => 
     "verified TOTP must require AAL2");
   assert(hasRequiredOwnerMfa({ all: [{ factor_type: "totp", status: "verified" }] }, "aal2"),
     "verified TOTP with AAL2 should pass");
+});
+
+Deno.test("only the sole active Owner account receives review access", () => {
+  assert(isSoleActiveOwner([{ user_id: "owner-1" }], "owner-1"), "sole Owner rejected");
+  assert(!isSoleActiveOwner([{ user_id: "owner-1" }, { user_id: "owner-2" }], "owner-1"),
+    "multiple active Owners must fail closed");
+  assert(!isSoleActiveOwner([], "owner-1"), "no active Owner must fail closed");
+  assert(!isSoleActiveOwner(null, "owner-1"), "missing Owner query must fail closed");
+});
+
+Deno.test("submission and contract access requires a real participant", () => {
+  assert(isWorkSubmissionParticipant("freelancer-1", "freelancer-1", "client-1"),
+    "submission freelancer rejected");
+  assert(isWorkSubmissionParticipant("client-1", "freelancer-1", "client-1"),
+    "job or contract client rejected");
+  assert(!isWorkSubmissionParticipant("other-user", "freelancer-1", "client-1"),
+    "unrelated user accepted");
+  assert(!isWorkSubmissionParticipant("other-user", "freelancer-1", null),
+    "unrelated user accepted without a job owner");
+});
+
+Deno.test("review policy allows only submitted or needs-info evidence", () => {
+  assert(canReviewEvidence("submitted", "verified"), "submitted evidence cannot be verified");
+  assert(canReviewEvidence("submitted", "rejected"), "submitted evidence cannot be rejected");
+  assert(canReviewEvidence("needs_info", "verified"), "needs-info evidence cannot be verified");
+  assert(canReviewEvidence("needs_info", "needs_info"), "needs-info evidence cannot be re-requested");
+  assert(!canReviewEvidence("upload_pending", "verified"), "pending upload can be reviewed");
+  assert(!canReviewEvidence("upload_failed", "verified"), "failed upload can be reviewed");
+  assert(!canReviewEvidence("verified", "rejected"), "final review can be overwritten");
 });
