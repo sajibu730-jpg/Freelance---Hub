@@ -149,29 +149,36 @@ begin
         from public.contracts c
         where c.freelancer_id = p_freelancer_id
     ),
-    recent_reviews as (
+    all_reviews as (
         select r.id, r.rating, r.review_text, r.created_at
         from public.freelancer_reviews r
         where r.freelancer_id = p_freelancer_id
+    ),
+    recent_reviews as (
+        select r.id, r.rating, r.review_text, r.created_at
+        from all_reviews r
         order by r.created_at desc
         limit 20
     ),
     review_stats as (
         select
             coalesce(avg(r.rating), 0)::numeric(4,2) as average_rating,
-            count(r.id)::integer as review_count,
-            coalesce(
-                jsonb_agg(
-                    jsonb_build_object(
-                        'id', r.id,
-                        'rating', r.rating,
-                        'review_text', r.review_text,
-                        'created_at', r.created_at
-                    )
-                    order by r.created_at desc
-                ) filter (where r.id is not null),
-                '[]'::jsonb
-            ) as reviews
+            count(r.id)::integer as review_count
+        from all_reviews r
+    ),
+    review_list as (
+        select coalesce(
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', r.id,
+                    'rating', r.rating,
+                    'review_text', r.review_text,
+                    'created_at', r.created_at
+                )
+                order by r.created_at desc
+            ),
+            '[]'::jsonb
+        ) as reviews
         from recent_reviews r
     )
     select jsonb_build_object(
@@ -188,12 +195,13 @@ begin
         'completed_usd_minor', cs.completed_usd_minor,
         'average_rating', rs.average_rating,
         'review_count', rs.review_count,
-        'reviews', rs.reviews
+        'reviews', rl.reviews
     )
     into result
     from public.profiles p
     cross join contract_stats cs
     cross join review_stats rs
+    cross join review_list rl
     where p.id = p_freelancer_id
       and p.display_name is not null;
 
