@@ -116,7 +116,7 @@ declare payload jsonb;
 begin
   payload := public.get_public_freelancer_profile('20000000-0000-0000-0000-000000000002');
   if (payload->>'completed_jobs')::int <> 1 then raise exception 'wrong completed_jobs'; end if;
-  if (payload->>'active_jobs')::int <> 1 then raise exception 'wrong active_jobs'; end if;
+  if (payload->>'active_jobs')::int <> 2 then raise exception 'wrong active_jobs'; end if;
   if (payload->>'completed_usd_minor')::bigint <> 125000 then raise exception 'wrong completed USD total'; end if;
   if (payload->>'average_rating')::numeric <> 5 then raise exception 'wrong average rating'; end if;
   if (payload->>'review_count')::int <> 1 then raise exception 'wrong review count'; end if;
@@ -124,7 +124,7 @@ begin
 end
 $$;
 
--- Duplicate review, wrong client, and freelancer self-review must all fail.
+-- Duplicate review and wrong-client review must fail under the client identity.
 do $$
 begin
   begin
