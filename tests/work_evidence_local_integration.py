@@ -188,6 +188,32 @@ def main():
     request("GET", direct_url, headers={"apikey": ANON}, expected=(400, 401, 403, 404))
     print("PASS: Owner signed download works while direct private-object access is denied")
 
+    # Exercise Owner event timeline and review state machine end to end.
+    _, note_result = api_action(aal2, {
+        "action": "submit_note",
+        "request_id": str(uuid.uuid4()),
+        "origin": "off_app",
+        "title": "Local Owner review workflow",
+        "description": "Synthetic note for Owner review and audit timeline tests.",
+    })
+    review_id = note_result["evidence"]["id"]
+    _, initial_events = api_action(aal2, {"action": "owner_events", "evidence_id": review_id})
+    assert initial_events.get("events"), "Initial submission audit event is missing"
+    _, needs_info = api_action(aal2, {
+        "action": "owner_review", "evidence_id": review_id,
+        "status": "needs_info", "review_note": "Please provide one more detail.",
+    })
+    assert needs_info.get("evidence", {}).get("status") == "needs_info", needs_info
+    _, verified_review = api_action(aal2, {
+        "action": "owner_review", "evidence_id": review_id, "status": "verified",
+    })
+    assert verified_review.get("evidence", {}).get("status") == "verified", verified_review
+    _, final_events = api_action(aal2, {"action": "owner_events", "evidence_id": review_id})
+    event_types = [event.get("event_type") for event in final_events.get("events", [])]
+    assert len(final_events.get("events", [])) >= 3, final_events
+    assert "needs_info" in event_types and "verified" in event_types, event_types
+    print("PASS: Owner events timeline and needs_info-to-verified review transitions")
+
     # Exercise the cleanup worker against an actual uploaded private object.
     cleanup_request_id = str(uuid.uuid4())
     _, cleanup_prepared = api_action(aal2, {
