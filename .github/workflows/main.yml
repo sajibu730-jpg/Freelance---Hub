@@ -73,6 +73,11 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Run isolated PostgreSQL draft tests
         env:
           PGHOST: localhost
