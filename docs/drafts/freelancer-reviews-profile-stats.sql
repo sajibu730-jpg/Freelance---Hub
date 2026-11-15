@@ -120,4 +120,95 @@ comment on table public.freelancer_reviews is
 comment on function public.complete_contract(uuid) is
     'Client-only, idempotent completion after an approved work submission. Draft release artifact; not yet deployed.';
 
+
+-- Public, authenticated-only freelancer profile payload. Never expose email or mobile.
+create or replace function public.get_public_freelancer_profile(p_freelancer_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+    result jsonb;
+begin
+    if (select auth.uid()) is null then
+        raise exception 'AUTHENTICATION_REQUIRED';
+    end if;
+
+    with contract_stats as (
+        select
+            count(*) filter (where c.status = 'completed')::integer as completed_jobs,
+            count(*) filter (where c.status = 'active')::integer as active_jobs,
+            coalesce(
+                sum(c.agreed_budget_minor) filter (
+                    where c.status = 'completed' and upper(c.currency) = 'USD'
+                ),
+                0
+            )::bigint as completed_usd_minor
+        from public.contracts c
+        where c.freelancer_id = p_freelancer_id
+    ),
+    recent_reviews as (
+        select r.id, r.rating, r.review_text, r.created_at
+        from public.freelancer_reviews r
+        where r.freelancer_id = p_freelancer_id
+        order by r.created_at desc
+        limit 20
+    ),
+    review_stats as (
+        select
+            coalesce(avg(r.rating), 0)::numeric(4,2) as average_rating,
+            count(r.id)::integer as review_count,
+            coalesce(
+                jsonb_agg(
+                    jsonb_build_object(
+                        'id', r.id,
+                        'rating', r.rating,
+                        'review_text', r.review_text,
+                        'created_at', r.created_at
+                    )
+                    order by r.created_at desc
+                ) filter (where r.id is not null),
+                '[]'::jsonb
+            ) as reviews
+        from recent_reviews r
+    )
+    select jsonb_build_object(
+        'id', p.id,
+        'display_name', p.display_name,
+        'photo_url', p.photo_url,
+        'cover_photo_url', p.cover_photo_url,
+        'country', p.country,
+        'bio', p.bio,
+        'capabilities', p.capabilities,
+        'skills', p.skills,
+        'completed_jobs', cs.completed_jobs,
+        'active_jobs', cs.active_jobs,
+        'completed_usd_minor', cs.completed_usd_minor,
+        'average_rating', rs.average_rating,
+        'review_count', rs.review_count,
+        'reviews', rs.reviews
+    )
+    into result
+    from public.profiles p
+    cross join contract_stats cs
+    cross join review_stats rs
+    where p.id = p_freelancer_id
+      and p.display_name is not null;
+
+    if result is null then
+        raise exception 'PUBLIC_FREELANCER_PROFILE_NOT_FOUND';
+    end if;
+
+    return result;
+end;
+$function$;
+
+revoke all on function public.get_public_freelancer_profile(uuid) from public, anon;
+grant execute on function public.get_public_freelancer_profile(uuid) to authenticated;
+
+comment on function public.get_public_freelancer_profile(uuid) is
+    'Returns only approved public profile fields, completed/active contract statistics, and recent client reviews. Never returns email or mobile.';
+
 commit;
