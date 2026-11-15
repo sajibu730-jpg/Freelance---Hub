@@ -83,7 +83,8 @@ def psql(sql):
 
 
 def upload_signed(signed_url, token):
-    url = signed_url if signed_url.startswith("http") else API + signed_url
+    parsed = urllib.parse.urlsplit(signed_url)
+    url = API + parsed.path + (("?" + parsed.query) if parsed.query else "") if parsed.scheme else urllib.parse.urljoin(API + "/", signed_url)
     request(
         "PUT", url,
         headers=headers(ANON, token, "application/pdf"),
@@ -179,8 +180,8 @@ def main():
     _, download = api_action(aal2, {
         "action": "owner_download", "evidence_id": evidence_id,
     })
-    signed_download = download["signed_download_url"]
-    signed_download = signed_download if signed_download.startswith("http") else API + signed_download
+    parsed_download = urllib.parse.urlsplit(download["signed_download_url"])
+    signed_download = API + parsed_download.path + (("?" + parsed_download.query) if parsed_download.query else "") if parsed_download.scheme else urllib.parse.urljoin(API + "/", download["signed_download_url"])
     _, _, downloaded = request("GET", signed_download, expected=(200,))
     assert downloaded == PDF, "Signed download did not return the original bytes"
     direct_url = STORAGE + "/object/work-evidence-private/" + evidence_path
