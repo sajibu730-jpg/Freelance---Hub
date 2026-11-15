@@ -22,14 +22,9 @@ create index if not exists freelancer_reviews_freelancer_created_idx
 alter table public.freelancer_reviews enable row level security;
 
 revoke all on table public.freelancer_reviews from anon, authenticated;
-grant select, insert on table public.freelancer_reviews to authenticated;
+grant insert on table public.freelancer_reviews to authenticated;
 
 drop policy if exists "Authenticated users can read freelancer reviews" on public.freelancer_reviews;
-create policy "Authenticated users can read freelancer reviews"
-    on public.freelancer_reviews
-    for select
-    to authenticated
-    using (true);
 
 drop policy if exists "Completed contract clients can review freelancer" on public.freelancer_reviews;
 create policy "Completed contract clients can review freelancer"
@@ -218,5 +213,85 @@ grant execute on function public.get_public_freelancer_profile(uuid) to authenti
 
 comment on function public.get_public_freelancer_profile(uuid) is
     'Returns only approved public profile fields, completed/active contract statistics, and recent client reviews. Never returns email or mobile.';
+
+
+-- Safe read endpoints: never expose contract_id or client_id from the review table.
+create or replace function public.get_public_freelancer_reviews(p_freelancer_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+    result jsonb;
+begin
+    if (select auth.uid()) is null then
+        raise exception 'AUTHENTICATION_REQUIRED';
+    end if;
+
+    select coalesce(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', r.id,
+                'rating', r.rating,
+                'review_text', r.review_text,
+                'created_at', r.created_at
+            )
+            order by r.created_at desc
+        ),
+        '[]'::jsonb
+    )
+    into result
+    from (
+        select id, rating, review_text, created_at
+        from public.freelancer_reviews
+        where freelancer_id = p_freelancer_id
+        order by created_at desc
+        limit 50
+    ) r;
+
+    return result;
+end;
+$function$;
+
+create or replace function public.get_my_freelancer_review(p_contract_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+    result jsonb;
+begin
+    if (select auth.uid()) is null then
+        raise exception 'AUTHENTICATION_REQUIRED';
+    end if;
+
+    select jsonb_build_object(
+        'id', r.id,
+        'rating', r.rating,
+        'review_text', r.review_text,
+        'created_at', r.created_at
+    )
+    into result
+    from public.freelancer_reviews r
+    where r.contract_id = p_contract_id
+      and r.client_id = (select auth.uid());
+
+    return coalesce(result, '{}'::jsonb);
+end;
+$function$;
+
+revoke all on function public.get_public_freelancer_reviews(uuid) from public, anon;
+grant execute on function public.get_public_freelancer_reviews(uuid) to authenticated;
+revoke all on function public.get_my_freelancer_review(uuid) from public, anon;
+grant execute on function public.get_my_freelancer_review(uuid) to authenticated;
+
+comment on function public.get_public_freelancer_reviews(uuid) is
+    'Returns only review id, rating, text, and date to authenticated users; never returns client or contract identifiers.';
+comment on function public.get_my_freelancer_review(uuid) is
+    'Returns the calling client own review for one contract without exposing other client or contract identifiers.';
 
 commit;
