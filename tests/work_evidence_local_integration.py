@@ -398,6 +398,17 @@ def main():
             headers={"apikey": ANON}, expected=(400, 401, 403, 404))
     print("PASS: cleanup worker enforces secret, removes exact private object, and finalizes queue")
 
+    # A previously issued AAL2 token must not retain Owner access after its
+    # verified TOTP factor is removed. Check every privileged endpoint using
+    # the same token so the server must validate both current factor state and AAL.
+    request(
+        "DELETE", AUTH + f"/factors/{factor_id}",
+        headers=headers(ANON, aal2),
+        expected=(200, 204),
+    )
+    assert_owner_endpoints_denied(aal2, "Deleted TOTP factor must revoke Owner API access")
+    print("PASS: all four privileged Owner endpoints reject a stale AAL2 session after TOTP factor removal")
+
     print("LOCAL SUPABASE INTEGRATION PASS: Auth, TOTP/AAL2, Owner review/events, participant relationships, Edge JWT, private Storage, signed links, cleanup worker")
 
 
