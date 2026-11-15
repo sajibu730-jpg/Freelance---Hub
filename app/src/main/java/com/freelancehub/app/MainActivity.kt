@@ -3321,6 +3321,7 @@ fun RemoteProfileScreen(
     var profile by remember { mutableStateOf<RemoteAccount?>(null) }
     var freelancerContracts by remember { mutableStateOf<List<RemoteContract>>(emptyList()) }
     var freelancerReviews by remember { mutableStateOf<List<RemoteFreelancerReview>>(emptyList()) }
+    var freelancerPublicProfile by remember { mutableStateOf<RemotePublicFreelancerProfile?>(null) }
     var activityError by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var savingPhoto by remember { mutableStateOf(false) }
@@ -3338,6 +3339,7 @@ fun RemoteProfileScreen(
             val loadedProfile = result.getOrNull()
             val contractsResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { marketplace.listFreelancerContracts(it.id) } }
             val reviewsResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { marketplace.listFreelancerReviews(it.id, 20) } }
+            val publicProfileResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { account.getPublicFreelancerProfile(it.id) } }
             withContext(Dispatchers.Main) {
                 result.onSuccess { profile = it }
                     .onFailure { error = it.message ?: "Unable to load profile." }
@@ -3345,6 +3347,8 @@ fun RemoteProfileScreen(
                     ?.onFailure { activityError = it.message ?: "Unable to load work history." }
                 reviewsResult?.onSuccess { freelancerReviews = it }
                     ?.onFailure { activityError = it.message ?: "Unable to load freelancer reviews." }
+                publicProfileResult?.onSuccess { freelancerPublicProfile = it }
+                    ?.onFailure { activityError = it.message ?: "Unable to load lifetime rating summary." }
                 loading = false
             }
         }
@@ -3537,7 +3541,8 @@ ElevatedCard(
                 val activeContracts = freelancerContracts.filter { it.status.equals("active", true) }
                 val completedUsdMinor = completedContracts.filter { it.currency.equals("USD", true) }.sumOf { it.agreedBudgetMinor }
                 val completedUsd = String.format(java.util.Locale.US, "$%.2f", completedUsdMinor / 100.0)
-                val averageRating = if (freelancerReviews.isEmpty()) 0.0 else freelancerReviews.map { it.rating }.average()
+                val lifetimeReviewCount = freelancerPublicProfile?.reviewCount
+                val lifetimeAverageRating = freelancerPublicProfile?.averageRating
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3555,8 +3560,11 @@ ElevatedCard(
                         }
                     }
                     Text(
-                        if (freelancerReviews.isEmpty()) "No client reviews yet"
-                        else String.format(java.util.Locale.US, "★ %.1f recent average · latest %d reviews", averageRating, freelancerReviews.size),
+                        when {
+                            lifetimeReviewCount == null || lifetimeAverageRating == null -> "Lifetime rating summary unavailable"
+                            lifetimeReviewCount == 0 -> "No client reviews yet"
+                            else -> String.format(java.util.Locale.US, "★ %.1f average · %d total client reviews", lifetimeAverageRating, lifetimeReviewCount)
+                        },
                         color = androidx.compose.ui.graphics.Color(0xFF9A6900),
                         style = MaterialTheme.typography.bodyMedium
                     )
