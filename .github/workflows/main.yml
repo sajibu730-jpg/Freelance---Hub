@@ -51,3 +51,35 @@ jobs:
         with:
           name: Freelance-Hub-Owner-Dashboard-apk
           path: owner-console/build/outputs/apk/debug/*.apk
+
+  postgres-draft-tests:
+    name: Isolated PostgreSQL draft tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: freelance_hub_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d freelance_hub_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run isolated PostgreSQL draft tests
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: freelance_hub_test
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: |
+          psql --version
+          psql -v ON_ERROR_STOP=1 -f tests/sql/freelancer-reviews-postgres-test.sql
