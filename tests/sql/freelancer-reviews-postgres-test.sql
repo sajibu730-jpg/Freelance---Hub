@@ -55,8 +55,10 @@ create table public.work_submissions (
   status text not null
 );
 
--- Mirror the normal Supabase authenticated read grant used by the review RLS policy.
-grant select on public.contracts to authenticated;
+-- Production intentionally grants authenticated no direct SELECT on contracts.
+create schema private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
 
 insert into public.profiles
   (id, display_name, country, bio, capabilities, skills, email, mobile_number)
@@ -133,6 +135,9 @@ declare payload jsonb;
 begin
   if has_table_privilege('authenticated', 'public.freelancer_reviews', 'SELECT') then
     raise exception 'authenticated role has direct SELECT on freelancer_reviews';
+  end if;
+  if has_table_privilege('authenticated', 'public.contracts', 'SELECT') then
+    raise exception 'authenticated role unexpectedly has direct SELECT on contracts';
   end if;
   payload := public.get_public_freelancer_reviews('20000000-0000-0000-0000-000000000002');
   if jsonb_array_length(payload) <> 1 then raise exception 'safe public review RPC returned wrong count'; end if;
