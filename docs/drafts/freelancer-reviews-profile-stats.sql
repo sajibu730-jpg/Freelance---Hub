@@ -73,6 +73,7 @@ begin
            select 1
            from public.work_submissions ws
            where ws.contract_id = c.id
+             and ws.freelancer_id = c.freelancer_id
              and ws.status = 'approved'
        );
 
