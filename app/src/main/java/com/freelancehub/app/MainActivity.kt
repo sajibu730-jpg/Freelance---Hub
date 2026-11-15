@@ -2745,8 +2745,8 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                     Text("Rate the freelancer's work quality",style=MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
                         (1..5).forEach{star->
-                            IconButton(onClick={rating=star},enabled=!busy){
-                                Icon(if(star<=rating)Icons.Filled.Star else Icons.Filled.StarBorder,contentDescription="$star stars",tint=androidx.compose.ui.graphics.Color(0xFFFFB300))
+                            TextButton(onClick={rating=star},enabled=!busy){
+                                Text(if(star<=rating)"★" else "☆",color=androidx.compose.ui.graphics.Color(0xFFFFB300),style=MaterialTheme.typography.titleLarge)
                             }
                         }
                         Text("$rating / 5")
