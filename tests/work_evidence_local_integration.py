@@ -358,6 +358,70 @@ def main():
     }, expected=(403,))
     print("PASS: freelancer/client participation, unrelated-user denial, proposal boundary, and mismatched references")
 
+    # Expiring stale pending uploads is bounded by the requested cleanup batch size.
+    # This prevents one worker invocation from locking/auditing an unbounded backlog.
+    batch_title = "Cleanup batch boundary " + owner_id
+    psql(
+        "WITH generated AS ("
+        "  SELECT gen_random_uuid() AS evidence_id FROM generate_series(1, 15)"
+        ") "
+        "INSERT INTO public.work_evidence ("
+        "  id, request_id, submitted_by, origin, evidence_type, title, storage_path, "
+        "  original_filename, mime_type, byte_size, status, created_at"
+        ") "
+        "SELECT evidence_id, gen_random_uuid(), " + sql_literal(owner_id) + ", "
+        "  'off_app', 'file', " + sql_literal(batch_title) + ", "
+        "  " + sql_literal(owner_id + "/") + " || evidence_id::text || '/proof', "
+        "  'expired.pdf', 'application/pdf', 1024, 'upload_pending', "
+        "  now() - interval '25 hours' "
+        "FROM generated;"
+    )
+    first_batch = psql("SELECT count(*) FROM public.claim_work_evidence_cleanup_batch(10);")
+    assert first_batch == "10", "Expected exactly 10 expired uploads in the first batch: " + first_batch
+    expired_after_first = psql(
+        "SELECT count(*) FROM public.work_evidence "
+        "WHERE title = " + sql_literal(batch_title) + " AND status = 'upload_failed';"
+    )
+    pending_after_first = psql(
+        "SELECT count(*) FROM public.work_evidence "
+        "WHERE title = " + sql_literal(batch_title) + " AND status = 'upload_pending';"
+    )
+    assert expired_after_first == "10" and pending_after_first == "5", (
+        "Expired-upload transition exceeded its batch limit: "
+        + expired_after_first + " expired, " + pending_after_first + " still pending"
+    )
+    finalized_first = psql(
+        "WITH claimed AS ("
+        "  SELECT q.evidence_id, q.lease_token "
+        "  FROM public.work_evidence_cleanup_queue q "
+        "  JOIN public.work_evidence e ON e.id = q.evidence_id "
+        "  WHERE e.title = " + sql_literal(batch_title) + " AND q.state = 'processing'"
+        ") "
+        "SELECT count(*) FROM claimed "
+        "WHERE public.finish_work_evidence_cleanup(evidence_id, lease_token, true, null);"
+    )
+    assert finalized_first == "10", "Could not finalize first bounded cleanup batch: " + finalized_first
+    second_batch = psql("SELECT count(*) FROM public.claim_work_evidence_cleanup_batch(10);")
+    assert second_batch == "5", "Expected the remaining 5 expired uploads in the second batch: " + second_batch
+    finalized_second = psql(
+        "WITH claimed AS ("
+        "  SELECT q.evidence_id, q.lease_token "
+        "  FROM public.work_evidence_cleanup_queue q "
+        "  JOIN public.work_evidence e ON e.id = q.evidence_id "
+        "  WHERE e.title = " + sql_literal(batch_title) + " AND q.state = 'processing'"
+        ") "
+        "SELECT count(*) FROM claimed "
+        "WHERE public.finish_work_evidence_cleanup(evidence_id, lease_token, true, null);"
+    )
+    assert finalized_second == "5", "Could not finalize second bounded cleanup batch: " + finalized_second
+    batch_completed = psql(
+        "SELECT count(*) FROM public.work_evidence_cleanup_queue q "
+        "JOIN public.work_evidence e ON e.id = q.evidence_id "
+        "WHERE e.title = " + sql_literal(batch_title) + " AND q.state = 'completed';"
+    )
+    assert batch_completed == "15", "Expired cleanup backlog was not fully processed: " + batch_completed
+    print("PASS: stale pending-upload expiration is bounded and drains across multiple batches")
+
     # Exercise the cleanup worker against an actual uploaded private object.
     cleanup_request_id = str(uuid.uuid4())
     _, cleanup_prepared = api_action(aal2, {
