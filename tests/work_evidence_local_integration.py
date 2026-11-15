@@ -234,6 +234,11 @@ def main():
             status, _ = api_action(access_token, payload, expected=(403,))
             assert status == 403, f"{reason}: {payload['action']} returned {status}"
 
+    # A valid Owner role alone is insufficient: every privileged endpoint
+    # must reject the pre-MFA AAL1 session even after the TOTP factor exists.
+    assert_owner_endpoints_denied(aal1, "Owner AAL1 session must be denied")
+    print("PASS: all four privileged Owner endpoints require an AAL2 session")
+
     non_owner_id, non_owner_access = create_auth_user("non-owner@example.invalid")
     assert_owner_endpoints_denied(non_owner_access, "Non-Owner access must be denied")
     print("PASS: all four privileged Owner endpoints reject a normal authenticated user")
