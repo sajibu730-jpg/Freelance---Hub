@@ -124,7 +124,8 @@ A test is **PASS** only when its expected result is observed in Staging. Static 
 
 1. Prepare a file upload and leave it incomplete. Confirm it remains `upload_pending` before 24 hours.
 2. Retry URL renewal before 21h45m and confirm a new signed URL is issued; at/after the cutoff, confirm renewal is rejected.
-3. At 24 hours, run the cleanup worker. Confirm the row changes to `upload_failed`, the durable cleanup queue is claimed, and the exact private object is removed if present.
+3. Seed at least 15 expired pending-upload rows and run the cleanup RPC with a batch limit of 10. Confirm exactly 10 rows transition to `upload_failed` and are queued, then a second invocation processes the remaining 5; no invocation may expire more rows than its configured limit.
+4. At 24 hours, run the cleanup worker. Confirm the row changes to `upload_failed`, the durable cleanup queue is claimed, and the exact private object is removed if present.
 4. Confirm the evidence row, original metadata, and prior audit history remain. Confirm a `storage_cleanup_completed` event is appended.
 5. Simulate Storage list/remove failure. Confirm the queue returns to `pending`, the error field contains only a generic message, the retry backoff is applied, and a later run completes.
 6. Race `complete_upload` against expiry. Exactly one conditional status transition may win; if expiry wins, no uploaded object may be accepted as submitted.
