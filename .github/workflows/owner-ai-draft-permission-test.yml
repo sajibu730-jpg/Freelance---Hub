@@ -1,0 +1,104 @@
+name: Owner AI Draft Permission Test
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/*owner_ai_requests_service_insert.sql"
+      - ".github/workflows/owner-ai-draft-permission-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-permission-test:
+    name: PostgreSQL privilege verification
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: freelance_hub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d freelance_hub_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up roles and target table
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d freelance_hub_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE service_role NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE anon NOLOGIN;
+          CREATE TABLE public.owner_ai_requests (
+            id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            prompt text NOT NULL
+          );
+          GRANT SELECT ON public.owner_ai_requests TO authenticated;
+          SQL
+
+      - name: Apply migration and verify least privilege
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d freelance_hub_test -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/20261115190000_grant_owner_ai_requests_service_insert.sql
+          psql -h localhost -U postgres -d freelance_hub_test -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT has_table_privilege('service_role', 'public.owner_ai_requests', 'INSERT') THEN
+              RAISE EXCEPTION 'service_role cannot INSERT';
+            END IF;
+            IF has_table_privilege('authenticated', 'public.owner_ai_requests', 'INSERT') THEN
+              RAISE EXCEPTION 'authenticated unexpectedly can INSERT';
+            END IF;
+            IF has_table_privilege('anon', 'public.owner_ai_requests', 'INSERT') THEN
+              RAISE EXCEPTION 'anon unexpectedly can INSERT';
+            END IF;
+          END;
+          $$;
+
+          SET ROLE service_role;
+          INSERT INTO public.owner_ai_requests(prompt) VALUES ('permission test');
+          RESET ROLE;
+
+          SET ROLE authenticated;
+          DO $$
+          BEGIN
+            BEGIN
+              INSERT INTO public.owner_ai_requests(prompt) VALUES ('must fail');
+              RAISE EXCEPTION 'authenticated INSERT unexpectedly succeeded';
+            EXCEPTION WHEN insufficient_privilege THEN
+              NULL;
+            END;
+          END;
+          $$;
+          RESET ROLE;
+
+          SET ROLE anon;
+          DO $$
+          BEGIN
+            BEGIN
+              INSERT INTO public.owner_ai_requests(prompt) VALUES ('must fail');
+              RAISE EXCEPTION 'anon INSERT unexpectedly succeeded';
+            EXCEPTION WHEN insufficient_privilege THEN
+              NULL;
+            END;
+          END;
+          $$;
+          RESET ROLE;
+
+          SELECT count(*) AS expected_saved_rows FROM public.owner_ai_requests;
+          SQL
