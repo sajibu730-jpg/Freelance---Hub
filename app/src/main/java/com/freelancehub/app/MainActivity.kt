@@ -3543,7 +3543,7 @@ ElevatedCard(
                     }
                     Text(
                         if (freelancerReviews.isEmpty()) "No client reviews yet"
-                        else String.format(java.util.Locale.US, "★ %.1f average · %d reviews", averageRating, freelancerReviews.size),
+                        else String.format(java.util.Locale.US, "★ %.1f recent average · latest %d reviews", averageRating, freelancerReviews.size),
                         color = androidx.compose.ui.graphics.Color(0xFF9A6900),
                         style = MaterialTheme.typography.bodyMedium
                     )
