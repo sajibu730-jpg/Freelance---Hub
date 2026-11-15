@@ -1966,12 +1966,12 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
-            editing->RemoteProfileScreen(remoteMarketplace,remoteAccount,auth,{editing=false},{logout()})
+            editing->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{editing=false},{logout()})
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteMarketplace,remoteAccount,auth,{showSettings=true},{logout()})
+            else->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{showSettings=true},{logout()})
         }}
     }
 }
@@ -2489,7 +2489,7 @@ fun RemoteHomeScreen(
     LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
         item{Text("Welcome to Freelance Hub",style=MaterialTheme.typography.headlineMedium);Text("Work globally. Learn skills. Build your career.");Spacer(Modifier.height(16.dp));Text("Dashboard",style=MaterialTheme.typography.titleLarge);Spacer(Modifier.height(8.dp))
             if(role==UserRole.CLIENT){Text("My jobs: $myJobs");Text("Activity updates: available in Messages")}else{Text("My proposals: $myProposals");Text("Saved jobs: $saved")}
-            Text("Messages & notifications: open Messages");Spacer(Modifier.height(20.dp));Text("Quick actions",style=MaterialTheme.typography.titleLarge);
+            Text("Quick actions",style=MaterialTheme.typography.titleLarge);
             if(role==UserRole.CLIENT){Spacer(Modifier.height(10.dp));Button(onClick=onPostJob,modifier=Modifier.fillMaxWidth()){Text("Post a job")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onProjectAnalysis,modifier=Modifier.fillMaxWidth()){Text("Analyze My Project")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onMatching,modifier=Modifier.fillMaxWidth()){Text("Find My Job Matches") }} else {Spacer(Modifier.height(10.dp));Button(onClick=onWorkCheck,modifier=Modifier.fillMaxWidth()){Text("Check My Work")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onMatching,modifier=Modifier.fillMaxWidth()){Text("Find Jobs For Me")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onFreelancerAnalysis,modifier=Modifier.fillMaxWidth()){Text("Analyze My Freelancer Profile")}}
         }
         items(listOf("Find freelance jobs","Learn practical skills","Build your portfolio","Explore Premium")){ElevatedCard(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(it,Modifier.padding(18.dp))}}
@@ -3298,6 +3298,7 @@ fun RemoteNotificationsScreen() {
 fun RemoteProfileScreen(
     marketplace: RemoteMarketplaceRepository,
     account: RemoteAccountRepository,
+    role: UserRole,
     auth: com.freelancehub.app.auth.AuthService,
     edit: () -> Unit,
     logout: () -> Unit
@@ -3321,8 +3322,8 @@ fun RemoteProfileScreen(
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
             val loadedProfile = result.getOrNull()
-            val contractsResult = loadedProfile?.let { runCatching { marketplace.listFreelancerContracts(it.id) } }
-            val reviewsResult = loadedProfile?.let { runCatching { marketplace.listFreelancerReviews(it.id, 20) } }
+            val contractsResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { marketplace.listFreelancerContracts(it.id) } }
+            val reviewsResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { marketplace.listFreelancerReviews(it.id, 20) } }
             withContext(Dispatchers.Main) {
                 result.onSuccess { profile = it }
                     .onFailure { error = it.message ?: "Unable to load profile." }
@@ -3494,7 +3495,7 @@ fun RemoteProfileScreen(
                         }
                         Column(Modifier.weight(1f).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(p.displayName.ifBlank { "Your profile" }, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
-                            Text(p.role.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            Text(role.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
                         }
                     }
                 }
@@ -3513,6 +3514,7 @@ ElevatedCard(
                 }
             }
 
+            if (role == UserRole.FREELANCER) {
             ElevatedCard(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
@@ -3567,6 +3569,7 @@ ElevatedCard(
                         }
                     }
                 }
+            }
             }
         }
     }
