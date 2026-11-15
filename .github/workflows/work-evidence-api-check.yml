@@ -12,6 +12,7 @@ on:
       - "tests/work_evidence_schema_draft.assertions.sql"
       - "supabase/config.toml"
       - "tests/work_evidence_local_setup.sql"
+      - "tests/work_evidence_local_assertions.sql"
       - "tests/work_evidence_local_integration.py"
       - ".github/workflows/work-evidence-api-check.yml"
   workflow_dispatch:
@@ -102,7 +103,7 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -f tests/work_evidence_schema_draft.assertions.sql
+            -f tests/work_evidence_local_assertions.sql
       - name: Verify atomic quota under concurrent submissions
         env:
           PGPASSWORD: postgres
