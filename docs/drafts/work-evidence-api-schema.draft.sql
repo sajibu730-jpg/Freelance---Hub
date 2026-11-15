@@ -321,11 +321,23 @@ begin
     raise exception using errcode = '22023', message = 'Cleanup batch size must be between 1 and 100';
   end if;
 
-  update public.work_evidence
+  -- Expire at most one requested batch per invocation. A single unbounded
+  -- UPDATE here could lock and audit every stale upload in a large table,
+  -- delaying the worker before its bounded queue-claim step.
+  with expired_uploads as (
+    select e.id
+    from public.work_evidence e
+    where e.status = 'upload_pending'
+      and e.created_at <= pg_catalog.now() - interval '24 hours'
+    order by e.created_at, e.id
+    for update skip locked
+    limit p_limit
+  )
+  update public.work_evidence e
   set status = 'upload_failed',
       submitted_at = pg_catalog.now()
-  where status = 'upload_pending'
-    and created_at <= pg_catalog.now() - interval '24 hours';
+  from expired_uploads expired
+  where e.id = expired.id;
 
   update public.work_evidence_cleanup_queue
   set state = 'pending',
