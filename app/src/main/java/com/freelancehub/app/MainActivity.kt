@@ -3319,7 +3319,6 @@ fun RemoteProfileScreen(
 ) {
     val context = LocalContext.current
     var profile by remember { mutableStateOf<RemoteAccount?>(null) }
-    var freelancerContracts by remember { mutableStateOf<List<RemoteContract>>(emptyList()) }
     var freelancerReviews by remember { mutableStateOf<List<RemoteFreelancerReview>>(emptyList()) }
     var freelancerPublicProfile by remember { mutableStateOf<RemotePublicFreelancerProfile?>(null) }
     var activityError by remember { mutableStateOf("") }
@@ -3337,14 +3336,11 @@ fun RemoteProfileScreen(
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
             val loadedProfile = result.getOrNull()
-            val contractsResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { marketplace.listFreelancerContracts(it.id) } }
             val reviewsResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { marketplace.listFreelancerReviews(it.id, 20) } }
             val publicProfileResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { account.getPublicFreelancerProfile(it.id) } }
             withContext(Dispatchers.Main) {
                 result.onSuccess { profile = it }
                     .onFailure { error = it.message ?: "Unable to load profile." }
-                contractsResult?.onSuccess { freelancerContracts = it }
-                    ?.onFailure { activityError = it.message ?: "Unable to load work history." }
                 reviewsResult?.onSuccess { freelancerReviews = it }
                     ?.onFailure { activityError = it.message ?: "Unable to load freelancer reviews." }
                 publicProfileResult?.onSuccess { freelancerPublicProfile = it }
@@ -3537,18 +3533,21 @@ ElevatedCard(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
             ) {
-                val completedContracts = freelancerContracts.filter { it.status.equals("completed", true) }
-                val activeContracts = freelancerContracts.filter { it.status.equals("active", true) }
-                val completedUsdMinor = completedContracts.filter { it.currency.equals("USD", true) }.sumOf { it.agreedBudgetMinor }
-                val completedUsd = String.format(java.util.Locale.US, "$%.2f", completedUsdMinor / 100.0)
+                val completedJobs = freelancerPublicProfile?.completedJobs ?: 0
+                val activeJobs = freelancerPublicProfile?.activeJobs ?: 0
+                val completedUsd = String.format(
+                    java.util.Locale.US,
+                    "$%.2f",
+                    (freelancerPublicProfile?.completedUsdMinor ?: 0L) / 100.0
+                )
                 val lifetimeReviewCount = freelancerPublicProfile?.reviewCount
                 val lifetimeAverageRating = freelancerPublicProfile?.averageRating
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
-                    val totalJobs = completedContracts.size + activeContracts.size
+                    val totalJobs = completedJobs + activeJobs
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Column(Modifier.weight(1f)) {
-                            Text(activeContracts.size.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text(activeJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Text("Active jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
