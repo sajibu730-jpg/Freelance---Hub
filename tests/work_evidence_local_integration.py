@@ -302,6 +302,24 @@ def main():
         "action": "owner_review", "evidence_id": review_id,
         "status": "rejected", "review_note": "Terminal state must not be overwritten.",
     }, expected=(409,))
+    # Audit history can grow with cleanup retries; Owner timeline reads are bounded and paginated.
+    psql(
+        "INSERT INTO public.work_evidence_events "
+        "(evidence_id, actor_user_id, event_type, from_status, to_status, details) "
+        "SELECT " + sql_literal(review_id) + "::uuid, NULL, 'storage_cleanup_retry', "
+        "'upload_failed', 'upload_failed', jsonb_build_object('fixture', true) "
+        "FROM generate_series(1, 55);"
+    )
+    _, events_page_zero = api_action(aal2, {
+        "action": "owner_events", "evidence_id": review_id, "page": 0,
+    })
+    _, events_page_one = api_action(aal2, {
+        "action": "owner_events", "evidence_id": review_id, "page": 1,
+    })
+    assert events_page_zero.get("page_size") == 50 and len(events_page_zero.get("events", [])) == 50, events_page_zero
+    assert events_page_one.get("page") == 1 and events_page_one.get("total") == len(events) + 55, events_page_one
+    assert len(events_page_one.get("events", [])) == len(events) + 55 - 50, events_page_one
+    print("PASS: Owner event timeline is bounded to 50 records per page with stable pagination")
     print("PASS: Owner events, required review notes, review transitions, and terminal-state lock")
 
     # Verify real freelancer/client relationship checks against local Auth and DB rows.
