@@ -26,6 +26,37 @@ grant insert on table public.freelancer_reviews to authenticated;
 
 drop policy if exists "Authenticated users can read freelancer reviews" on public.freelancer_reviews;
 
+-- The policy must not query contracts directly: authenticated has no table
+-- SELECT grant in Production. A narrow helper performs only this authorization
+-- check from a non-exposed schema; it returns no contract or client data.
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+create or replace function private.can_review_completed_contract(
+    p_contract_id uuid,
+    p_freelancer_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+    select (select auth.uid()) is not null
+       and exists (
+            select 1
+            from public.contracts c
+            where c.id = p_contract_id
+              and c.client_id = (select auth.uid())
+              and c.freelancer_id = p_freelancer_id
+              and c.status = 'completed'
+       );
+$function$;
+
+revoke all on function private.can_review_completed_contract(uuid, uuid) from public, anon;
+grant execute on function private.can_review_completed_contract(uuid, uuid) to authenticated;
+
 drop policy if exists "Completed contract clients can review freelancer" on public.freelancer_reviews;
 create policy "Completed contract clients can review freelancer"
     on public.freelancer_reviews
@@ -33,14 +64,7 @@ create policy "Completed contract clients can review freelancer"
     to authenticated
     with check (
         client_id = (select auth.uid())
-        and exists (
-            select 1
-            from public.contracts c
-            where c.id = freelancer_reviews.contract_id
-              and c.client_id = (select auth.uid())
-              and c.freelancer_id = freelancer_reviews.freelancer_id
-              and c.status = 'completed'
-        )
+        and private.can_review_completed_contract(contract_id, freelancer_id)
     );
 
 -- A contract can be completed only by its client and only after at least one
