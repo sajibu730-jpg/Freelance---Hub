@@ -254,13 +254,14 @@ def main():
     job_one, job_two, job_three = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
     contract_one, contract_two = str(uuid.uuid4()), str(uuid.uuid4())
     submission_one, submission_no_contract, submission_mismatch = (str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()))
-    psql(
-        "INSERT INTO public.jobs(id, owner_id) VALUES (" + sql_literal(job_one) + ", " + sql_literal(client_id) + "), (" + sql_literal(job_two) + ", " + sql_literal(client_id) + "), (" + sql_literal(job_three) + ", " + sql_literal(client_id) + "); "
-        "INSERT INTO public.contracts(id, job_id, client_id, freelancer_id) VALUES (" + sql_literal(contract_one) + ", " + sql_literal(job_one) + ", " + sql_literal(client_id) + ", " + sql_literal(freelancer_id) + "), (" + sql_literal(contract_two) + ", " + sql_literal(job_two) + ", " + sql_literal(client_id) + ", " + sql_literal(other_freelancer_id) + "); "
-        "INSERT INTO public.work_submissions(id, job_id, contract_id, freelancer_id) VALUES (" + sql_literal(submission_one) + ", " + sql_literal(job_one) + ", " + sql_literal(contract_one) + ", " + sql_literal(freelancer_id) + "), (" + sql_literal(submission_no_contract) + ", " + sql_literal(job_two) + ", NULL, " + sql_literal(freelancer_id) + "), (" + sql_literal(submission_mismatch) + ", " + sql_literal(job_three) + ", " + sql_literal(contract_one) + ", " + sql_literal(other_freelancer_id) + "); "
-        "INSERT INTO public.proposals(id, job_id, freelancer_id) VALUES (" + sql_literal(str(uuid.uuid4())) + ", " + sql_literal(job_two) + ", " + sql_literal(outsider_id) + ");"
-    )
-    _, freelancer_evidence = api_action(freelancer_token, {
+    setup_sql = " ".join([
+        "INSERT INTO public.jobs(id, owner_id) VALUES (" + sql_literal(job_one) + ", " + sql_literal(client_id) + "), (" + sql_literal(job_two) + ", " + sql_literal(client_id) + "), (" + sql_literal(job_three) + ", " + sql_literal(client_id) + ");",
+        "INSERT INTO public.contracts(id, job_id, client_id, freelancer_id) VALUES (" + sql_literal(contract_one) + ", " + sql_literal(job_one) + ", " + sql_literal(client_id) + ", " + sql_literal(freelancer_id) + "), (" + sql_literal(contract_two) + ", " + sql_literal(job_two) + ", " + sql_literal(client_id) + ", " + sql_literal(other_freelancer_id) + ");",
+        "INSERT INTO public.work_submissions(id, job_id, contract_id, freelancer_id) VALUES (" + sql_literal(submission_one) + ", " + sql_literal(job_one) + ", " + sql_literal(contract_one) + ", " + sql_literal(freelancer_id) + "), (" + sql_literal(submission_no_contract) + ", " + sql_literal(job_two) + ", NULL, " + sql_literal(freelancer_id) + "), (" + sql_literal(submission_mismatch) + ", " + sql_literal(job_three) + ", " + sql_literal(contract_one) + ", " + sql_literal(other_freelancer_id) + ");",
+        "INSERT INTO public.proposals(id, job_id, freelancer_id) VALUES (" + sql_literal(str(uuid.uuid4())) + ", " + sql_literal(job_two) + ", " + sql_literal(outsider_id) + ");",
+    ])
+    psql(setup_sql)
+(freelancer_token, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Freelancer own submission", "description": "Valid participant evidence.",
         "submission_id": submission_one,
