@@ -140,7 +140,7 @@ def main():
     _, challenge, _ = request(
         "POST", AUTH + f"/factors/{factor_id}/challenge",
         headers=headers(ANON, aal1),
-        body={"channel": "totp"},
+        body={"friendly_name": "CI Owner TOTP"},
         expected=(200, 201),
     )
     _, verified, _ = request(
