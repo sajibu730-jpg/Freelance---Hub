@@ -154,7 +154,7 @@ $$;
 
 -- Freelancer cannot complete a client-owned contract or review their own work.
 select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', false);
-do $
+do $$
 begin
   begin
     perform public.complete_contract('a0000000-0000-0000-0000-000000000002');
@@ -175,10 +175,10 @@ begin
   exception when insufficient_privilege then null;
   end;
 end
-$;
+$$;
 
 reset role;
-do $
+do $$
 begin
   if has_function_privilege('anon', 'public.complete_contract(uuid)', 'EXECUTE') then
     raise exception 'anon can execute complete_contract';
