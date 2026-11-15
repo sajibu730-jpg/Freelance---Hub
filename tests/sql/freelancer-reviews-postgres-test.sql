@@ -151,8 +151,34 @@ begin
 end
 $$;
 
+
+-- Freelancer cannot complete a client-owned contract or review their own work.
+select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', false);
+do $
+begin
+  begin
+    perform public.complete_contract('a0000000-0000-0000-0000-000000000002');
+    raise exception 'freelancer unexpectedly completed a client contract';
+  exception when others then
+    if sqlerrm = 'freelancer unexpectedly completed a client contract' then raise; end if;
+    if sqlerrm <> 'CONTRACT_NOT_READY_OR_NOT_AUTHORIZED' then raise; end if;
+  end;
+
+  begin
+    insert into public.freelancer_reviews
+      (contract_id, client_id, freelancer_id, rating, review_text)
+    values
+      ('a0000000-0000-0000-0000-000000000001',
+       '20000000-0000-0000-0000-000000000002',
+       '20000000-0000-0000-0000-000000000002', 5, 'Self review');
+    raise exception 'freelancer unexpectedly reviewed own work';
+  exception when insufficient_privilege then null;
+  end;
+end
+$;
+
 reset role;
-do $$
+do $
 begin
   if has_function_privilege('anon', 'public.complete_contract(uuid)', 'EXECUTE') then
     raise exception 'anon can execute complete_contract';
