@@ -517,11 +517,15 @@ Deno.serve(async (req: Request) => {
 
       if (!isUuid(body.evidence_id)) throw new HttpError(400, "evidence_id must be a UUID.");
       if (action === "owner_events") {
-        const { data: events, error: eventsError } = await admin.from("work_evidence_events")
-          .select("id,evidence_id,actor_user_id,event_type,from_status,to_status,details,created_at")
-          .eq("evidence_id", body.evidence_id).order("created_at", { ascending: true });
+        const page = Math.max(0, Math.min(10000, Number.isInteger(body.page) ? body.page : 0));
+        const { data: events, error: eventsError, count } = await admin.from("work_evidence_events")
+          .select("id,evidence_id,actor_user_id,event_type,from_status,to_status,details,created_at", { count: "exact" })
+          .eq("evidence_id", body.evidence_id)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(page * 50, page * 50 + 49);
         if (eventsError) throw eventsError;
-        return reply({ success: true, events: events || [] });
+        return reply({ success: true, events: events || [], total: count || 0, page, page_size: 50 });
       }
       const { data: evidence, error } = await admin.from("work_evidence")
         .select("id,status,storage_path,original_filename")
