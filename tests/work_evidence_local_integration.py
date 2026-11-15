@@ -85,7 +85,7 @@ def psql(sql):
 def upload_signed(signed_url, token):
     url = signed_url if signed_url.startswith("http") else API + signed_url
     request(
-        "POST", url,
+        "PUT", url,
         headers=headers(ANON, token, "application/pdf"),
         body=PDF, expected=(200, 201),
     )
