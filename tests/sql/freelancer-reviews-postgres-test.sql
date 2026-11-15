@@ -171,7 +171,7 @@ end
 $$;
 
 -- Duplicate review and wrong-client review must fail under the client identity.
-do $$
+do $review_validation$
 begin
   begin
     insert into public.freelancer_reviews
