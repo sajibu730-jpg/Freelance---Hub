@@ -55,6 +55,9 @@ create table public.work_submissions (
   status text not null
 );
 
+-- Mirror the normal Supabase authenticated read grant used by the review RLS policy.
+grant select on public.contracts to authenticated;
+
 insert into public.profiles
   (id, display_name, country, bio, capabilities, skills, email, mobile_number)
 values
