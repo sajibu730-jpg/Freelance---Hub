@@ -194,8 +194,41 @@ begin
     raise exception 'wrong-client review unexpectedly succeeded';
   exception when insufficient_privilege then null;
   end;
+
+  begin
+    insert into public.freelancer_reviews
+      (contract_id, client_id, freelancer_id, rating, review_text)
+    values
+      ('a0000000-0000-0000-0000-000000000001',
+       '10000000-0000-0000-0000-000000000001',
+       '30000000-0000-0000-0000-000000000003', 4, 'Wrong freelancer');
+    raise exception 'review for a mismatched freelancer unexpectedly succeeded';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.freelancer_reviews
+      (contract_id, client_id, freelancer_id, rating, review_text)
+    values
+      ('a0000000-0000-0000-0000-000000000001',
+       '10000000-0000-0000-0000-000000000001',
+       '20000000-0000-0000-0000-000000000002', 0, 'Invalid low rating');
+    raise exception 'rating below 1 unexpectedly succeeded';
+  exception when check_violation then null;
+  end;
+
+  begin
+    insert into public.freelancer_reviews
+      (contract_id, client_id, freelancer_id, rating, review_text)
+    values
+      ('a0000000-0000-0000-0000-000000000001',
+       '10000000-0000-0000-0000-000000000001',
+       '20000000-0000-0000-0000-000000000002', 6, 'Invalid high rating');
+    raise exception 'rating above 5 unexpectedly succeeded';
+  exception when check_violation then null;
+  end;
 end
-$$;
+$;
 
 
 -- An unrelated client cannot complete another client's contract or submit a review for it.
