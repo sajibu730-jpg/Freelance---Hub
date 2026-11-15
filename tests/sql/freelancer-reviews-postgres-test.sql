@@ -72,12 +72,16 @@ insert into public.contracts
 values
   ('a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 125000, 'USD', 'active'),
   ('a0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 50000, 'USD', 'active'),
-  ('a0000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', 90000, 'EUR', 'active');
+  ('a0000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', 90000, 'EUR', 'active'),
+  ('a0000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 30000, 'USD', 'cancelled'),
+  ('a0000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 40000, 'USD', 'disputed');
 
 insert into public.work_submissions (id, contract_id, freelancer_id, status)
 values
   ('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'approved'),
-  ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'submitted');
+  ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'submitted'),
+  ('b0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000002', 'approved'),
+  ('b0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000002', 'approved');
 
 \i docs/drafts/freelancer-reviews-profile-stats.sql
 
@@ -103,8 +107,22 @@ begin
     if sqlerrm = 'pending submission was incorrectly completed' then raise; end if;
     if sqlerrm <> 'CONTRACT_NOT_READY_OR_NOT_AUTHORIZED' then raise; end if;
   end;
+  begin
+    perform public.complete_contract('a0000000-0000-0000-0000-000000000004');
+    raise exception 'cancelled contract unexpectedly completed';
+  exception when others then
+    if sqlerrm = 'cancelled contract unexpectedly completed' then raise; end if;
+    if sqlerrm <> 'CONTRACT_NOT_READY_OR_NOT_AUTHORIZED' then raise; end if;
+  end;
+  begin
+    perform public.complete_contract('a0000000-0000-0000-0000-000000000005');
+    raise exception 'disputed contract unexpectedly completed';
+  exception when others then
+    if sqlerrm = 'disputed contract unexpectedly completed' then raise; end if;
+    if sqlerrm <> 'CONTRACT_NOT_READY_OR_NOT_AUTHORIZED' then raise; end if;
+  end;
 end
-$$;
+$;
 
 -- A client may create one review for their completed contract.
 insert into public.freelancer_reviews
