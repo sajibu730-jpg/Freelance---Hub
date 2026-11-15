@@ -56,9 +56,9 @@ create table public.work_submissions (
 );
 
 -- Production intentionally grants authenticated no direct SELECT on contracts.
-create schema private;
-revoke all on schema private from public, anon;
-grant usage on schema private to authenticated;
+create schema freelance_hub_private;
+revoke all on schema freelance_hub_private from public, anon;
+grant usage on schema freelance_hub_private to authenticated;
 
 insert into public.profiles
   (id, display_name, country, bio, capabilities, skills, email, mobile_number)
