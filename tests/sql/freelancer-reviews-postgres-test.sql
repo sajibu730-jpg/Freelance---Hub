@@ -228,7 +228,7 @@ begin
   exception when check_violation then null;
   end;
 end
-$;
+$review_validation$
 
 
 -- An unrelated client cannot complete another client's contract or submit a review for it.
