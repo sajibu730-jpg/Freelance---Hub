@@ -3642,16 +3642,16 @@ fun RemotePublicFreelancerProfileScreen(
                     Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Column(Modifier.weight(1f)) {
-                            Text(p.completedJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49))
-                            Text("Completed jobs", style = MaterialTheme.typography.bodySmall)
+                            Text(p.activeJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5))
+                            Text("Active Jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(p.activeJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5))
-                            Text("Active jobs", style = MaterialTheme.typography.bodySmall)
+                            Text((p.completedJobs + p.activeJobs).toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49))
+                            Text("Total Jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
                             Text(String.format(java.util.Locale.US, "$%.2f", p.completedUsdMinor / 100.0), style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49))
-                            Text("Completed USD", style = MaterialTheme.typography.bodySmall)
+                            Text("Completed Value (USD)", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
