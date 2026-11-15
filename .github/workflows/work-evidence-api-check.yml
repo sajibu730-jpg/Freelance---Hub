@@ -193,7 +193,7 @@ jobs:
           psql "$LOCAL_SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
             -f tests/work_evidence_local_setup.sql \
             -f docs/drafts/work-evidence-api-schema.draft.sql \
-            -f tests/work_evidence_schema_draft.assertions.sql
+            -f tests/work_evidence_local_assertions.sql
       - name: Serve draft Edge Functions against local Auth and Storage
         shell: bash
         run: |
