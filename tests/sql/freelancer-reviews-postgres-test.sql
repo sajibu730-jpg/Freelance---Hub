@@ -171,7 +171,7 @@ end
 $$;
 
 -- Duplicate review and wrong-client review must fail under the client identity.
-do $review_validation$;
+do $review_validation$
 begin
   begin
     insert into public.freelancer_reviews
@@ -228,7 +228,7 @@ begin
   exception when check_violation then null;
   end;
 end
-$review_validation$
+$review_validation$;
 
 
 -- An unrelated client cannot complete another client's contract or submit a review for it.
