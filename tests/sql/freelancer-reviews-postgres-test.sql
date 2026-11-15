@@ -114,7 +114,7 @@ values
    5, 'Excellent delivery.');
 
 -- Public profile payload must aggregate correctly and omit private contact fields.
-do $$
+do $
 declare payload jsonb;
 begin
   payload := public.get_public_freelancer_profile('20000000-0000-0000-0000-000000000002');
@@ -127,8 +127,28 @@ begin
 end
 $$;
 
+-- Direct review-table reads are denied; safe RPCs return only public review fields.
+do $
+declare payload jsonb;
+begin
+  if has_table_privilege('authenticated', 'public.freelancer_reviews', 'SELECT') then
+    raise exception 'authenticated role has direct SELECT on freelancer_reviews';
+  end if;
+  payload := public.get_public_freelancer_reviews('20000000-0000-0000-0000-000000000002');
+  if jsonb_array_length(payload) <> 1 then raise exception 'safe public review RPC returned wrong count'; end if;
+  if payload->0 ? 'client_id' or payload->0 ? 'contract_id' or payload->0 ? 'freelancer_id' then
+    raise exception 'safe public review RPC leaked internal identifiers';
+  end if;
+  payload := public.get_my_freelancer_review('a0000000-0000-0000-0000-000000000001');
+  if payload->>'rating' <> '5' then raise exception 'client could not read own review'; end if;
+  if payload ? 'client_id' or payload ? 'contract_id' then
+    raise exception 'own review RPC leaked internal identifiers';
+  end if;
+end
+$;
+
 -- Duplicate review and wrong-client review must fail under the client identity.
-do $$
+do $
 begin
   begin
     insert into public.freelancer_reviews
@@ -188,6 +208,12 @@ begin
   end if;
   if has_function_privilege('anon', 'public.get_public_freelancer_profile(uuid)', 'EXECUTE') then
     raise exception 'anon can execute public profile RPC';
+  end if;
+  if has_function_privilege('anon', 'public.get_public_freelancer_reviews(uuid)', 'EXECUTE') then
+    raise exception 'anon can execute public review RPC';
+  end if;
+  if has_function_privilege('anon', 'public.get_my_freelancer_review(uuid)', 'EXECUTE') then
+    raise exception 'anon can execute own-review RPC';
   end if;
 end
 $$;
