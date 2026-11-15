@@ -91,9 +91,25 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
     fun listFreelancerContracts(freelancerId: String): List<RemoteContract> {
         require(freelancerId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val path = "/rest/v1/contracts?select=id,job_id,proposal_id,client_id,freelancer_id,agreed_budget_minor,currency,status&freelancer_id=eq.$freelancerId&limit=500"
-        val rows = JSONArray(String(client.readJsonResponse(client.openGet(path, accessTokenProvider())), StandardCharsets.UTF_8))
-        return (0 until rows.length()).map { parseContract(rows.getJSONObject(it)) }
+        val pageSize = 500
+        val path = "/rest/v1/contracts?select=id,job_id,proposal_id,client_id,freelancer_id,agreed_budget_minor,currency,status&freelancer_id=eq.$freelancerId&order=id.asc&limit=$pageSize"
+        val token = accessTokenProvider()
+        val contracts = mutableListOf<RemoteContract>()
+        var offset = 0
+
+        while (true) {
+            val pagePath = "$path&offset=$offset"
+            val page = JSONArray(
+                String(client.readJsonResponse(client.openGet(pagePath, token)), StandardCharsets.UTF_8)
+            )
+            for (index in 0 until page.length()) {
+                contracts += parseContract(page.getJSONObject(index))
+            }
+            if (page.length() < pageSize) break
+            offset += page.length()
+        }
+
+        return contracts
     }
 
     fun listFreelancerReviews(freelancerId: String, limit: Int = 20): List<RemoteFreelancerReview> {
