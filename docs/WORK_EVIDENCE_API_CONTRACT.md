@@ -28,7 +28,7 @@ All requests use JSON and one `action`:
 | `owner_list` | Primary Owner | List evidence for review |
 | `owner_review` | Primary Owner | Mark evidence verified, rejected, or needs-info |
 | `owner_download` | Primary Owner | Obtain a five-minute signed download URL for a private file |
-| `owner_events` | Primary Owner | Read the append-only audit timeline for one evidence record |
+| `owner_events` | Primary Owner | Read the append-only audit timeline for one evidence record; accepts optional zero-based `page`, returns 50 events per page plus `total` |
 
 Every submission requires a client-generated UUID `request_id` idempotency key. The server derives `submitted_by` from the verified JWT; clients cannot nominate another account. Repeating the same key with an identical payload returns the original evidence record and does not consume another quota slot; reusing that key with changed evidence details returns HTTP 409. For `prepare_upload`, if the original object is already present but completion has not been confirmed, the retry response sets `upload_already_present=true` and `complete_upload_required=true` and omits a new signed upload URL; the client must call `complete_upload` with the returned evidence ID. The API checks for an existing evidence row before claiming quota, so an identical replay after the rolling 24-hour quota ledger window does not consume a fresh quota slot. A pending file replay may receive a new signed upload URL only before the 21-hour-45-minute renewal cutoff; if its object already exists, the response directs the client to `complete_upload` instead.
 
