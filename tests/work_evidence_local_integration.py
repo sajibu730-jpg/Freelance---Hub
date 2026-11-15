@@ -409,6 +409,16 @@ def main():
             headers={"apikey": ANON}, expected=(400, 401, 403, 404))
     print("PASS: cleanup worker enforces secret, removes exact private object, and finalizes queue")
 
+    # A deleted Auth identity must not continue using its previously issued JWT.
+    revoked_user_id, revoked_access = create_auth_user("revoked-session@example.invalid")
+    request(
+        "DELETE", AUTH + f"/admin/users/{revoked_user_id}",
+        headers=headers(SERVICE, SERVICE),
+        expected=(200, 204),
+    )
+    api_action(revoked_access, {"action": "my_evidence"}, expected=(401,))
+    print("PASS: previously issued JWT is rejected after its Auth user is deleted")
+
     # A previously issued AAL2 token must not retain Owner access after its
     # verified TOTP factor is removed. Check every privileged endpoint using
     # the same token so the server must validate both current factor state and AAL.
