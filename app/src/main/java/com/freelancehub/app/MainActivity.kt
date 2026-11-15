@@ -3545,14 +3545,15 @@ ElevatedCard(
                 val lifetimeAverageRating = freelancerPublicProfile?.averageRating
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                    val totalJobs = completedContracts.size + activeContracts.size
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text(completedContracts.size.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                            Text("Completed jobs", style = MaterialTheme.typography.bodySmall)
-                        }
                         Column(Modifier.weight(1f)) {
                             Text(activeContracts.size.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Text("Active jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(totalJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF102A56), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Total jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
                             Text(completedUsd, style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
