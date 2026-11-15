@@ -126,10 +126,11 @@ A test is **PASS** only when its expected result is observed in Staging. Static 
 2. Retry URL renewal before 21h45m and confirm a new signed URL is issued; at/after the cutoff, confirm renewal is rejected.
 3. Seed at least 15 expired pending-upload rows and run the cleanup RPC with a batch limit of 10. Confirm exactly 10 rows transition to `upload_failed` and are queued, then a second invocation processes the remaining 5; no invocation may expire more rows than its configured limit.
 4. At 24 hours, run the cleanup worker. Confirm the row changes to `upload_failed`, the durable cleanup queue is claimed, and the exact private object is removed if present.
-4. Confirm the evidence row, original metadata, and prior audit history remain. Confirm a `storage_cleanup_completed` event is appended.
-5. Simulate Storage list/remove failure. Confirm the queue returns to `pending`, the error field contains only a generic message, the retry backoff is applied, and a later run completes.
-6. Race `complete_upload` against expiry. Exactly one conditional status transition may win; if expiry wins, no uploaded object may be accepted as submitted.
-7. Simulate worker interruption after claiming. Confirm the 15-minute lease allows a later run to reclaim the job.
-8. Verify only a server scheduler with the platform JWT and the Edge secret can invoke the worker; missing/incorrect secret must fail closed.
+5. Confirm the evidence row, original metadata, and prior audit history remain. Confirm a `storage_cleanup_completed` event is appended.
+6. Simulate a queue row whose storage path points to another evidence record's valid proof object. Confirm the worker refuses to delete that object, records a generic retry, and leaves the unrelated proof intact.
+7. Simulate Storage list/remove failure. Confirm the queue returns to `pending`, the error field contains only a generic message, the retry backoff is applied, and a later run completes.
+8. Race `complete_upload` against expiry. Exactly one conditional status transition may win; if expiry wins, no uploaded object may be accepted as submitted.
+9. Simulate worker interruption after claiming. Confirm the 15-minute lease allows a later run to reclaim the job.
+10. Verify only a server scheduler with the platform JWT and the Edge secret can invoke the worker; missing/incorrect secret must fail closed.
 
 Do not configure a production schedule or create any Staging resource until the Owner explicitly approves the environment and cost implications.
