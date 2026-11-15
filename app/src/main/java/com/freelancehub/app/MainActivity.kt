@@ -2577,7 +2577,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var reviewOpen by remember{mutableStateOf(false)}
     if(proposalOpen){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
     if(workOpen){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
-    if(reviewOpen){RemoteWorkReviewScreen(current,marketplace,{reviewOpen=false});return}
+    if(reviewOpen){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
     var error by remember{mutableStateOf("")}
     LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{account.currentUser()}.onSuccess{me=it}.onFailure{error=it.message?:"Unable to load account."}}}
@@ -2644,11 +2644,12 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 }
 
-@Composable fun RemoteWorkReviewScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+@Composable fun RemoteWorkReviewScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,account:RemoteAccountRepository,back:()->Unit){
     var submissions by remember{mutableStateOf<List<RemoteWorkSubmission>>(emptyList())}
     var selected by remember{mutableStateOf<RemoteWorkSubmission?>(null)}
     var contract by remember{mutableStateOf<RemoteContract?>(null)}
     var existingReview by remember{mutableStateOf<RemoteFreelancerReview?>(null)}
+    var showFreelancerProfile by remember{mutableStateOf(false)}
     var comment by remember{mutableStateOf("")}
     var rating by remember{mutableIntStateOf(5)}
     var reviewText by remember{mutableStateOf("")}
@@ -2682,9 +2683,21 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 
     LaunchedEffect(Unit){reload()}
+    if (showFreelancerProfile && contract != null) {
+        RemotePublicFreelancerProfileScreen(contract!!.freelancerId, account) {
+            showFreelancerProfile = false
+        }
+        return
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
         Text("Client Work Review",style=MaterialTheme.typography.headlineSmall)
         Text(j.title,style=MaterialTheme.typography.titleMedium)
+        if (contract != null) {
+            OutlinedButton(
+                onClick = { showFreelancerProfile = true },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("View freelancer public profile") }
+        }
         Spacer(Modifier.height(10.dp))
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
@@ -3576,6 +3589,93 @@ ElevatedCard(
     }
 }
 
+
+@Composable
+fun RemotePublicFreelancerProfileScreen(
+    freelancerId: String,
+    account: RemoteAccountRepository,
+    back: () -> Unit
+) {
+    var profile by remember(freelancerId) { mutableStateOf<RemotePublicFreelancerProfile?>(null) }
+    var loading by remember(freelancerId) { mutableStateOf(true) }
+    var error by remember(freelancerId) { mutableStateOf("") }
+
+    LaunchedEffect(freelancerId) {
+        withContext(Dispatchers.IO) {
+            runCatching { account.getPublicFreelancerProfile(freelancerId) }
+                .onSuccess { loaded -> withContext(Dispatchers.Main) { profile = loaded; loading = false } }
+                .onFailure { failure -> withContext(Dispatchers.Main) { error = failure.message ?: "Unable to load freelancer profile."; loading = false } }
+        }
+    }
+
+    Column(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC))
+            .verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        TextButton(onClick = back) { Text("Back to work review") }
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+        profile?.let { p ->
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(p.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    if (p.country.isNotBlank()) Text(p.country, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                    Text(
+                        if (p.reviewCount == 0) "No client ratings yet"
+                        else String.format(java.util.Locale.US, "★ %.1f · %d client reviews", p.averageRating, p.reviewCount),
+                        color = androidx.compose.ui.graphics.Color(0xFF9A6900),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(p.completedJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49))
+                            Text("Completed jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(p.activeJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5))
+                            Text("Active jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(String.format(java.util.Locale.US, "$%.2f", p.completedUsdMinor / 100.0), style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49))
+                            Text("Completed USD", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text(p.bio.ifBlank { "No introduction has been added yet." })
+                    if (p.capabilities.isNotBlank()) Text("Services: ${p.capabilities}")
+                    if (p.skills.isNotBlank()) Text("Skills: ${p.skills}")
+                }
+            }
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Client Reviews", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    if (p.reviews.isEmpty()) {
+                        Text("Verified client reviews will appear here.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                    } else {
+                        p.reviews.forEachIndexed { index, review ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("${"★".repeat(review.rating.coerceIn(0, 5))}  ${review.rating}/5", color = androidx.compose.ui.graphics.Color(0xFFFFB300), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                if (review.reviewText.isNotBlank()) Text(review.reviewText)
+                                Text("Verified completed contract", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            }
+                            if (index < p.reviews.lastIndex) Divider(color = androidx.compose.ui.graphics.Color(0xFFE7ECF5))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehub.app.auth.AuthService, back: () -> Unit) {
