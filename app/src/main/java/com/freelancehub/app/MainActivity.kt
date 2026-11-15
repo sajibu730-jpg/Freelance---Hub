@@ -3544,15 +3544,14 @@ ElevatedCard(
                 val lifetimeAverageRating = freelancerPublicProfile?.averageRating
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
-                    val totalJobs = completedJobs + activeJobs
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(activeJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Text("Active jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(totalJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF102A56), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                            Text("Total jobs", style = MaterialTheme.typography.bodySmall)
+                            Text(completedJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF102A56), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Completed jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
                             Text(completedUsd, style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
@@ -3646,8 +3645,8 @@ fun RemotePublicFreelancerProfileScreen(
                             Text("Active Jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text((p.completedJobs + p.activeJobs).toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49))
-                            Text("Total Jobs", style = MaterialTheme.typography.bodySmall)
+                            Text(p.completedJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49))
+                            Text("Completed Jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
                             Text(String.format(java.util.Locale.US, "$%.2f", p.completedUsdMinor / 100.0), style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49))
