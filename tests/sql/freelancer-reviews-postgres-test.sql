@@ -114,7 +114,7 @@ values
    5, 'Excellent delivery.');
 
 -- Public profile payload must aggregate correctly and omit private contact fields.
-do $
+do $$
 declare payload jsonb;
 begin
   payload := public.get_public_freelancer_profile('20000000-0000-0000-0000-000000000002');
@@ -128,7 +128,7 @@ end
 $$;
 
 -- Direct review-table reads are denied; safe RPCs return only public review fields.
-do $
+do $$
 declare payload jsonb;
 begin
   if has_table_privilege('authenticated', 'public.freelancer_reviews', 'SELECT') then
@@ -145,10 +145,10 @@ begin
     raise exception 'own review RPC leaked internal identifiers';
   end if;
 end
-$;
+$$;
 
 -- Duplicate review and wrong-client review must fail under the client identity.
-do $
+do $$
 begin
   begin
     insert into public.freelancer_reviews
