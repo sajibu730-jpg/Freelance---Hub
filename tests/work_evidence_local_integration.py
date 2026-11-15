@@ -200,6 +200,9 @@ def main():
     review_id = note_result["evidence"]["id"]
     _, initial_events = api_action(aal2, {"action": "owner_events", "evidence_id": review_id})
     assert initial_events.get("events"), "Initial submission audit event is missing"
+    api_action(aal2, {
+        "action": "owner_review", "evidence_id": review_id, "status": "needs_info",
+    }, expected=(400,))
     _, needs_info = api_action(aal2, {
         "action": "owner_review", "evidence_id": review_id,
         "status": "needs_info", "review_note": "Please provide one more detail.",
@@ -210,10 +213,17 @@ def main():
     })
     assert verified_review.get("evidence", {}).get("status") == "verified", verified_review
     _, final_events = api_action(aal2, {"action": "owner_events", "evidence_id": review_id})
-    event_types = [event.get("event_type") for event in final_events.get("events", [])]
-    assert len(final_events.get("events", [])) >= 3, final_events
-    assert "needs_info" in event_types and "verified" in event_types, event_types
-    print("PASS: Owner events timeline and needs_info-to-verified review transitions")
+    events = final_events.get("events", [])
+    event_types = [event.get("event_type") for event in events]
+    target_statuses = [event.get("to_status") for event in events]
+    assert len(events) >= 3, final_events
+    assert event_types.count("reviewed") >= 2, event_types
+    assert "needs_info" in target_statuses and "verified" in target_statuses, target_statuses
+    api_action(aal2, {
+        "action": "owner_review", "evidence_id": review_id,
+        "status": "rejected", "review_note": "Terminal state must not be overwritten.",
+    }, expected=(409,))
+    print("PASS: Owner events, required review notes, review transitions, and terminal-state lock")
 
     # Exercise the cleanup worker against an actual uploaded private object.
     cleanup_request_id = str(uuid.uuid4())
