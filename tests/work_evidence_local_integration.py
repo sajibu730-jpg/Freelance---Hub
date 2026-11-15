@@ -472,6 +472,37 @@ def main():
             headers={**headers(SERVICE, SERVICE),
                      "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
             expected=(405,))
+
+    # A corrupted queue path must never let one evidence job delete another
+    # evidence record's valid proof object. Restore the correct path afterward
+    # so the same integration fixture can verify successful cleanup as well.
+    psql(
+        "UPDATE public.work_evidence_cleanup_queue SET storage_path = "
+        + sql_literal(evidence_path) + " WHERE evidence_id = " + sql_literal(cleanup_id) + ";"
+    )
+    _, tamper_result, _ = request(
+        "POST", worker_url,
+        headers={**headers(SERVICE, SERVICE), "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
+        body={}, expected=(200,),
+    )
+    assert tamper_result.get("completed") == 0 and tamper_result.get("retried") == 1, tamper_result
+    sentinel_parent = "/".join(evidence_path.split("/")[:2])
+    _, sentinel_objects, _ = request(
+        "POST", STORAGE + "/object/list/work-evidence-private",
+        headers=headers(SERVICE, SERVICE),
+        body={"prefix": sentinel_parent, "limit": 10},
+        expected=(200,),
+    )
+    assert any(item.get("name") == "proof" for item in sentinel_objects), (
+        "Cleanup worker removed an unrelated evidence object's proof"
+    )
+    psql(
+        "UPDATE public.work_evidence_cleanup_queue SET storage_path = "
+        + sql_literal(cleanup_path) + ", next_attempt_at = now() "
+        "WHERE evidence_id = " + sql_literal(cleanup_id) + " AND state = 'pending';"
+    )
+    print("PASS: cleanup worker refuses a queue path that targets another evidence object's proof")
+
     _, cleanup_result, _ = request(
         "POST", worker_url,
         headers={**headers(SERVICE, SERVICE), "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
