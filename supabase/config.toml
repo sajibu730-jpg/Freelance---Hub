@@ -20,10 +20,10 @@ enabled = true
 site_url = "http://127.0.0.1:3000"
 additional_redirect_urls = ["http://127.0.0.1:3000"]
 jwt_expiry = 3600
-enabled = true
+enable_signup = true
 
 [auth.email]
-enable_signup = true
+enabled = true
 double_confirm_changes = false
 enable_confirmations = false
 otp_length = 8
