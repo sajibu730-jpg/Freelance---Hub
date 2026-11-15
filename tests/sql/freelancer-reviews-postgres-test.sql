@@ -198,6 +198,31 @@ end
 $$;
 
 
+-- An unrelated client cannot complete another client's contract or submit a review for it.
+select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000003', false);
+do $
+begin
+  begin
+    perform public.complete_contract('a0000000-0000-0000-0000-000000000002');
+    raise exception 'unrelated client unexpectedly completed another client contract';
+  exception when others then
+    if sqlerrm = 'unrelated client unexpectedly completed another client contract' then raise; end if;
+    if sqlerrm <> 'CONTRACT_NOT_READY_OR_NOT_AUTHORIZED' then raise; end if;
+  end;
+
+  begin
+    insert into public.freelancer_reviews
+      (contract_id, client_id, freelancer_id, rating, review_text)
+    values
+      ('a0000000-0000-0000-0000-000000000001',
+       '30000000-0000-0000-0000-000000000003',
+       '20000000-0000-0000-0000-000000000002', 4, 'Unrelated client');
+    raise exception 'unrelated client unexpectedly reviewed another client contract';
+  exception when insufficient_privilege then null;
+  end;
+end
+$;
+
 -- Freelancer cannot complete a client-owned contract or review their own work.
 select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', false);
 do $$
