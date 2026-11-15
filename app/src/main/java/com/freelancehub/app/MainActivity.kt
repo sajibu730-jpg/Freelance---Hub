@@ -1966,12 +1966,12 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
-            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
+            editing->RemoteProfileScreen(remoteMarketplace,remoteAccount,auth,{editing=false},{logout()})
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteAccount,auth,{showSettings=true},{logout()})
+            else->RemoteProfileScreen(remoteMarketplace,remoteAccount,auth,{showSettings=true},{logout()})
         }}
     }
 }
@@ -2311,53 +2311,14 @@ fun RemoteHomeScreen(
             }
         }
 
-        item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-                color = white
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Marketplace status",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = ink
-                        )
-                        if (loading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(
-                                "● Live",
-                                color = androidx.compose.ui.graphics.Color(0xFF16845B),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Messages & notifications: open Messages",
-                        color = muted,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    if (error.isNotBlank()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            error,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    TextButton(onClick = { reload() }) {
-                        Text("↻  Refresh live data")
-                    }
-                }
+        if (error.isNotBlank()) {
+            item {
+                Text(
+                    error,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
 
@@ -2686,43 +2647,119 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
 @Composable fun RemoteWorkReviewScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
     var submissions by remember{mutableStateOf<List<RemoteWorkSubmission>>(emptyList())}
     var selected by remember{mutableStateOf<RemoteWorkSubmission?>(null)}
+    var contract by remember{mutableStateOf<RemoteContract?>(null)}
+    var existingReview by remember{mutableStateOf<RemoteFreelancerReview?>(null)}
     var comment by remember{mutableStateOf("")}
+    var rating by remember{mutableIntStateOf(5)}
+    var reviewText by remember{mutableStateOf("")}
     var error by remember{mutableStateOf("")}
+    var notice by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
-    
-fun reload() {
-    scope.launch {
-        runCatching {
-            withContext(Dispatchers.IO) {
-                marketplace.listWorkSubmissions(j.id)
+
+    fun reload() {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val loadedSubmissions = marketplace.listWorkSubmissions(j.id)
+                    val loadedContract = marketplace.getContractForJob(j.id)
+                    val loadedReview = if (loadedContract.status.equals("completed", true)) {
+                        runCatching { marketplace.getFreelancerReviewForContract(loadedContract.id) }.getOrNull()
+                    } else null
+                    Triple(loadedSubmissions, loadedContract, loadedReview)
+                }
             }
-        }.onSuccess {
-            submissions = it
-            error = ""
-        }.onFailure { e ->
-            error = e.message ?: "Unable to load submissions."
+            result.onSuccess { data ->
+                submissions = data.first
+                contract = data.second
+                existingReview = data.third
+                error = ""
+            }.onFailure { e ->
+                error = e.message ?: "Unable to load work submissions."
+            }
         }
     }
-}
 
     LaunchedEffect(Unit){reload()}
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Client Work Review",style=MaterialTheme.typography.headlineSmall);Text(j.title,style=MaterialTheme.typography.titleMedium);Spacer(Modifier.height(10.dp))
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
+        Text("Client Work Review",style=MaterialTheme.typography.headlineSmall)
+        Text(j.title,style=MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(10.dp))
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+        if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
         if(submissions.isEmpty())Text("No authorized work submissions are available yet.")
         submissions.forEach{s->
             ElevatedCard(onClick={selected=s},modifier=Modifier.fillMaxWidth().padding(vertical=4.dp)){
-                Column(Modifier.padding(12.dp)){Text("Status: ${s.status}");Text(s.summary.take(180));Text("Check score: ${s.checkScore}%")}
+                Column(Modifier.padding(12.dp)){
+                    Text("Status: ${s.status}")
+                    Text(s.summary.take(180))
+                    Text("Check score: ${s.checkScore}%")
+                }
             }
         }
         selected?.let{s->
-            Spacer(Modifier.height(10.dp));Text("Selected submission",style=MaterialTheme.typography.titleMedium);Text(s.summary)
+            Spacer(Modifier.height(10.dp))
+            Text("Selected submission",style=MaterialTheme.typography.titleMedium)
+            Text(s.summary)
             if(s.fileLinks.isNotEmpty())Text("Files: ${s.fileLinks.joinToString()}")
-            OutlinedTextField(comment,{comment=it},label={Text("Review / revision feedback")},minLines=3,modifier=Modifier.fillMaxWidth())
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                Button(enabled=!busy,onClick={busy=true;scope.launch(Dispatchers.IO){runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.APPROVED,comment.trim()))}.onSuccess{withContext(Dispatchers.Main){busy=false;comment="";reload()}}.onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Approval failed."}}}}){Text("Approve")}
-                OutlinedButton(enabled=!busy,onClick={busy=true;scope.launch(Dispatchers.IO){runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.CHANGES_REQUESTED,comment.trim()))}.onSuccess{withContext(Dispatchers.Main){busy=false;comment="";reload()}}.onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Revision request failed."}}}}){Text("Request changes")}
+            if(!s.status.equals(WorkSubmissionStatus.APPROVED,true)){
+                OutlinedTextField(comment,{comment=it},label={Text("Review / revision feedback")},minLines=3,modifier=Modifier.fillMaxWidth())
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=!busy,onClick={
+                        busy=true
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.APPROVED,comment.trim()))}
+                                .onSuccess{withContext(Dispatchers.Main){busy=false;comment="";notice="Work approved. You can now complete the contract.";reload()}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Approval failed."}}
+                        }
+                    }){Text("Approve")}
+                    OutlinedButton(enabled=!busy,onClick={
+                        busy=true
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.CHANGES_REQUESTED,comment.trim()))}
+                                .onSuccess{withContext(Dispatchers.Main){busy=false;comment="";reload()}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Revision request failed."}}
+                        }
+                    }){Text("Request changes")}
+                }
+            } else {
+                val currentContract = contract
+                if(currentContract == null){
+                    Text("Contract details are not available yet.",color=MaterialTheme.colorScheme.error)
+                } else if(!currentContract.status.equals("completed",true)){
+                    Text("The approved delivery is ready. Confirm completion to record this job in the freelancer's work history.")
+                    Button(enabled=!busy,onClick={
+                        busy=true;error="";notice=""
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.completeContract(currentContract.id)}
+                                .onSuccess{withContext(Dispatchers.Main){busy=false;contract=currentContract.copy(status="completed");notice="Contract completed. Please rate the freelancer.";reload()}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Contract completion failed."}}
+                        }
+                    },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Completing…" else "Complete contract")}
+                } else if(existingReview != null){
+                    Text("Your review has been submitted.",style=MaterialTheme.typography.titleMedium)
+                    Text("${"★".repeat(existingReview!!.rating.coerceIn(0,5))}  ${existingReview!!.rating}/5")
+                    if(existingReview!!.reviewText.isNotBlank())Text(existingReview!!.reviewText)
+                } else {
+                    Text("Rate the freelancer's work quality",style=MaterialTheme.typography.titleMedium)
+                    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                        (1..5).forEach{star->
+                            IconButton(onClick={rating=star},enabled=!busy){
+                                Icon(if(star<=rating)Icons.Filled.Star else Icons.Filled.StarBorder,contentDescription="$star stars",tint=androidx.compose.ui.graphics.Color(0xFFFFB300))
+                            }
+                        }
+                        Text("$rating / 5")
+                    }
+                    OutlinedTextField(reviewText,{reviewText=it.take(2000)},label={Text("Write a review (optional)")},minLines=3,modifier=Modifier.fillMaxWidth())
+                    Button(enabled=!busy,onClick={
+                        busy=true;error="";notice=""
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.createFreelancerReview(currentContract.id,currentContract.freelancerId,rating,reviewText.trim())}
+                                .onSuccess{saved->withContext(Dispatchers.Main){busy=false;existingReview=saved;notice="Thank you. Your freelancer review has been published."}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Review submission failed."}}
+                        }
+                    },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Submit freelancer review")}
+                }
             }
         }
         TextButton(onClick=back){Text("Back")}
@@ -3259,6 +3296,7 @@ fun RemoteNotificationsScreen() {
 
 @Composable
 fun RemoteProfileScreen(
+    marketplace: RemoteMarketplaceRepository,
     account: RemoteAccountRepository,
     auth: com.freelancehub.app.auth.AuthService,
     edit: () -> Unit,
@@ -3266,6 +3304,9 @@ fun RemoteProfileScreen(
 ) {
     val context = LocalContext.current
     var profile by remember { mutableStateOf<RemoteAccount?>(null) }
+    var freelancerContracts by remember { mutableStateOf<List<RemoteContract>>(emptyList()) }
+    var freelancerReviews by remember { mutableStateOf<List<RemoteFreelancerReview>>(emptyList()) }
+    var activityError by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var savingPhoto by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
@@ -3276,11 +3317,19 @@ fun RemoteProfileScreen(
 
     fun load() {
         loading = true
+        activityError = ""
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
+            val loadedProfile = result.getOrNull()
+            val contractsResult = loadedProfile?.let { runCatching { marketplace.listFreelancerContracts(it.id) } }
+            val reviewsResult = loadedProfile?.let { runCatching { marketplace.listFreelancerReviews(it.id, 20) } }
             withContext(Dispatchers.Main) {
                 result.onSuccess { profile = it }
                     .onFailure { error = it.message ?: "Unable to load profile." }
+                contractsResult?.onSuccess { freelancerContracts = it }
+                    ?.onFailure { activityError = it.message ?: "Unable to load work history." }
+                reviewsResult?.onSuccess { freelancerReviews = it }
+                    ?.onFailure { activityError = it.message ?: "Unable to load freelancer reviews." }
                 loading = false
             }
         }
@@ -3461,6 +3510,62 @@ ElevatedCard(
                     else Text("Add a short introduction to your professional profile.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
                     if (p.capabilities.isNotBlank()) Text("Services: ${p.capabilities}")
                     if (p.skills.isNotBlank()) Text("Skills: ${p.skills}")
+                }
+            }
+
+            ElevatedCard(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+            ) {
+                val completedContracts = freelancerContracts.filter { it.status.equals("completed", true) }
+                val activeContracts = freelancerContracts.filter { it.status.equals("active", true) }
+                val earnedUsdMinor = completedContracts.filter { it.currency.equals("USD", true) }.sumOf { it.agreedBudgetMinor }
+                val earnedUsd = String.format(java.util.Locale.US, "$%.2f", earnedUsdMinor / 100.0)
+                val averageRating = if (freelancerReviews.isEmpty()) 0.0 else freelancerReviews.map { it.rating }.average()
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(completedContracts.size.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Completed jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(activeContracts.size.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Active jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(earnedUsd, style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Earned (USD)", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Text(
+                        if (freelancerReviews.isEmpty()) "No client reviews yet"
+                        else String.format(java.util.Locale.US, "★ %.1f average · %d reviews", averageRating, freelancerReviews.size),
+                        color = androidx.compose.ui.graphics.Color(0xFF9A6900),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (activityError.isNotBlank()) Text(activityError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            ElevatedCard(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Client Reviews", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                    if (freelancerReviews.isEmpty()) {
+                        Text("Completed client reviews will appear here.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                    } else {
+                        freelancerReviews.forEachIndexed { index, review ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("${"★".repeat(review.rating.coerceIn(0, 5))}  ${review.rating}/5", color = androidx.compose.ui.graphics.Color(0xFFFFB300), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                if (review.reviewText.isNotBlank()) Text(review.reviewText)
+                                Text("Verified completed contract", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            }
+                            if (index < freelancerReviews.lastIndex) Divider(color = androidx.compose.ui.graphics.Color(0xFFE7ECF5))
+                        }
+                    }
                 }
             }
         }
