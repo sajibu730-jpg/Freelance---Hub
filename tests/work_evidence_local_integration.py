@@ -92,6 +92,27 @@ def upload_signed(signed_url, token):
     )
 
 
+def sql_literal(value):
+    quote = chr(39)
+    return quote + str(value).replace(quote, quote + quote) + quote
+
+
+def create_auth_user(email):
+    _, created, _ = request(
+        "POST", AUTH + "/admin/users",
+        headers=headers(SERVICE, SERVICE),
+        body={"email": email, "password": PASSWORD, "email_confirm": True},
+        expected=(200, 201),
+    )
+    user = created.get("user", created)
+    _, session, _ = request(
+        "POST", AUTH + "/token?grant_type=password",
+        headers=headers(ANON),
+        body={"email": email, "password": PASSWORD},
+        expected=(200,),
+    )
+    return user["id"], session["access_token"]
+
 def main():
     # Gateway-level JWT verification must reject both missing and malformed tokens.
     request("POST", FUNCTIONS + "/work-evidence-api",
@@ -225,6 +246,59 @@ def main():
     }, expected=(409,))
     print("PASS: Owner events, required review notes, review transitions, and terminal-state lock")
 
+    # Verify real freelancer/client relationship checks against local Auth and DB rows.
+    freelancer_id, freelancer_token = create_auth_user("freelancer@example.invalid")
+    client_id, client_token = create_auth_user("client@example.invalid")
+    outsider_id, outsider_token = create_auth_user("outsider@example.invalid")
+    other_freelancer_id, other_freelancer_token = create_auth_user("other-freelancer@example.invalid")
+    job_one, job_two, job_three = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    contract_one, contract_two = str(uuid.uuid4()), str(uuid.uuid4())
+    submission_one, submission_no_contract, submission_mismatch = (str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()))
+    psql(
+        "INSERT INTO public.jobs(id, owner_id) VALUES (" + sql_literal(job_one) + ", " + sql_literal(client_id) + "), (" + sql_literal(job_two) + ", " + sql_literal(client_id) + "), (" + sql_literal(job_three) + ", " + sql_literal(client_id) + "); "
+        "INSERT INTO public.contracts(id, job_id, client_id, freelancer_id) VALUES (" + sql_literal(contract_one) + ", " + sql_literal(job_one) + ", " + sql_literal(client_id) + ", " + sql_literal(freelancer_id) + "), (" + sql_literal(contract_two) + ", " + sql_literal(job_two) + ", " + sql_literal(client_id) + ", " + sql_literal(other_freelancer_id) + "); "
+        "INSERT INTO public.work_submissions(id, job_id, contract_id, freelancer_id) VALUES (" + sql_literal(submission_one) + ", " + sql_literal(job_one) + ", " + sql_literal(contract_one) + ", " + sql_literal(freelancer_id) + "), (" + sql_literal(submission_no_contract) + ", " + sql_literal(job_two) + ", NULL, " + sql_literal(freelancer_id) + "), (" + sql_literal(submission_mismatch) + ", " + sql_literal(job_three) + ", " + sql_literal(contract_one) + ", " + sql_literal(other_freelancer_id) + "); "
+        "INSERT INTO public.proposals(id, job_id, freelancer_id) VALUES (" + sql_literal(str(uuid.uuid4())) + ", " + sql_literal(job_two) + ", " + sql_literal(outsider_id) + ");"
+    )
+    _, freelancer_evidence = api_action(freelancer_token, {
+        "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
+        "title": "Freelancer own submission", "description": "Valid participant evidence.",
+        "submission_id": submission_one,
+    })
+    assert freelancer_evidence.get("evidence", {}).get("submission_id") == submission_one, freelancer_evidence
+    _, client_evidence = api_action(client_token, {
+        "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
+        "title": "Client contract evidence", "description": "Valid client participant evidence.",
+        "contract_id": contract_one,
+    })
+    assert client_evidence.get("evidence", {}).get("contract_id") == contract_one, client_evidence
+    api_action(outsider_token, {
+        "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
+        "title": "Unrelated contract attempt", "description": "Must be denied.",
+        "contract_id": contract_one,
+    }, expected=(403,))
+    api_action(outsider_token, {
+        "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
+        "title": "Proposal is not submission ownership", "description": "Must be denied.",
+        "job_id": job_two, "submission_id": submission_no_contract,
+    }, expected=(403,))
+    api_action(freelancer_token, {
+        "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
+        "title": "Mismatched job", "description": "Must be rejected.",
+        "job_id": job_two, "submission_id": submission_one,
+    }, expected=(400,))
+    api_action(freelancer_token, {
+        "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
+        "title": "Mismatched contract", "description": "Must be rejected.",
+        "contract_id": contract_two, "submission_id": submission_one,
+    }, expected=(400,))
+    api_action(other_freelancer_token, {
+        "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
+        "title": "Wrong freelancer on contract", "description": "Must be denied.",
+        "contract_id": contract_one, "submission_id": submission_mismatch,
+    }, expected=(403,))
+    print("PASS: freelancer/client participation, unrelated-user denial, proposal boundary, and mismatched references")
+
     # Exercise the cleanup worker against an actual uploaded private object.
     cleanup_request_id = str(uuid.uuid4())
     _, cleanup_prepared = api_action(aal2, {
@@ -276,7 +350,7 @@ def main():
             headers={"apikey": ANON}, expected=(400, 401, 403, 404))
     print("PASS: cleanup worker enforces secret, removes exact private object, and finalizes queue")
 
-    print("LOCAL SUPABASE INTEGRATION PASS: Auth, TOTP/AAL2, Owner review/events, Edge JWT, private Storage, signed links, cleanup worker")
+    print("LOCAL SUPABASE INTEGRATION PASS: Auth, TOTP/AAL2, Owner review/events, participant relationships, Edge JWT, private Storage, signed links, cleanup worker")
 
 
 if __name__ == "__main__":
