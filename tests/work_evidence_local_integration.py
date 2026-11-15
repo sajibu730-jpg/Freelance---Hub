@@ -113,6 +113,18 @@ def create_auth_user(email):
     )
     return user["id"], session["access_token"]
 
+def assert_owner_endpoints_denied(access_token, reason):
+    payloads = [
+        {"action": "owner_list"},
+        {"action": "owner_review", "evidence_id": str(uuid.uuid4()), "status": "verified"},
+        {"action": "owner_download", "evidence_id": str(uuid.uuid4())},
+        {"action": "owner_events", "evidence_id": str(uuid.uuid4())},
+    ]
+    for payload in payloads:
+        status, _ = api_action(access_token, payload, expected=(403,))
+        assert status == 403, reason + ": " + payload["action"] + " returned " + str(status)
+
+
 def main():
     # Gateway-level JWT verification must reject both missing and malformed tokens.
     request("POST", FUNCTIONS + "/work-evidence-api",
@@ -232,11 +244,6 @@ def main():
         {"action": "owner_download", "evidence_id": evidence_id},
         {"action": "owner_events", "evidence_id": review_id},
     ]
-
-    def assert_owner_endpoints_denied(access_token, reason):
-        for payload in owner_endpoint_payloads:
-            status, _ = api_action(access_token, payload, expected=(403,))
-            assert status == 403, f"{reason}: {payload['action']} returned {status}"
 
     # A valid Owner role alone is insufficient: every privileged endpoint
     # must reject the pre-MFA AAL1 session even after the TOTP factor exists.
