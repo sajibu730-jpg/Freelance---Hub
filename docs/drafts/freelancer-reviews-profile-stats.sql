@@ -12,6 +12,7 @@ create table if not exists public.freelancer_reviews (
     rating smallint not null check (rating between 1 and 5),
     review_text text not null default '' check (char_length(review_text) <= 2000),
     created_at timestamptz not null default now(),
+    constraint freelancer_reviews_distinct_participants check (client_id <> freelancer_id),
     constraint freelancer_reviews_one_per_contract unique (contract_id)
 );
 
