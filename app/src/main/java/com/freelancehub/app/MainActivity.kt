@@ -2488,7 +2488,7 @@ fun RemoteHomeScreen(
     val me=repo.profile(); val allJobs=(DemoJobs.all+repo.savedJobs()).distinctBy{it.id}; val myJobs=allJobs.count{it.ownerEmail.equals(me.email,true)}; val myProposals=repo.proposals().count{it.freelancerEmail.equals(me.email,true)}; val saved=repo.favoriteJobIds().size
     LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
         item{Text("Welcome to Freelance Hub",style=MaterialTheme.typography.headlineMedium);Text("Work globally. Learn skills. Build your career.");Spacer(Modifier.height(16.dp));Text("Dashboard",style=MaterialTheme.typography.titleLarge);Spacer(Modifier.height(8.dp))
-            if(role==UserRole.CLIENT){Text("My jobs: $myJobs");Text("Activity updates: available in Messages")}else{Text("My proposals: $myProposals");Text("Saved jobs: $saved")}
+            if(role==UserRole.CLIENT){Text("My jobs: $myJobs");}else{Text("My proposals: $myProposals");Text("Saved jobs: $saved")}
             Text("Quick actions",style=MaterialTheme.typography.titleLarge);
             if(role==UserRole.CLIENT){Spacer(Modifier.height(10.dp));Button(onClick=onPostJob,modifier=Modifier.fillMaxWidth()){Text("Post a job")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onProjectAnalysis,modifier=Modifier.fillMaxWidth()){Text("Analyze My Project")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onMatching,modifier=Modifier.fillMaxWidth()){Text("Find My Job Matches") }} else {Spacer(Modifier.height(10.dp));Button(onClick=onWorkCheck,modifier=Modifier.fillMaxWidth()){Text("Check My Work")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onMatching,modifier=Modifier.fillMaxWidth()){Text("Find Jobs For Me")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onFreelancerAnalysis,modifier=Modifier.fillMaxWidth()){Text("Analyze My Freelancer Profile")}}
         }
@@ -2671,6 +2671,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             }
             result.onSuccess { data ->
                 submissions = data.first
+                selected = selected?.let { previous -> data.first.firstOrNull { it.id == previous.id } }
                 contract = data.second
                 existingReview = data.third
                 error = ""
@@ -3521,8 +3522,8 @@ ElevatedCard(
             ) {
                 val completedContracts = freelancerContracts.filter { it.status.equals("completed", true) }
                 val activeContracts = freelancerContracts.filter { it.status.equals("active", true) }
-                val earnedUsdMinor = completedContracts.filter { it.currency.equals("USD", true) }.sumOf { it.agreedBudgetMinor }
-                val earnedUsd = String.format(java.util.Locale.US, "$%.2f", earnedUsdMinor / 100.0)
+                val completedUsdMinor = completedContracts.filter { it.currency.equals("USD", true) }.sumOf { it.agreedBudgetMinor }
+                val completedUsd = String.format(java.util.Locale.US, "$%.2f", completedUsdMinor / 100.0)
                 val averageRating = if (freelancerReviews.isEmpty()) 0.0 else freelancerReviews.map { it.rating }.average()
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
@@ -3536,8 +3537,8 @@ ElevatedCard(
                             Text("Active jobs", style = MaterialTheme.typography.bodySmall)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(earnedUsd, style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                            Text("Earned (USD)", style = MaterialTheme.typography.bodySmall)
+                            Text(completedUsd, style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Completed value (USD)", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     Text(
