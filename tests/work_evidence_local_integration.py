@@ -247,10 +247,10 @@ def main():
     print("PASS: Owner events, required review notes, review transitions, and terminal-state lock")
 
     # Verify real freelancer/client relationship checks against local Auth and DB rows.
-    freelancer_id, freelancer_token = create_auth_user("freelancer@example.invalid")
-    client_id, client_token = create_auth_user("client@example.invalid")
-    outsider_id, outsider_token = create_auth_user("outsider@example.invalid")
-    other_freelancer_id, other_freelancer_token = create_auth_user("other-freelancer@example.invalid")
+    freelancer_id, freelancer_access = create_auth_user("freelancer@example.invalid")
+    client_id, client_access = create_auth_user("client@example.invalid")
+    outsider_id, outsider_access = create_auth_user("outsider@example.invalid")
+    other_freelancer_id, other_freelancer_access = create_auth_user("other-freelancer@example.invalid")
     job_one, job_two, job_three = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
     contract_one, contract_two = str(uuid.uuid4()), str(uuid.uuid4())
     submission_one, submission_no_contract, submission_mismatch = (str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()))
@@ -261,39 +261,39 @@ def main():
         "INSERT INTO public.proposals(id, job_id, freelancer_id) VALUES (" + sql_literal(str(uuid.uuid4())) + ", " + sql_literal(job_two) + ", " + sql_literal(outsider_id) + ");",
     ])
     psql(setup_sql)
-(freelancer_token, {
+    _, freelancer_evidence = api_action(freelancer_access, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Freelancer own submission", "description": "Valid participant evidence.",
         "submission_id": submission_one,
     })
     assert freelancer_evidence.get("evidence", {}).get("submission_id") == submission_one, freelancer_evidence
-    _, client_evidence = api_action(client_token, {
+    _, client_evidence = api_action(client_access, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Client contract evidence", "description": "Valid client participant evidence.",
         "contract_id": contract_one,
     })
     assert client_evidence.get("evidence", {}).get("contract_id") == contract_one, client_evidence
-    api_action(outsider_token, {
+    api_action(outsider_access, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Unrelated contract attempt", "description": "Must be denied.",
         "contract_id": contract_one,
     }, expected=(403,))
-    api_action(outsider_token, {
+    api_action(outsider_access, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Proposal is not submission ownership", "description": "Must be denied.",
         "job_id": job_two, "submission_id": submission_no_contract,
     }, expected=(403,))
-    api_action(freelancer_token, {
+    api_action(freelancer_access, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Mismatched job", "description": "Must be rejected.",
         "job_id": job_two, "submission_id": submission_one,
     }, expected=(400,))
-    api_action(freelancer_token, {
+    api_action(freelancer_access, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Mismatched contract", "description": "Must be rejected.",
         "contract_id": contract_two, "submission_id": submission_one,
     }, expected=(400,))
-    api_action(other_freelancer_token, {
+    api_action(other_freelancer_access, {
         "action": "submit_note", "request_id": str(uuid.uuid4()), "origin": "in_app",
         "title": "Wrong freelancer on contract", "description": "Must be denied.",
         "contract_id": contract_one, "submission_id": submission_mismatch,
