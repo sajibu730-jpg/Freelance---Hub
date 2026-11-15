@@ -180,6 +180,7 @@ def main():
     _, download = api_action(aal2, {
         "action": "owner_download", "evidence_id": evidence_id,
     })
+    assert download.get("expires_in_seconds") == 300, download
     parsed_download = urllib.parse.urlsplit(download["signed_download_url"])
     signed_download = API + parsed_download.path + (("?" + parsed_download.query) if parsed_download.query else "") if parsed_download.scheme else urllib.parse.urljoin(API + "/", download["signed_download_url"])
     _, _, downloaded = request("GET", signed_download, expected=(200,))
@@ -254,11 +255,18 @@ def main():
         f"WHERE evidence_id='{cleanup_id}';"
     )
     assert final_state == "completed", f"Cleanup queue not completed: {final_state!r}"
+    _, remaining, _ = request(
+        "POST", STORAGE + "/object/list/work-evidence-private",
+        headers=headers(SERVICE, SERVICE),
+        body={"prefix": f"{owner_id}/{cleanup_id}", "limit": 10},
+        expected=(200,),
+    )
+    assert not any(item.get("name") == "proof" for item in remaining), remaining
     request("GET", direct_url.replace(evidence_path, cleanup_path),
             headers={"apikey": ANON}, expected=(400, 401, 403, 404))
     print("PASS: cleanup worker enforces secret, removes exact private object, and finalizes queue")
 
-    print("LOCAL SUPABASE INTEGRATION PASS: Auth, TOTP/AAL2, Edge JWT, private Storage, signed links, cleanup worker")
+    print("LOCAL SUPABASE INTEGRATION PASS: Auth, TOTP/AAL2, Owner review/events, Edge JWT, private Storage, signed links, cleanup worker")
 
 
 if __name__ == "__main__":
