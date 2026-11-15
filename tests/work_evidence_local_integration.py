@@ -219,6 +219,48 @@ def main():
         "description": "Synthetic note for Owner review and audit timeline tests.",
     })
     review_id = note_result["evidence"]["id"]
+
+    # Every privileged Owner endpoint must independently reject non-Owners,
+    # ambiguous multiple-Owner configuration, and an inactive primary Owner.
+    owner_endpoint_payloads = [
+        {"action": "owner_list"},
+        {"action": "owner_review", "evidence_id": review_id, "status": "verified"},
+        {"action": "owner_download", "evidence_id": evidence_id},
+        {"action": "owner_events", "evidence_id": review_id},
+    ]
+
+    def assert_owner_endpoints_denied(access_token, reason):
+        for payload in owner_endpoint_payloads:
+            status, _ = api_action(access_token, payload, expected=(403,))
+            assert status == 403, f"{reason}: {payload['action']} returned {status}"
+
+    non_owner_id, non_owner_access = create_auth_user("non-owner@example.invalid")
+    assert_owner_endpoints_denied(non_owner_access, "Non-Owner access must be denied")
+    print("PASS: all four privileged Owner endpoints reject a normal authenticated user")
+
+    second_owner_id, _ = create_auth_user("second-owner@example.invalid")
+    psql(
+        "INSERT INTO public.app_admins(user_id, role, is_active) "
+        f"VALUES ('{second_owner_id}', 'owner', true);"
+    )
+    assert_owner_endpoints_denied(aal2, "Multiple active Owners must fail closed")
+    psql(
+        "UPDATE public.app_admins SET is_active=false "
+        f"WHERE user_id='{second_owner_id}' AND role='owner';"
+    )
+    print("PASS: all four privileged Owner endpoints fail closed when multiple active Owners exist")
+
+    psql(
+        "UPDATE public.app_admins SET is_active=false "
+        f"WHERE user_id='{owner_id}' AND role='owner';"
+    )
+    assert_owner_endpoints_denied(aal2, "Inactive primary Owner must be denied")
+    psql(
+        "UPDATE public.app_admins SET is_active=true "
+        f"WHERE user_id='{owner_id}' AND role='owner';"
+    )
+    print("PASS: all four privileged Owner endpoints reject an inactive primary Owner")
+
     _, initial_events = api_action(aal2, {"action": "owner_events", "evidence_id": review_id})
     assert initial_events.get("events"), "Initial submission audit event is missing"
     api_action(aal2, {
