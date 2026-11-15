@@ -170,12 +170,17 @@ jobs:
           supabase start --help
           supabase status --help
           supabase functions serve --help
-      - name: Start disposable local Supabase services
+      - name: Start isolated local Supabase services without app migrations
         run: |
+          mkdir -p /tmp/work-evidence-supabase/supabase
+          cp supabase/config.toml /tmp/work-evidence-supabase/supabase/config.toml
+          ln -s "$GITHUB_WORKSPACE/supabase/functions" /tmp/work-evidence-supabase/supabase/functions
+          cd /tmp/work-evidence-supabase
           supabase start --exclude studio,logflare,vector,supavisor,postgres-meta,imgproxy,mailpit
       - name: Export ephemeral local connection values
         shell: bash
         run: |
+          cd /tmp/work-evidence-supabase
           eval "$(supabase status -o env)"
           {
             echo "LOCAL_SUPABASE_URL=$API_URL"
@@ -198,6 +203,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY=$LOCAL_SUPABASE_SERVICE_ROLE_KEY
           WORK_EVIDENCE_CLEANUP_SECRET=ci-only-cleanup-secret-never-reuse
           EOF
+          cd /tmp/work-evidence-supabase
           supabase functions serve --env-file /tmp/work-evidence-functions.env \
             > /tmp/work-evidence-functions.log 2>&1 &
           echo $! > /tmp/work-evidence-functions.pid
@@ -219,4 +225,4 @@ jobs:
         run: python3 tests/work_evidence_local_integration.py
       - name: Stop disposable local Supabase stack
         if: always()
-        run: supabase stop --no-backup || true
+        run: cd /tmp/work-evidence-supabase && supabase stop --no-backup || true
