@@ -28,6 +28,10 @@ double_confirm_changes = false
 enable_confirmations = false
 otp_length = 8
 
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [storage]
 enabled = true
 file_size_limit = "10MiB"
