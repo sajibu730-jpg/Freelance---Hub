@@ -122,7 +122,7 @@ begin
     if sqlerrm <> 'CONTRACT_NOT_READY_OR_NOT_AUTHORIZED' then raise; end if;
   end;
 end
-$;
+$$;
 
 -- A client may create one review for their completed contract.
 insert into public.freelancer_reviews
