@@ -29,11 +29,11 @@ drop policy if exists "Authenticated users can read freelancer reviews" on publi
 -- The policy must not query contracts directly: authenticated has no table
 -- SELECT grant in Production. A narrow helper performs only this authorization
 -- check from a non-exposed schema; it returns no contract or client data.
-create schema if not exists private;
-revoke all on schema private from public, anon;
-grant usage on schema private to authenticated;
+create schema if not exists freelance_hub_private;
+revoke all on schema freelance_hub_private from public, anon;
+grant usage on schema freelance_hub_private to authenticated;
 
-create or replace function private.can_review_completed_contract(
+create or replace function freelance_hub_private.can_review_completed_contract(
     p_contract_id uuid,
     p_freelancer_id uuid
 )
@@ -54,8 +54,8 @@ as $function$
        );
 $function$;
 
-revoke all on function private.can_review_completed_contract(uuid, uuid) from public, anon;
-grant execute on function private.can_review_completed_contract(uuid, uuid) to authenticated;
+revoke all on function freelance_hub_private.can_review_completed_contract(uuid, uuid) from public, anon;
+grant execute on function freelance_hub_private.can_review_completed_contract(uuid, uuid) to authenticated;
 
 drop policy if exists "Completed contract clients can review freelancer" on public.freelancer_reviews;
 create policy "Completed contract clients can review freelancer"
@@ -64,7 +64,7 @@ create policy "Completed contract clients can review freelancer"
     to authenticated
     with check (
         client_id = (select auth.uid())
-        and private.can_review_completed_contract(contract_id, freelancer_id)
+        and freelance_hub_private.can_review_completed_contract(contract_id, freelancer_id)
     );
 
 -- A contract can be completed only by its client and only after at least one
