@@ -158,6 +158,10 @@ def main():
         expected=(200, 201),
     )
     factor_id = factor["id"]
+    # Enrollment alone is not verification: a pending/unverified TOTP factor
+    # must not unlock any privileged Owner endpoint.
+    assert_owner_endpoints_denied(aal1, "Unverified TOTP enrollment must not unlock Owner API access")
+    print("PASS: all four privileged Owner endpoints reject an unverified TOTP enrollment")
     secret = factor["totp"]["secret"]
     _, challenge, _ = request(
         "POST", AUTH + f"/factors/{factor_id}/challenge",
