@@ -103,7 +103,7 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -f tests/work_evidence_local_assertions.sql
+            -f tests/work_evidence_schema_draft.assertions.sql
       - name: Verify atomic quota under concurrent submissions
         env:
           PGPASSWORD: postgres
