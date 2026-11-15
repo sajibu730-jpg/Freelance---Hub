@@ -58,6 +58,50 @@ class RemoteAccountRepository(
         )
     }
 
+    /** Loads the explicitly public profile payload through the authenticated RPC. */
+    fun getPublicFreelancerProfile(freelancerId: String): RemotePublicFreelancerProfile {
+        require(freelancerId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val token = accessTokenProvider()
+            ?: throw IllegalStateException("Please sign in to view freelancer profiles")
+        val payload = JSONObject().put("p_freelancer_id", freelancerId)
+            .toString().toByteArray(StandardCharsets.UTF_8)
+        val bytes = client.readJsonResponse(
+            client.openJsonPost(
+                "/rest/v1/rpc/get_public_freelancer_profile",
+                payload,
+                token,
+                SecureApiClient.newIdempotencyKey()
+            )
+        )
+        val value = JSONObject(String(bytes, StandardCharsets.UTF_8))
+        val reviewsJson = value.optJSONArray("reviews") ?: JSONArray()
+        val reviews = (0 until reviewsJson.length()).map { index ->
+            val review = reviewsJson.getJSONObject(index)
+            RemotePublicFreelancerReview(
+                id = review.optString("id"),
+                rating = review.optInt("rating"),
+                reviewText = review.optString("review_text"),
+                createdAt = review.optString("created_at")
+            )
+        }
+        return RemotePublicFreelancerProfile(
+            id = value.getString("id"),
+            displayName = value.optString("display_name"),
+            photoPath = value.optString("photo_url").takeIf { it.isNotBlank() },
+            coverPhotoUrl = value.optString("cover_photo_url").takeIf { it.isNotBlank() },
+            country = value.optString("country"),
+            bio = value.optString("bio"),
+            capabilities = value.optString("capabilities"),
+            skills = value.optString("skills"),
+            completedJobs = value.optInt("completed_jobs"),
+            activeJobs = value.optInt("active_jobs"),
+            completedUsdMinor = value.optLong("completed_usd_minor"),
+            averageRating = value.optDouble("average_rating"),
+            reviewCount = value.optInt("review_count"),
+            reviews = reviews
+        )
+    }
+
     /**
      * Checks the server-recorded six-month mobile-number cooldown before asking
      * Supabase Auth to change the verified phone number.
@@ -362,4 +406,28 @@ data class RemoteProfileUpdate(
     val capabilities: String,
         val skills: String,
     val mobileNumber: String? = null
+)
+
+data class RemotePublicFreelancerProfile(
+    val id: String,
+    val displayName: String,
+    val photoPath: String?,
+    val coverPhotoUrl: String?,
+    val country: String,
+    val bio: String,
+    val capabilities: String,
+    val skills: String,
+    val completedJobs: Int,
+    val activeJobs: Int,
+    val completedUsdMinor: Long,
+    val averageRating: Double,
+    val reviewCount: Int,
+    val reviews: List<RemotePublicFreelancerReview>
+)
+
+data class RemotePublicFreelancerReview(
+    val id: String,
+    val rating: Int,
+    val reviewText: String,
+    val createdAt: String
 )
