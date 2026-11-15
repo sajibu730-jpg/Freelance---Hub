@@ -52,3 +52,11 @@
 4. Install the generated APK on a physical Android device and test the full client completion/review flow.
 5. Verify public profile RPC returns no email/mobile fields and correct contract/review aggregates in Staging.
 6. Do not merge or deploy to Production until the Owner explicitly approves the schema and release.
+
+## No-cost database test route
+
+- The repository includes an isolated PostgreSQL 17 test harness at `tests/sql/freelancer-reviews-postgres-test.sql`.
+- The Android Build workflow now includes a separate PostgreSQL service job that runs only against synthetic test identities and schema.
+- The harness checks approved-submission completion, idempotent completion, pending-work rejection, one-review-per-contract, wrong-client rejection, freelancer self-review rejection, aggregate counts/value/rating, and omission of email/mobile from the public payload.
+- This route does not create a Supabase branch or connect to Production. GitHub Actions usage remains subject to the repository's included runner quota.
+- A local PostgreSQL pass is not a full Supabase Staging pass: Supabase Auth, PostgREST exposure, actual production RLS policies/triggers, and Android-to-Supabase end-to-end behavior still require separate verification before Production release.
