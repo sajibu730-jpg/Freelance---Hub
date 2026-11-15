@@ -448,9 +448,30 @@ def main():
     assert queue_state == "pending", f"Expected durable cleanup queue row, got {queue_state!r}"
 
     worker_url = FUNCTIONS + "/work-evidence-cleanup"
+    # The gateway must reject missing/invalid JWTs before the worker runs.
+    request("POST", worker_url,
+            headers={"apikey": ANON, "Content-Type": "application/json",
+                     "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
+            body={}, expected=(401, 403))
+    request("POST", worker_url,
+            headers={**headers(SERVICE, "not-a-valid-jwt"),
+                     "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
+            body={}, expected=(401, 403))
+    # A valid but insufficient anon JWT must not satisfy the service-role check.
+    request("POST", worker_url,
+            headers={**headers(SERVICE, ANON),
+                     "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
+            body={}, expected=(401,))
+    request("POST", worker_url,
+            headers={**headers(SERVICE, SERVICE), "x-work-evidence-cleanup-secret": ""},
+            body={}, expected=(401,))
     request("POST", worker_url,
             headers={**headers(SERVICE, SERVICE), "x-work-evidence-cleanup-secret": "wrong"},
             body={}, expected=(401,))
+    request("GET", worker_url,
+            headers={**headers(SERVICE, SERVICE),
+                     "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
+            expected=(405,))
     _, cleanup_result, _ = request(
         "POST", worker_url,
         headers={**headers(SERVICE, SERVICE), "x-work-evidence-cleanup-secret": CLEANUP_SECRET},
