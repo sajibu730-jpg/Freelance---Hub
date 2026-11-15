@@ -10,6 +10,9 @@
 - Freelancer profile shows completed contracts, active contracts, and completed USD contract value.
 - Non-USD contract values are not silently converted or mixed into the USD total.
 - Freelancer profile shows client review average and recent written reviews.
+- A client can open the assigned freelancer's public profile from the client work-review screen.
+- Public profile shows display name, country, bio, services/skills, completed jobs, active jobs, completed USD value, average rating, review count, and recent reviews.
+- Public profile RPC never returns email, mobile number, or other private account identifiers beyond the profile UUID.
 - Empty history and empty review states render without errors.
 
 ## Contract completion
@@ -30,6 +33,7 @@
 - A client cannot review an active, cancelled, or disputed contract.
 - A freelancer cannot submit a review for their own work.
 - Authenticated users can read public freelancer reviews; unauthenticated users cannot.
+- Public freelancer profile RPC requires an authenticated session and returns only explicitly public profile fields.
 - Direct update/delete of reviews is not granted.
 
 ## Profile statistics
@@ -46,4 +50,5 @@
 2. Apply the draft SQL only to a separately approved disposable/Staging Supabase project.
 3. Run the authorization and constraint tests above using two client identities and at least one freelancer identity.
 4. Install the generated APK on a physical Android device and test the full client completion/review flow.
-5. Do not merge or deploy to Production until the Owner explicitly approves the schema and release.
+5. Verify public profile RPC returns no email/mobile fields and correct contract/review aggregates in Staging.
+6. Do not merge or deploy to Production until the Owner explicitly approves the schema and release.
