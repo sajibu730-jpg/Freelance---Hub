@@ -2064,6 +2064,7 @@ fun RemoteHomeScreen(
 ) {
     var me by remember { mutableStateOf<RemoteAccount?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var homeSearchQuery by remember { mutableStateOf("") }
     var jobs by remember { mutableStateOf<List<RemoteJob>>(emptyList()) }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
@@ -2433,6 +2434,33 @@ fun RemoteHomeScreen(
         }
 
         item {
+            OutlinedTextField(
+                value = homeSearchQuery,
+                onValueChange = { homeSearchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search jobs or skills") },
+                leadingIcon = {
+                    Icon(Icons.Filled.Search, contentDescription = "Search jobs", tint = blue)
+                },
+                trailingIcon = {
+                    if (homeSearchQuery.isNotBlank()) {
+                        IconButton(onClick = { homeSearchQuery = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = blue,
+                    unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFFDCE5F2),
+                    focusedContainerColor = white,
+                    unfocusedContainerColor = white
+                )
+            )
+        }
+
+        item {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     "Live Dashboard",
@@ -2633,7 +2661,12 @@ fun RemoteHomeScreen(
             }
         }
 
-        items(jobs.take(5)) { job ->
+        items(
+            jobs.filter { job ->
+                homeSearchQuery.isBlank() ||
+                    job.title.contains(homeSearchQuery.trim(), ignoreCase = true)
+            }.take(5)
+        ) { job ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
