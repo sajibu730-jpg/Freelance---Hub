@@ -3580,7 +3580,7 @@ fun RemoteProfileScreen(
                 Column(Modifier.fillMaxWidth().padding(top = 142.dp)) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.Bottom,
+                        verticalAlignment = androidx.compose.ui.Alignment.Top,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Box {
@@ -3616,7 +3616,7 @@ fun RemoteProfileScreen(
                                 Icon(Icons.Filled.CameraAlt, contentDescription = "Change profile photo", tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(18.dp))
                             }
                         }
-                        Column(Modifier.weight(1f).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Column(Modifier.weight(1f).padding(top = 52.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(p.displayName.ifBlank { "Your profile" }, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
                             Text(role.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
                             Text("Member Since · ${formatMemberSince(p.createdAt)}", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
