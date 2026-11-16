@@ -126,7 +126,7 @@ $$;
 
 -- A client may create one review for their completed contract.
 insert into public.freelancer_reviews
-  (contract_id, client_id, freelancer_id, rating, review_text)
+  (contract_id, freelancer_id, rating, review_text)
 values
   ('a0000000-0000-0000-0000-000000000001',
    '10000000-0000-0000-0000-000000000001',
@@ -181,7 +181,7 @@ do $review_validation$
 begin
   begin
     insert into public.freelancer_reviews
-      (contract_id, client_id, freelancer_id, rating, review_text)
+      (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
        '10000000-0000-0000-0000-000000000001',
@@ -192,7 +192,7 @@ begin
 
   begin
     insert into public.freelancer_reviews
-      (contract_id, client_id, freelancer_id, rating, review_text)
+      (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000003',
        '10000000-0000-0000-0000-000000000001',
@@ -203,7 +203,7 @@ begin
 
   begin
     insert into public.freelancer_reviews
-      (contract_id, client_id, freelancer_id, rating, review_text)
+      (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
        '10000000-0000-0000-0000-000000000001',
@@ -214,7 +214,7 @@ begin
 
   begin
     insert into public.freelancer_reviews
-      (contract_id, client_id, freelancer_id, rating, review_text)
+      (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
        '10000000-0000-0000-0000-000000000001',
@@ -225,7 +225,7 @@ begin
 
   begin
     insert into public.freelancer_reviews
-      (contract_id, client_id, freelancer_id, rating, review_text)
+      (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
        '10000000-0000-0000-0000-000000000001',
@@ -251,7 +251,7 @@ begin
 
   begin
     insert into public.freelancer_reviews
-      (contract_id, client_id, freelancer_id, rating, review_text)
+      (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
        '30000000-0000-0000-0000-000000000003',
@@ -276,7 +276,7 @@ begin
 
   begin
     insert into public.freelancer_reviews
-      (contract_id, client_id, freelancer_id, rating, review_text)
+      (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
        '20000000-0000-0000-0000-000000000002',
