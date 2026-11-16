@@ -1838,20 +1838,18 @@ Surface(
             auth::accessTokenForApiBlocking
         )
     }
-    val cachedProfile = remember(repo) {
-        repo.profile().let { cached ->
-            RemoteAccount(
-                id = "",
-                coverPhotoUrl = null,
-                photoPath = null,
-                email = cached.email,
-                displayName = cached.name,
-                bio = cached.bio,
-                role = cached.role,
-                capabilities = cached.capabilities,
-                skills = cached.skills
-            )
-        }
+    val cachedProfile = repo.cachedRemoteProfile() ?: repo.profile().let { cached ->
+        RemoteAccount(
+            id = "",
+            coverPhotoUrl = null,
+            photoPath = null,
+            email = cached.email,
+            displayName = cached.name,
+            bio = cached.bio,
+            role = cached.role,
+            capabilities = cached.capabilities,
+            skills = cached.skills
+        )
     }
     var tab by remember{mutableStateOf(0)}
     var editing by remember{mutableStateOf(false)}
@@ -1981,12 +1979,12 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
-            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()},initialProfile=cachedProfile)
+            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()},initialProfile=cachedProfile,cacheRepo=repo)
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteAccount,auth,{showSettings=true},{logout()},initialProfile=cachedProfile)
+            else->RemoteProfileScreen(remoteAccount,auth,{showSettings=true},{logout()},initialProfile=cachedProfile,cacheRepo=repo)
         }}
     }
 }
@@ -3278,7 +3276,8 @@ fun RemoteProfileScreen(
     auth: com.freelancehub.app.auth.AuthService,
     edit: () -> Unit,
     logout: () -> Unit,
-    initialProfile: RemoteAccount? = null
+    initialProfile: RemoteAccount? = null,
+    cacheRepo: AppRepository? = null
 ) {
     val context = LocalContext.current
     var profile by remember(initialProfile) { mutableStateOf(initialProfile) }
@@ -3297,8 +3296,10 @@ fun RemoteProfileScreen(
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
             withContext(Dispatchers.Main) {
-                result.onSuccess { profile = it }
-                    .onFailure { error = it.message ?: "Unable to load profile." }
+                result.onSuccess {
+                    profile = it
+                    cacheRepo?.cacheRemoteProfile(it)
+                }.onFailure { error = it.message ?: "Unable to load profile." }
                 loading = false
             }
         }
@@ -3357,22 +3358,44 @@ fun RemoteProfileScreen(
     LaunchedEffect(Unit) { load() }
     LaunchedEffect(profile?.photoPath, profile?.coverPhotoUrl) {
         val current = profile
-        profileBitmap = null
-        coverBitmap = null
         if (current != null) {
             withContext(Dispatchers.IO) {
-                val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
-                    runCatching { account.downloadProfilePhoto(path).let { bytes -> android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
+                // Paint previously saved private image bytes first; network refresh follows.
+                val cachedPhoto = cacheRepo?.cachedProfileImage("profile")?.let { bytes ->
+                    runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
                 }
-                val cover = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
-                    runCatching { java.net.URL(url).openConnection().apply {
-                        connectTimeout = 10000
-                        readTimeout = 10000
-                    }.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) } }.getOrNull()
+                val cachedCover = cacheRepo?.cachedProfileImage("cover")?.let { bytes ->
+                    runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
                 }
                 withContext(Dispatchers.Main) {
-                    profileBitmap = photo
-                    coverBitmap = cover
+                    if (cachedPhoto != null) profileBitmap = cachedPhoto
+                    if (cachedCover != null) coverBitmap = cachedCover
+                }
+
+                val photoBytes = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                    runCatching { account.downloadProfilePhoto(path) }.getOrNull()
+                }
+                val photo = photoBytes?.let { bytes ->
+                    runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                }
+                if (photoBytes != null && photo != null) runCatching { cacheRepo?.cacheProfileImage("profile", photoBytes) }
+
+                val coverBytes = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
+                    runCatching {
+                        java.net.URL(url).openConnection().apply {
+                            connectTimeout = 10000
+                            readTimeout = 10000
+                        }.getInputStream().use { it.readBytes() }
+                    }.getOrNull()
+                }
+                val cover = coverBytes?.let { bytes ->
+                    runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                }
+                if (coverBytes != null && cover != null) runCatching { cacheRepo?.cacheProfileImage("cover", coverBytes) }
+
+                withContext(Dispatchers.Main) {
+                    if (photo != null) profileBitmap = photo
+                    if (cover != null) coverBitmap = cover
                 }
             }
         }
