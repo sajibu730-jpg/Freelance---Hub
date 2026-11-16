@@ -1850,22 +1850,71 @@ Surface(
     var activityVersion by remember{mutableStateOf(0)}
     var showExitDialog by remember { mutableStateOf(false) }
 
-    // Warm profile data and media while the Home screen is visible.
-    LaunchedEffect(remoteAccount, role) {
+    // Seed the profile screen from private local cache before any network work.
+    remember(repo) {
+        repo.cachedRemoteProfile()?.let { cached ->
+            RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                cached, emptyList(), null, null, null
+            )
+        }
+    }
+
+    // Warm the current account in the background. Publish basic profile data first;
+    // reviews, statistics and media must never block the profile's first paint.
+    LaunchedEffect(remoteAccount, remoteMarketplace, role) {
         withContext(Dispatchers.IO) {
             val loaded = runCatching { remoteAccount.currentUser() }.getOrNull()
                 ?: return@withContext
-            val reviews = if (role == UserRole.FREELANCER) {
-                runCatching { remoteMarketplace.listFreelancerReviews(loaded.id, 20) }.getOrDefault(emptyList())
-            } else emptyList()
-            val publicStats = if (role == UserRole.FREELANCER) {
-                runCatching { remoteAccount.getPublicFreelancerProfile(loaded.id) }.getOrNull()
-            } else null
-            val photo = loaded.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
-                runCatching { remoteAccount.downloadProfilePhoto(path).let { BitmapFactory.decodeByteArray(it, 0, it.size) } }.getOrNull()
+            repo.cacheRemoteProfile(loaded)
+
+            val cachedPhotoBytes = repo.cachedProfileImage("profile")
+            val cachedCoverBytes = repo.cachedProfileImage("cover")
+            val cachedPhoto = cachedPhotoBytes?.let { bytes ->
+                runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
             }
-            val cover = loaded.coverPhotoUrl?.let(::loadRemoteCoverBitmap)
-            RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(loaded, reviews, publicStats, photo, cover)
+            val cachedCover = cachedCoverBytes?.let { bytes ->
+                runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+            }
+            RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                loaded, emptyList(), null, cachedPhoto, cachedCover
+            )
+
+            coroutineScope {
+                val reviewsTask = async {
+                    if (role == UserRole.FREELANCER) runCatching {
+                        remoteMarketplace.listFreelancerReviews(loaded.id, 20)
+                    }.getOrDefault(emptyList()) else emptyList()
+                }
+                val statsTask = async {
+                    if (role == UserRole.FREELANCER) runCatching {
+                        remoteAccount.getPublicFreelancerProfile(loaded.id)
+                    }.getOrNull() else null
+                }
+                val photoTask = async {
+                    if (cachedPhoto != null) cachedPhoto else loaded.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                        runCatching {
+                            remoteAccount.downloadProfilePhoto(path).also { bytes ->
+                                repo.cacheProfileImage("profile", bytes)
+                            }.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                        }.getOrNull()
+                    }
+                }
+                val coverTask = async {
+                    if (cachedCover != null) cachedCover else loaded.coverPhotoUrl?.let { url ->
+                        runCatching {
+                            java.net.URL(url).openConnection().apply {
+                                connectTimeout = 5000
+                                readTimeout = 5000
+                            }.getInputStream().use { it.readBytes() }.also { bytes ->
+                                repo.cacheProfileImage("cover", bytes)
+                            }.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                        }.getOrNull()
+                    }
+                }
+                RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                    loaded, reviewsTask.await(), statsTask.await(), photoTask.await(), coverTask.await()
+                )
+            }
         }
     }
 
@@ -1985,12 +2034,12 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
-            editing->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{editing=false},{logout()})
+            editing->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{editing=false},{logout()},cacheRepo=repo)
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{showSettings=true},{logout()})
+            else->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{showSettings=true},{logout()},cacheRepo=repo)
         }}
     }
 }
@@ -3327,7 +3376,8 @@ fun RemoteProfileScreen(
     role: UserRole,
     auth: com.freelancehub.app.auth.AuthService,
     edit: () -> Unit,
-    logout: () -> Unit
+    logout: () -> Unit,
+    cacheRepo: AppRepository? = null
 ) {
     val context = LocalContext.current
     val cached = RemoteProfileScreenCache.value
@@ -3349,21 +3399,39 @@ fun RemoteProfileScreen(
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
             val loadedProfile = result.getOrNull()
-            val reviewsResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { marketplace.listFreelancerReviews(it.id, 20) } }
-            val publicProfileResult = loadedProfile?.takeIf { role == UserRole.FREELANCER }?.let { runCatching { account.getPublicFreelancerProfile(it.id) } }
             withContext(Dispatchers.Main) {
-                result.onSuccess { profile = it }
-                    .onFailure { error = it.message ?: "Unable to load profile." }
-                reviewsResult?.onSuccess { freelancerReviews = it }
-                    ?.onFailure { activityError = it.message ?: "Unable to load freelancer reviews." }
-                publicProfileResult?.onSuccess { freelancerPublicProfile = it }
-                    ?.onFailure { activityError = it.message ?: "Unable to load lifetime rating summary." }
-                profile?.let { loaded ->
+                result.onSuccess {
+                    profile = it
+                    cacheRepo?.cacheRemoteProfile(it)
+                    loading = false
                     RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
-                        loaded, freelancerReviews, freelancerPublicProfile, profileBitmap, coverBitmap
+                        it, freelancerReviews, freelancerPublicProfile, profileBitmap, coverBitmap
                     )
+                }.onFailure {
+                    error = it.message ?: "Unable to load profile."
+                    loading = false
                 }
-                loading = false
+            }
+            if (loadedProfile != null && role == UserRole.FREELANCER) {
+                coroutineScope {
+                    val reviewsTask = async(Dispatchers.IO) {
+                        runCatching { marketplace.listFreelancerReviews(loadedProfile.id, 20) }
+                    }
+                    val statsTask = async(Dispatchers.IO) {
+                        runCatching { account.getPublicFreelancerProfile(loadedProfile.id) }
+                    }
+                    val reviewsResult = reviewsTask.await()
+                    val statsResult = statsTask.await()
+                    withContext(Dispatchers.Main) {
+                        reviewsResult.onSuccess { freelancerReviews = it }
+                            .onFailure { activityError = it.message ?: "Unable to load freelancer reviews." }
+                        statsResult.onSuccess { freelancerPublicProfile = it }
+                            .onFailure { activityError = it.message ?: "Unable to load lifetime rating summary." }
+                        RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                            loadedProfile, freelancerReviews, freelancerPublicProfile, profileBitmap, coverBitmap
+                        )
+                    }
+                }
             }
         }
     }
@@ -3425,14 +3493,38 @@ fun RemoteProfileScreen(
         val current = profile
         if (current != null && (profileBitmap == null || coverBitmap == null)) {
             withContext(Dispatchers.IO) {
-                val photo = if (profileBitmap == null) current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
-                    runCatching { account.downloadProfilePhoto(path).let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
+                val cachedPhoto = if (profileBitmap == null) cacheRepo?.cachedProfileImage("profile")?.let { bytes ->
+                    runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
                 } else profileBitmap
-                val cover = if (coverBitmap == null) current.coverPhotoUrl?.let(::loadRemoteCoverBitmap) else coverBitmap
+                val cachedCover = if (coverBitmap == null) cacheRepo?.cachedProfileImage("cover")?.let { bytes ->
+                    runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                } else coverBitmap
                 withContext(Dispatchers.Main) {
-                    profileBitmap = photo
-                    coverBitmap = cover
-                    RemoteProfileScreenCache.value = RemoteProfileScreenCache.value?.copy(profileBitmap = photo, coverBitmap = cover)
+                    if (cachedPhoto != null) profileBitmap = cachedPhoto
+                    if (cachedCover != null) coverBitmap = cachedCover
+                }
+                val photo = if (cachedPhoto == null) current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                    runCatching {
+                        account.downloadProfilePhoto(path).also { bytes -> cacheRepo?.cacheProfileImage("profile", bytes) }
+                            .let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                    }.getOrNull()
+                } else cachedPhoto
+                val cover = if (cachedCover == null) current.coverPhotoUrl?.let { url ->
+                    runCatching {
+                        java.net.URL(url).openConnection().apply {
+                            connectTimeout = 5000
+                            readTimeout = 5000
+                        }.getInputStream().use { it.readBytes() }.also { bytes ->
+                            cacheRepo?.cacheProfileImage("cover", bytes)
+                        }.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                    }.getOrNull()
+                } else cachedCover
+                withContext(Dispatchers.Main) {
+                    if (photo != null) profileBitmap = photo
+                    if (cover != null) coverBitmap = cover
+                    RemoteProfileScreenCache.value = RemoteProfileScreenCache.value?.copy(
+                        profileBitmap = profileBitmap, coverBitmap = coverBitmap
+                    )
                 }
             }
         }
