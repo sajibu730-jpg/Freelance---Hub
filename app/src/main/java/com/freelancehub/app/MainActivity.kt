@@ -2376,16 +2376,27 @@ fun RemoteHomeScreen(
                                 verticalArrangement = Arrangement.spacedBy(9.dp)
                             ) {
                                 Text(
-                                    "Your work. Your world.\nYour future.",
+                                    "Global Freelance\\nMarketplace",
                                     color = white,
                                     style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
                                 )
                                 Text(
-                                    "A global space to connect, collaborate and grow.",
+                                    "Find the right talent or get your work done worldwide.",
                                     color = androidx.compose.ui.graphics.Color(0xFFD5E5FF),
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
+                                androidx.compose.material3.Button(
+                                    onClick = onPostJob,
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = androidx.compose.ui.graphics.Color(0xFF287BFF),
+                                        contentColor = white
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 9.dp)
+                                ) {
+                                    Text("Post a Job  →", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                }
                             }
                         }
 
