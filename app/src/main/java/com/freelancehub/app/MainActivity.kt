@@ -32,9 +32,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.roundToPx
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import com.freelancehub.app.data.*
 import com.freelancehub.app.auth.AuthService
 import com.freelancehub.app.update.PlayUpdateManager
@@ -2125,7 +2125,7 @@ fun RemoteHomeScreen(
                 // The item keeps its normal layout width while the header surface
                 // is measured 36dp wider and placed 18dp to the left.
                 modifier = Modifier.layout { measurable, constraints ->
-                    val bleed = 18.dp.roundToPx()
+                    val bleed = (18.dp.value * density).roundToInt()
                     val expandedWidth = constraints.maxWidth + bleed * 2
                     val placeable = measurable.measure(
                         constraints.copy(minWidth = expandedWidth, maxWidth = expandedWidth)
