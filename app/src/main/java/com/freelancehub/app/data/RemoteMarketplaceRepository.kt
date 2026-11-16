@@ -89,6 +89,76 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         return (0 until items.length()).map { parseContract(items.getJSONObject(it)) }
     }
 
+    fun listFreelancerContracts(freelancerId: String): List<RemoteContract> {
+        require(freelancerId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val pageSize = 500
+        val path = "/rest/v1/contracts?select=id,job_id,proposal_id,client_id,freelancer_id,agreed_budget_minor,currency,status&freelancer_id=eq.$freelancerId&order=id.asc&limit=$pageSize"
+        val token = accessTokenProvider()
+        val contracts = mutableListOf<RemoteContract>()
+        var offset = 0
+
+        while (true) {
+            val pagePath = "$path&offset=$offset"
+            val page = JSONArray(
+                String(client.readJsonResponse(client.openGet(pagePath, token)), StandardCharsets.UTF_8)
+            )
+            for (index in 0 until page.length()) {
+                contracts += parseContract(page.getJSONObject(index))
+            }
+            if (page.length() < pageSize) break
+            offset += page.length()
+        }
+
+        return contracts
+    }
+
+    fun listFreelancerReviews(freelancerId: String, limit: Int = 20): List<RemoteFreelancerReview> {
+        require(freelancerId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        require(limit in 1..50)
+        val payload = JSONObject().put("p_freelancer_id", freelancerId).toString().toByteArray(StandardCharsets.UTF_8)
+        val rows = JSONArray(String(
+            client.readJsonResponse(client.openJsonPost("/rest/v1/rpc/get_public_freelancer_reviews", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())),
+            StandardCharsets.UTF_8
+        ))
+        return (0 until minOf(rows.length(), limit)).map { parseFreelancerReview(rows.getJSONObject(it)) }
+    }
+
+    fun getFreelancerReviewForContract(contractId: String): RemoteFreelancerReview? {
+        require(contractId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val payload = JSONObject().put("p_contract_id", contractId).toString().toByteArray(StandardCharsets.UTF_8)
+        val value = JSONObject(String(
+            client.readJsonResponse(client.openJsonPost("/rest/v1/rpc/get_my_freelancer_review", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())),
+            StandardCharsets.UTF_8
+        ))
+        return if (!value.has("id") || value.optString("id").isBlank()) null else parseFreelancerReview(value)
+    }
+
+    fun completeContract(contractId: String) {
+        require(contractId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val payload = JSONObject().put("p_contract_id", contractId).toString().toByteArray(StandardCharsets.UTF_8)
+        client.readJsonResponse(
+            client.openJsonPost("/rest/v1/rpc/complete_contract", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+        )
+    }
+
+    fun createFreelancerReview(contractId: String, freelancerId: String, rating: Int, reviewText: String): RemoteFreelancerReview {
+        require(contractId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        require(freelancerId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        require(rating in 1..5)
+        require(reviewText.length <= 2000)
+        val payload = JSONObject()
+            .put("contract_id", contractId)
+            .put("freelancer_id", freelancerId)
+            .put("rating", rating)
+            .put("review_text", reviewText.trim())
+            .toString().toByteArray(StandardCharsets.UTF_8)
+        client.readJsonResponse(
+            client.openJsonPost("/rest/v1/freelancer_reviews", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+        )
+        return getFreelancerReviewForContract(contractId)
+            ?: throw IllegalStateException("The review was not confirmed by the server.")
+    }
+
     fun createWorkSubmission(jobId: String, input: RemoteWorkSubmissionCreate): RemoteWorkSubmission {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
         require(input.summary.length in 10..10_000)
@@ -159,6 +229,16 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         status = x.optString("status", WorkSubmissionStatus.SUBMITTED)
     )
 
+    private fun parseFreelancerReview(x: JSONObject) = RemoteFreelancerReview(
+        id = x.optString("id"),
+        contractId = x.optString("contract_id"),
+        clientId = x.optString("client_id"),
+        freelancerId = x.optString("freelancer_id"),
+        rating = x.optInt("rating", 0),
+        reviewText = x.optString("review_text"),
+        createdAt = x.optString("created_at")
+    )
+
     private fun parseWorkAnalysis(x: JSONObject) = RemoteWorkAnalysis(
         id = x.getString("id"), submissionId = x.getString("submission_id"),
         completedRequirements = x.optString("completed_requirements"), issues = x.optString("issues"),
@@ -179,7 +259,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         id = x.getString("id"), jobId = x.getString("job_id"), proposalId = x.getString("proposal_id"),
         clientId = x.getString("client_id"), freelancerId = x.getString("freelancer_id"),
         agreedBudgetMinor = x.optLong("agreed_budget_minor", 0), currency = x.optString("currency", "USD"),
-        status = x.optString("status", "ACTIVE")
+        status = x.optString("status", "active")
     )
 
     private fun parseJob(x: JSONObject) = RemoteJob(
@@ -263,6 +343,16 @@ data class RemoteWorkAnalysis(
 
 data class RemoteWorkReviewCreate(val status: String, val comment: String = "")
 data class RemoteWorkReview(val submissionId: String, val status: String, val comment: String)
+
+data class RemoteFreelancerReview(
+    val id: String,
+    val contractId: String,
+    val clientId: String,
+    val freelancerId: String,
+    val rating: Int,
+    val reviewText: String,
+    val createdAt: String
+)
 
 data class RemoteWorkRevision(
     val id: String, val submissionId: String, val version: Int, val summary: String,
