@@ -34,6 +34,7 @@
 - A freelancer cannot submit a review for their own work.
 - Authenticated users can read public freelancer reviews; unauthenticated users cannot.
 - Public freelancer profile RPC requires an authenticated session and returns only explicitly public profile fields.
+- Each privileged RPC (`complete_contract`, `get_public_freelancer_profile`, `get_public_freelancer_reviews`, and `get_my_freelancer_review`) rejects a missing/empty `auth.uid()` even when invoked by a database role with function execution permission.
 - Direct update/delete of reviews is not granted.
 
 ## Profile statistics
