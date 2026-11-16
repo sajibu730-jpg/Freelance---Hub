@@ -1838,6 +1838,21 @@ Surface(
             auth::accessTokenForApiBlocking
         )
     }
+    val cachedProfile = remember(repo) {
+        repo.profile().let { cached ->
+            RemoteAccount(
+                id = "",
+                coverPhotoUrl = null,
+                photoPath = null,
+                email = cached.email,
+                displayName = cached.name,
+                bio = cached.bio,
+                role = cached.role,
+                capabilities = cached.capabilities,
+                skills = cached.skills
+            )
+        }
+    }
     var tab by remember{mutableStateOf(0)}
     var editing by remember{mutableStateOf(false)}
     var showSettings by remember{mutableStateOf(false)}
@@ -1966,12 +1981,12 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
-            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
+            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()},initialProfile=cachedProfile)
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteAccount,auth,{showSettings=true},{logout()})
+            else->RemoteProfileScreen(remoteAccount,auth,{showSettings=true},{logout()},initialProfile=cachedProfile)
         }}
     }
 }
@@ -3262,11 +3277,12 @@ fun RemoteProfileScreen(
     account: RemoteAccountRepository,
     auth: com.freelancehub.app.auth.AuthService,
     edit: () -> Unit,
-    logout: () -> Unit
+    logout: () -> Unit,
+    initialProfile: RemoteAccount? = null
 ) {
     val context = LocalContext.current
-    var profile by remember { mutableStateOf<RemoteAccount?>(null) }
-    var loading by remember { mutableStateOf(true) }
+    var profile by remember(initialProfile) { mutableStateOf(initialProfile) }
+    var loading by remember(initialProfile) { mutableStateOf(initialProfile == null) }
     var savingPhoto by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
@@ -3275,7 +3291,9 @@ fun RemoteProfileScreen(
     val scope = rememberCoroutineScope()
 
     fun load() {
-        loading = true
+        // Keep the locally cached profile visible while fresh server data loads.
+        // Only show the initial loading state when no cached profile is available.
+        if (profile == null) loading = true
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
             withContext(Dispatchers.Main) {
