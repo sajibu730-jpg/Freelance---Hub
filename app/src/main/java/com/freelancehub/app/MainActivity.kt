@@ -2569,66 +2569,46 @@ fun RemoteHomeScreen(
         }
 
         item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                color = white
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val actionShape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    if (role == UserRole.CLIENT) {
-                        Button(
-                            onClick = onPostJob,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = blue
-                            ),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                        ) {
-                            Text("＋  Post a Job")
-                        }
-                        OutlinedButton(
-                            onClick = onProjectAnalysis,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Analyze My Project")
-                        }
-                    } else {
-                        Button(
-                            onClick = onWorkCheck,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = blue
-                            ),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                        ) {
-                            Text("✓  Check My Work")
-                        }
-                        OutlinedButton(
-                            onClick = onFreelancerAnalysis,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Analyze My Freelancer Profile")
-                        }
-                    }
-
-                    OutlinedButton(
-                        onClick = onMatching,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors()
+                    Button(
+                        onClick = if (role == UserRole.CLIENT) onPostJob else onWorkCheck,
+                        modifier = Modifier.weight(1f).heightIn(min = 76.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = blue),
+                        shape = actionShape,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
                     ) {
                         Text(
-                            if (role == UserRole.CLIENT)
-                                "Explore Marketplace"
-                            else
-                                "Find Jobs For Me"
+                            if (role == UserRole.CLIENT) "＋  Post a Job" else "✓  Check My Work",
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                         )
                     }
+                    OutlinedButton(
+                        onClick = if (role == UserRole.CLIENT) onProjectAnalysis else onFreelancerAnalysis,
+                        modifier = Modifier.weight(1f).heightIn(min = 76.dp),
+                        shape = actionShape,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
+                    ) {
+                        Text(
+                            if (role == UserRole.CLIENT) "Analyze My Project" else "Analyze Profile",
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = onMatching,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                    shape = actionShape,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        if (role == UserRole.CLIENT) "Explore Marketplace" else "Find Jobs For Me",
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                    )
                 }
             }
         }
