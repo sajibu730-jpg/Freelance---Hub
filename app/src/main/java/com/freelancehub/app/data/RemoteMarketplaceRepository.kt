@@ -130,7 +130,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
             client.readJsonResponse(client.openJsonPost("/rest/v1/rpc/get_my_freelancer_review", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())),
             StandardCharsets.UTF_8
         ))
-        return if (value.length() == 0) null else parseFreelancerReview(value)
+        return if (!value.has("id") || value.optString("id").isBlank()) null else parseFreelancerReview(value)
     }
 
     fun completeContract(contractId: String) {
