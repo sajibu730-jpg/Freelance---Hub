@@ -3341,6 +3341,7 @@ fun RemoteProfileScreen(
             withContext(Dispatchers.Main) {
                 result.onSuccess {
                     profile = it
+                    cacheRepo?.cacheRemoteProfile(it)
                     notice = if (isCover) "Cover photo saved successfully." else "Profile photo saved successfully."
                 }.onFailure { e -> error = e.message ?: "The photo could not be saved." }
                 savingPhoto = false
