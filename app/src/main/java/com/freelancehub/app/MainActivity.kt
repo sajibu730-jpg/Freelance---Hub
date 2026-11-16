@@ -3410,12 +3410,7 @@ fun RemoteProfileScreen(
                 val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
                     runCatching { account.downloadProfilePhoto(path).let { bytes -> android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
                 }
-                val cover = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
-                    runCatching { java.net.URL(url).openConnection().apply {
-                        connectTimeout = 10000
-                        readTimeout = 10000
-                    }.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) } }.getOrNull()
-                }
+                val cover = current.coverPhotoUrl?.let(::loadRemoteCoverBitmap)
                 withContext(Dispatchers.Main) {
                     profileBitmap = photo
                     coverBitmap = cover
@@ -3597,6 +3592,42 @@ ElevatedCard(
 }
 
 
+private fun loadRemoteCoverBitmap(rawUrl: String): android.graphics.Bitmap? {
+    val parsed = runCatching { java.net.URL(rawUrl) }.getOrNull() ?: return null
+    if (!parsed.protocol.equals("https", ignoreCase = true)) return null
+
+    val connection = runCatching {
+        parsed.openConnection().apply {
+            connectTimeout = 10000
+            readTimeout = 10000
+            useCaches = false
+        }
+    }.getOrNull() ?: return null
+
+    return try {
+        val length = connection.getHeaderFieldLong("Content-Length", -1L)
+        if (length > 5L * 1024 * 1024) return null
+        val bytes = connection.getInputStream().use { input ->
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                total += count
+                if (total > 5 * 1024 * 1024) return null
+                output.write(buffer, 0, count)
+            }
+            output.toByteArray()
+        }
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    } catch (_: Exception) {
+        null
+    } finally {
+        (connection as? java.net.HttpURLConnection)?.disconnect()
+    }
+}
+
 @Composable
 fun RemotePublicFreelancerProfileScreen(
     freelancerId: String,
@@ -3630,14 +3661,7 @@ fun RemotePublicFreelancerProfileScreen(
                         }
                     }.getOrNull()
                 }
-                val cover = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
-                    runCatching {
-                        java.net.URL(url).openConnection().apply {
-                            connectTimeout = 10000
-                            readTimeout = 10000
-                        }.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) }
-                    }.getOrNull()
-                }
+                val cover = current.coverPhotoUrl?.let(::loadRemoteCoverBitmap)
                 withContext(Dispatchers.Main) {
                     profilePhotoBitmap = photo
                     coverPhotoBitmap = cover
