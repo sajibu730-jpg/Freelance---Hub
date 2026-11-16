@@ -45,6 +45,12 @@
 - Pending proposals, rejected proposals, and non-completed contracts do not increase completed count or earnings.
 - Each freelancer sees only their own contract statistics under existing contract participant RLS.
 
+## Public profile media
+
+- Profile-photo downloads use the authenticated Storage object endpoint. Before release, verify in a disposable/Staging environment that an authenticated user can read another user's profile-photo object while unauthenticated access and unrelated private objects remain denied.
+- The repository does not currently contain a migration that defines the `profile-photos` bucket's cross-user read policy. Do not assume the existing Production bucket permits public-profile reads, and do not broaden Storage access without a separate least-privilege review.
+- Cover-photo downloads accept HTTPS URLs only and enforce a 5 MB streamed-download ceiling. Verify valid HTTPS cover images, oversized responses, invalid URLs, and unavailable images fall back without crashing the profile screen.
+
 ## Release gates
 
 1. Run the Android Build workflow for this branch and inspect every job/step.
