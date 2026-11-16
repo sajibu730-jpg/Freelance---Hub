@@ -2201,7 +2201,7 @@ fun RemoteHomeScreen(
             ) {
                 Icon(Icons.Filled.Search, "Search", tint = ink, modifier = Modifier.size(27.dp))
                 Spacer(Modifier.width(12.dp))
-                androidx.compose.foundation.BasicTextField(
+                androidx.compose.foundation.text.BasicTextField(
                     value = search, onValueChange = { search = it }, modifier = Modifier.weight(1f),
                     singleLine = true, textStyle = MaterialTheme.typography.bodyLarge.copy(color = ink),
                     decorationBox = { inner -> Box {
