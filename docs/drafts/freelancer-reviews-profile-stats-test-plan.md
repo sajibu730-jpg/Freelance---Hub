@@ -1,6 +1,6 @@
 # Freelancer Reviews and Profile Statistics — Draft Test Plan
 
-> Draft only. The SQL in `freelancer-reviews-profile-stats.sql` has not been applied to Production.
+> Production migration `freelancer_reviews_profile_stats` was applied with Owner approval on 2026-11-16. The follow-up client-FK index migration `index_freelancer_review_client_fk` was also applied. Live authenticated Android-to-PostgREST verification remains pending.
 
 ## Android UI
 
@@ -54,11 +54,11 @@
 ## Release gates
 
 1. Run the Android Build workflow for this branch and inspect every job/step.
-2. Apply the draft SQL only to a separately approved disposable/Staging Supabase project.
+2. Confirm the approved Production migration is callable through PostgREST with an authenticated app session; do not repeat schema deployment.
 3. Run the authorization and constraint tests above using two client identities and at least one freelancer identity.
 4. Install the generated APK on a physical Android device and test the full client completion/review flow.
 5. Verify public profile RPC returns no email/mobile fields and correct contract/review aggregates in Staging.
-6. Do not merge or deploy to Production until the Owner explicitly approves the schema and release.
+6. Do not merge the Draft PR or publish a release until the Owner explicitly approves the release.
 
 ## No-cost database test route
 
@@ -70,6 +70,6 @@
 
 ## Security review gate
 
-- The draft exposes two authenticated RPCs implemented as `SECURITY DEFINER`; both explicitly require `auth.uid()`, revoke execution from `PUBLIC` and `anon`, and grant execution only to `authenticated`.
-- Before any Production release, run Supabase security advisors against the target schema and review any authenticated SECURITY DEFINER findings. Consider moving privileged implementation functions into a non-exposed schema with tightly controlled execution, while keeping only the minimum required RPC surface exposed.
-- The current Production advisor output contains pre-existing findings for `public.get_public_profiles()`, `pg_net` in `public`, and disabled leaked-password protection. These findings predate this draft and were not changed by this work.
+- The applied migration exposes four authenticated RPCs implemented as `SECURITY DEFINER`; each explicitly requires `auth.uid()`, revokes execution from `PUBLIC` and `anon`, and grants execution only to `authenticated`.
+- Supabase security advisors were run after deployment. They report four new authenticated SECURITY DEFINER findings for these intentionally exposed RPCs; the functions enforce `auth.uid()` and deny `anon`/`PUBLIC`. This design needs a focused least-privilege review before release. Consider moving privileged implementation functions into a non-exposed schema with tightly controlled execution, while keeping only the minimum required RPC surface exposed.
+- The advisor also reports pre-existing findings for `public.get_public_profiles()`, `pg_net` in `public`, disabled leaked-password protection, and unrelated RLS/performance notices. Those predate these migrations and were not changed by this work.
