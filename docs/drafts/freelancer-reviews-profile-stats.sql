@@ -21,8 +21,11 @@ create index if not exists freelancer_reviews_freelancer_created_idx
 
 alter table public.freelancer_reviews enable row level security;
 
+-- Clients may supply only review content and target IDs. The database owns
+-- the review UUID and timestamp so callers cannot forge ordering metadata.
 revoke all on table public.freelancer_reviews from anon, authenticated;
-grant insert on table public.freelancer_reviews to authenticated;
+grant insert (contract_id, freelancer_id, rating, review_text)
+    on table public.freelancer_reviews to authenticated;
 
 drop policy if exists "Authenticated users can read freelancer reviews" on public.freelancer_reviews;
 
