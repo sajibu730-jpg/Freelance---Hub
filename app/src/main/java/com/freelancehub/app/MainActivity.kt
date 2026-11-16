@@ -2277,34 +2277,105 @@ fun RemoteHomeScreen(
                             }
                         }
 
-                        Column(
-                            modifier = Modifier.fillMaxWidth(0.88f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 190.dp)
                         ) {
-                            Text(
-                                "Your work. Your world. Your future.",
-                                color = white,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                            )
-                            Text(
-                                "A global space to connect, collaborate and grow.",
-                                color = androidx.compose.ui.graphics.Color(0xFFD5E5FF),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            // Decorative orbital globe artwork, kept behind readable copy.
+                            androidx.compose.foundation.Canvas(
+                                modifier = Modifier
+                                    .align(androidx.compose.ui.Alignment.CenterEnd)
+                                    .size(174.dp)
+                            ) {
+                                val center = androidx.compose.ui.geometry.Offset(size.width * 0.58f, size.height * 0.48f)
+                                val radius = size.minDimension * 0.43f
+                                drawCircle(
+                                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                        colors = listOf(
+                                            androidx.compose.ui.graphics.Color(0xFF56D8FF).copy(alpha = 0.30f),
+                                            androidx.compose.ui.graphics.Color(0xFF278BFF).copy(alpha = 0.10f),
+                                            androidx.compose.ui.graphics.Color.Transparent
+                                        ),
+                                        center = center,
+                                        radius = radius * 1.35f
+                                    ),
+                                    radius = radius * 1.35f,
+                                    center = center
+                                )
+                                drawCircle(
+                                    color = androidx.compose.ui.graphics.Color(0xFF9BEAFF).copy(alpha = 0.58f),
+                                    radius = radius,
+                                    center = center,
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.4.dp.toPx())
+                                )
+                                drawOval(
+                                    color = androidx.compose.ui.graphics.Color(0xFF9BEAFF).copy(alpha = 0.34f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(center.x - radius * 0.42f, center.y - radius),
+                                    size = androidx.compose.ui.geometry.Size(radius * 0.84f, radius * 2f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+                                )
+                                drawOval(
+                                    color = androidx.compose.ui.graphics.Color(0xFF9BEAFF).copy(alpha = 0.30f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(center.x - radius, center.y - radius * 0.34f),
+                                    size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 0.68f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+                                )
+                                drawLine(
+                                    color = androidx.compose.ui.graphics.Color(0xFFB5F1FF).copy(alpha = 0.55f),
+                                    start = androidx.compose.ui.geometry.Offset(center.x - radius * 1.18f, center.y + radius * 0.90f),
+                                    end = androidx.compose.ui.geometry.Offset(center.x + radius * 1.10f, center.y + radius * 0.90f),
+                                    strokeWidth = 2.dp.toPx()
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.88f)
+                                    .align(androidx.compose.ui.Alignment.CenterStart)
+                                    .padding(vertical = 5.dp),
+                                verticalArrangement = Arrangement.spacedBy(9.dp)
+                            ) {
+                                Text(
+                                    "Your work. Your world.\\nYour future.",
+                                    color = white,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                                Text(
+                                    "A global space to connect, collaborate and grow.",
+                                    color = androidx.compose.ui.graphics.Color(0xFFD5E5FF),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
                         }
 
                         Surface(
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.13f)
-                        ) {
-                            Text(
-                                text = if (role == UserRole.CLIENT) "CLIENT WORKSPACE" else "FREELANCER WORKSPACE",
-                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                                color = white,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                androidx.compose.ui.graphics.Color(0xFF9BEAFF).copy(alpha = 0.22f)
                             )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 15.dp, vertical = 9.dp),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Public,
+                                    contentDescription = null,
+                                    tint = androidx.compose.ui.graphics.Color(0xFF75E2FF),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = if (role == UserRole.CLIENT) "CLIENT WORKSPACE" else "FREELANCER WORKSPACE",
+                                    color = white,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
                 }
