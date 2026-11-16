@@ -2223,112 +2223,89 @@ fun RemoteHomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
+                                modifier = Modifier.weight(1f),
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                FreelanceHubBrandMark(Modifier.size(58.dp))
-                                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                FreelanceHubBrandMark(Modifier.size(60.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                         Text(
                                             "Freelance",
                                             color = white,
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.headlineSmall,
                                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                                         )
                                         Text(
                                             " Hub",
                                             color = androidx.compose.ui.graphics.Color(0xFF63D5FF),
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.headlineSmall,
                                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                                         )
                                     }
                                     Text(
                                         "Your work. Your world. Your future.",
                                         color = androidx.compose.ui.graphics.Color(0xFFD7F4FF),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                        maxLines = 1
                                     )
                                 }
                             }
 
-                            Box {
-                                IconButton(onClick = { menuExpanded = true }) {
-                                    Icon(
-                                        Icons.Filled.MoreVert,
-                                        contentDescription = "Main menu",
-                                        tint = white
-                                    )
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Box {
+                                    IconButton(onClick = { /* Notifications are also available in bottom navigation. */ }) {
+                                        Icon(
+                                            Icons.Filled.Notifications,
+                                            contentDescription = "Notifications",
+                                            tint = white,
+                                            modifier = Modifier.size(27.dp)
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .align(androidx.compose.ui.Alignment.TopEnd)
+                                            .padding(top = 2.dp, end = 1.dp)
+                                            .size(17.dp)
+                                            .background(
+                                                androidx.compose.ui.graphics.Color(0xFFFF3B45),
+                                                androidx.compose.foundation.shape.CircleShape
+                                            ),
+                                        contentAlignment = androidx.compose.ui.Alignment.Center
+                                    ) {
+                                        Text(
+                                            "3",
+                                            color = white,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        )
+                                    }
                                 }
-                                DropdownMenu(
-                                    expanded = menuExpanded,
-                                    onDismissRequest = { menuExpanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Account settings") },
-                                        leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                                        onClick = { menuExpanded = false; onOpenSettings() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Refresh home") },
-                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                                        onClick = { menuExpanded = false; reload() }
-                                    )
+                                Box {
+                                    IconButton(onClick = { menuExpanded = true }) {
+                                        Icon(
+                                            Icons.Filled.MoreVert,
+                                            contentDescription = "Main menu",
+                                            tint = white
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuExpanded,
+                                        onDismissRequest = { menuExpanded = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Account settings") },
+                                            leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                                            onClick = { menuExpanded = false; onOpenSettings() }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Refresh home") },
+                                            leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                            onClick = { menuExpanded = false; reload() }
+                                        )
+                                    }
                                 }
-                            }
-                        }
-
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-                            color = androidx.compose.ui.graphics.Color(0xFF1455A5),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp, androidx.compose.ui.graphics.Color(0xFF62B9FF).copy(alpha = 0.48f)
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(62.dp)
-                                        .background(
-                                            androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f),
-                                            androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
-                                        ),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Laptop,
-                                        contentDescription = "Global freelance marketplace",
-                                        tint = androidx.compose.ui.graphics.Color(0xFFBCEBFF),
-                                        modifier = Modifier.size(38.dp)
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                                ) {
-                                    Text(
-                                        "GLOBAL FREELANCE MARKETPLACE",
-                                        color = androidx.compose.ui.graphics.Color.White,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                        letterSpacing = 0.7.sp
-                                    )
-                                    Text(
-                                        "Connect with opportunities around the world.",
-                                        color = androidx.compose.ui.graphics.Color(0xFFD5E9FF),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                                Icon(
-                                    Icons.Filled.Public,
-                                    contentDescription = null,
-                                    tint = androidx.compose.ui.graphics.Color(0xFF75E2FF),
-                                    modifier = Modifier.size(30.dp)
-                                )
                             }
                         }
                     }
