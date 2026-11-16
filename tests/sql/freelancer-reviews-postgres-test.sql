@@ -281,8 +281,46 @@ begin
 end
 $$;
 
+-- Even an authenticated database role must have a real Supabase user identity.
+select set_config('request.jwt.claim.sub', '', false);
+do $unauthenticated_rpc$
+begin
+  begin
+    perform public.complete_contract('a0000000-0000-0000-0000-000000000001');
+    raise exception 'unauthenticated complete_contract unexpectedly succeeded';
+  exception when others then
+    if sqlerrm = 'unauthenticated complete_contract unexpectedly succeeded' then raise; end if;
+    if sqlerrm <> 'AUTHENTICATION_REQUIRED' then raise; end if;
+  end;
+
+  begin
+    perform public.get_public_freelancer_profile('20000000-0000-0000-0000-000000000002');
+    raise exception 'unauthenticated public profile RPC unexpectedly succeeded';
+  exception when others then
+    if sqlerrm = 'unauthenticated public profile RPC unexpectedly succeeded' then raise; end if;
+    if sqlerrm <> 'AUTHENTICATION_REQUIRED' then raise; end if;
+  end;
+
+  begin
+    perform public.get_public_freelancer_reviews('20000000-0000-0000-0000-000000000002');
+    raise exception 'unauthenticated public reviews RPC unexpectedly succeeded';
+  exception when others then
+    if sqlerrm = 'unauthenticated public reviews RPC unexpectedly succeeded' then raise; end if;
+    if sqlerrm <> 'AUTHENTICATION_REQUIRED' then raise; end if;
+  end;
+
+  begin
+    perform public.get_my_freelancer_review('a0000000-0000-0000-0000-000000000001');
+    raise exception 'unauthenticated own-review RPC unexpectedly succeeded';
+  exception when others then
+    if sqlerrm = 'unauthenticated own-review RPC unexpectedly succeeded' then raise; end if;
+    if sqlerrm <> 'AUTHENTICATION_REQUIRED' then raise; end if;
+  end;
+end
+$unauthenticated_rpc$;
+
 reset role;
-do $$
+do $
 begin
   if has_function_privilege('anon', 'public.complete_contract(uuid)', 'EXECUTE') then
     raise exception 'anon can execute complete_contract';
