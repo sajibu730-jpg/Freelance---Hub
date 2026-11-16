@@ -2357,10 +2357,10 @@ fun RemoteHomeScreen(
                         Text(job.title, color = ink, style = MaterialTheme.typography.titleMedium,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 2)
                         Spacer(Modifier.height(5.dp))
-                        Text("Budget: \${job.budgetMinor / 100.0} \${job.currency}", color = navy,
+                        Text("Budget: ${job.budgetMinor / 100.0} ${job.currency}", color = navy,
                             style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         Spacer(Modifier.height(4.dp))
-                        Text("Worldwide  •  \${job.status}", color = muted, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                        Text("Worldwide  •  ${job.status}", color = muted, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                     }
                     Icon(Icons.Filled.ChevronRight, "Explore job", tint = muted, modifier = Modifier.size(24.dp))
                 }
