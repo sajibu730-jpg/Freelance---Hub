@@ -2139,45 +2139,63 @@ fun RemoteHomeScreen(
                             )
                         )
                         .drawBehind {
-                            val glow = androidx.compose.ui.geometry.Offset(
-                                size.width * 0.94f,
-                                size.height * 0.48f
-                            )
+                            // Subtle diagonal light bands matching the approved blue brand artwork.
+                            val bandColor = androidx.compose.ui.graphics.Color(0xFF168BFF)
+                            for (band in 0..3) {
+                                val x = size.width * (0.56f + band * 0.16f)
+                                drawLine(
+                                    color = bandColor.copy(alpha = 0.10f - band * 0.012f),
+                                    start = androidx.compose.ui.geometry.Offset(x, 0f),
+                                    end = androidx.compose.ui.geometry.Offset(x - size.height * 0.72f, size.height),
+                                    strokeWidth = 34.dp.toPx()
+                                )
+                            }
+
+                            val glow = androidx.compose.ui.geometry.Offset(size.width * 0.92f, size.height * 0.48f)
                             drawCircle(
                                 brush = androidx.compose.ui.graphics.Brush.radialGradient(
                                     colors = listOf(
-                                        androidx.compose.ui.graphics.Color(0xFF54C8FF).copy(alpha = 0.22f),
+                                        androidx.compose.ui.graphics.Color(0xFF24C8FF).copy(alpha = 0.28f),
                                         androidx.compose.ui.graphics.Color.Transparent
                                     ),
                                     center = glow,
-                                    radius = 170.dp.toPx()
+                                    radius = 190.dp.toPx()
                                 ),
-                                radius = 170.dp.toPx(),
+                                radius = 190.dp.toPx(),
                                 center = glow
                             )
+
+                            // Dotted world-map texture, intentionally low contrast behind the brand.
+                            for (row in 0..12) {
+                                for (column in 0..34) {
+                                    val x = size.width * (0.34f + column * 0.018f)
+                                    val y = size.height * (0.14f + row * 0.052f)
+                                    val nx = column / 34f
+                                    val ny = row / 12f
+                                    val northAmerica = nx < 0.30f && ny > 0.18f && ny < 0.72f &&
+                                        !(nx > 0.22f && ny > 0.52f)
+                                    val europeAsia = nx in 0.39f..0.91f && ny > 0.16f && ny < 0.58f &&
+                                        !(nx < 0.52f && ny > 0.45f)
+                                    val africa = nx in 0.48f..0.68f && ny in 0.48f..0.91f
+                                    val southAmerica = nx in 0.25f..0.42f && ny in 0.60f..0.98f
+                                    if (northAmerica || europeAsia || africa || southAmerica) {
+                                        drawCircle(
+                                            color = androidx.compose.ui.graphics.Color(0xFF58CFFF).copy(alpha = 0.20f),
+                                            radius = 1.15.dp.toPx(),
+                                            center = androidx.compose.ui.geometry.Offset(x, y)
+                                        )
+                                    }
+                                }
+                            }
+
                             for (ring in 0..2) {
                                 drawCircle(
-                                    color = androidx.compose.ui.graphics.Color.White.copy(
-                                        alpha = 0.075f - ring * 0.018f
-                                    ),
+                                    color = androidx.compose.ui.graphics.Color(0xFF9BE7FF).copy(alpha = 0.10f - ring * 0.02f),
                                     radius = (76 + ring * 22).dp.toPx(),
-                                    center = androidx.compose.ui.geometry.Offset(
-                                        size.width * 0.96f,
-                                        size.height * 0.52f
-                                    ),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 1.dp.toPx()
-                                    )
+                                    center = androidx.compose.ui.geometry.Offset(size.width * 0.96f, size.height * 0.52f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
                                 )
                             }
-                            drawCircle(
-                                color = androidx.compose.ui.graphics.Color(0xFF8DDEFF).copy(alpha = 0.12f),
-                                radius = 5.dp.toPx(),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    size.width * 0.79f,
-                                    size.height * 0.20f
-                                )
-                            )
                         }
                         .padding(horizontal = 20.dp, vertical = 18.dp)
                 ) {
@@ -2195,17 +2213,15 @@ fun RemoteHomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
-                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f)),
+                                    modifier = Modifier.size(48.dp),
                                     contentAlignment = androidx.compose.ui.Alignment.Center
                                 ) {
                                     Text(
                                         "F",
-                                        color = androidx.compose.ui.graphics.Color(0xFF63D5FF),
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
+                                        color = androidx.compose.ui.graphics.Color(0xFF20D6F4),
+                                        fontSize = 43.sp,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black
                                     )
                                 }
                                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -2224,10 +2240,10 @@ fun RemoteHomeScreen(
                                         )
                                     }
                                     Text(
-                                        "GLOBAL FREELANCE MARKETPLACE",
-                                        color = androidx.compose.ui.graphics.Color(0xFFB8D5FF),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        "Your work. Your world. Your future.",
+                                        color = androidx.compose.ui.graphics.Color(0xFFD7F4FF),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                                     )
                                 }
                             }
