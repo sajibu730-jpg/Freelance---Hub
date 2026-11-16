@@ -2119,9 +2119,19 @@ fun RemoteHomeScreen(
     ) {
         item {
             Surface(
-                // Extend only the brand header to the screen edges; keep the other
-                // LazyColumn content gutters unchanged.
-                modifier = Modifier.fillParentMaxWidth(),
+                // Break out of LazyColumn's 18dp horizontal content padding.
+                // The item keeps its normal layout width while the header surface
+                // is measured 36dp wider and placed 18dp to the left.
+                modifier = Modifier.layout { measurable, constraints ->
+                    val bleed = 18.dp.roundToPx()
+                    val expandedWidth = constraints.maxWidth + bleed * 2
+                    val placeable = measurable.measure(
+                        constraints.copy(minWidth = expandedWidth, maxWidth = expandedWidth)
+                    )
+                    layout(constraints.maxWidth, placeable.height) {
+                        placeable.place(-bleed, 0)
+                    }
+                },
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
                 color = navy,
                 shadowElevation = 8.dp
