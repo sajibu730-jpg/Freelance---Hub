@@ -395,7 +395,7 @@ begin
     end if;
     if not exists (
       select 1
-        from unnest(coalesce(v_config, array[]::text[])) setting
+        from unnest(coalesce(v_config, array[]::text[])) as config(setting)
        where setting like 'search_path=%'
     ) then
       raise exception 'function has no fixed search_path: %', v_signature;
