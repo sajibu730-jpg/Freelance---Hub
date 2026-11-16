@@ -72,9 +72,20 @@ class AppRepository(context: Context) {
         prefs.edit().remove("logged_in").apply()
     }
 
+    /** Remove another account's cached identity and images before switching accounts. */
+    private fun clearRemoteProfileCache() {
+        prefs.edit().remove("remote_profile_cache").apply()
+        appContext.deleteFile("profile_cache_profile")
+        appContext.deleteFile("profile_cache_cover")
+    }
+
     /** Local profile is a cache only; backend authentication remains authoritative. */
     fun cacheAuthenticatedProfile(name: String, email: String, role: UserRole) {
         if (!Validation.email(email) || !Validation.text(name, 2, 80)) return
+        val cachedEmail = cachedRemoteProfile()?.email
+        if (cachedEmail != null && !cachedEmail.equals(email.trim(), ignoreCase = true)) {
+            clearRemoteProfileCache()
+        }
         prefs.edit()
             .putString("name", name.trim())
             .putString("email", email.trim())
