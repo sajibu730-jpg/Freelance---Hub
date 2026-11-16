@@ -22,6 +22,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -3472,6 +3474,7 @@ fun RemoteProfileScreen(
             withContext(Dispatchers.Main) {
                 result.onSuccess {
                     profile = it
+                    cacheRepo?.cacheRemoteProfile(it)
                     if (isCover) coverBitmap = null else profileBitmap = null
                     RemoteProfileScreenCache.value = RemoteProfileScreenCache.value?.copy(profile = it)
                     notice = if (isCover) "Cover photo saved successfully." else "Profile photo saved successfully."
@@ -3664,6 +3667,11 @@ ElevatedCard(
                             Text("Completed value (USD)", style = MaterialTheme.typography.bodySmall)
                         }
                     }
+                    Text(
+                        "Total jobs: ${activeJobs + completedJobs}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = androidx.compose.ui.graphics.Color(0xFF65748B)
+                    )
                     Text(
                         when {
                             lifetimeReviewCount == null || lifetimeAverageRating == null -> "Lifetime rating summary unavailable"
