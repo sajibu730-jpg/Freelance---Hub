@@ -1850,6 +1850,25 @@ Surface(
     var activityVersion by remember{mutableStateOf(0)}
     var showExitDialog by remember { mutableStateOf(false) }
 
+    // Warm profile data and media while the Home screen is visible.
+    LaunchedEffect(remoteAccount, role) {
+        withContext(Dispatchers.IO) {
+            val loaded = runCatching { remoteAccount.currentUser() }.getOrNull()
+                ?: return@withContext
+            val reviews = if (role == UserRole.FREELANCER) {
+                runCatching { remoteMarketplace.listFreelancerReviews(loaded.id, 20) }.getOrDefault(emptyList())
+            } else emptyList()
+            val publicStats = if (role == UserRole.FREELANCER) {
+                runCatching { remoteAccount.getPublicFreelancerProfile(loaded.id) }.getOrNull()
+            } else null
+            val photo = loaded.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                runCatching { remoteAccount.downloadProfilePhoto(path).let { BitmapFactory.decodeByteArray(it, 0, it.size) } }.getOrNull()
+            }
+            val cover = loaded.coverPhotoUrl?.let(::loadRemoteCoverBitmap)
+            RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(loaded, reviews, publicStats, photo, cover)
+        }
+    }
+
 BackHandler {
     when {
         showExitDialog -> showExitDialog = false
@@ -3289,6 +3308,18 @@ fun RemoteNotificationsScreen() {
         Button(onClick={if(reviewee.isNotBlank())onSubmit(Review(j.id,p.email,p.name,reviewee,revieweeName,rating,comment))},enabled=reviewee.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("Submit review")};Text("Reviews can be submitted once per participant per completed job.");TextButton(onClick=back){Text("Cancel")}}
 }
 
+private data class RemoteProfileScreenSnapshot(
+    val profile: RemoteAccount,
+    val reviews: List<RemoteFreelancerReview>,
+    val publicProfile: RemotePublicFreelancerProfile?,
+    val profileBitmap: android.graphics.Bitmap?,
+    val coverBitmap: android.graphics.Bitmap?
+)
+
+private object RemoteProfileScreenCache {
+    @Volatile var value: RemoteProfileScreenSnapshot? = null
+}
+
 @Composable
 fun RemoteProfileScreen(
     marketplace: RemoteMarketplaceRepository,
@@ -3299,20 +3330,21 @@ fun RemoteProfileScreen(
     logout: () -> Unit
 ) {
     val context = LocalContext.current
-    var profile by remember { mutableStateOf<RemoteAccount?>(null) }
-    var freelancerReviews by remember { mutableStateOf<List<RemoteFreelancerReview>>(emptyList()) }
-    var freelancerPublicProfile by remember { mutableStateOf<RemotePublicFreelancerProfile?>(null) }
+    val cached = RemoteProfileScreenCache.value
+    var profile by remember { mutableStateOf<RemoteAccount?>(cached?.profile) }
+    var freelancerReviews by remember { mutableStateOf(cached?.reviews ?: emptyList()) }
+    var freelancerPublicProfile by remember { mutableStateOf<RemotePublicFreelancerProfile?>(cached?.publicProfile) }
     var activityError by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(true) }
+    var loading by remember { mutableStateOf(cached?.profile == null) }
     var savingPhoto by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
-    var profileBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-    var coverBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var profileBitmap by remember { mutableStateOf(cached?.profileBitmap) }
+    var coverBitmap by remember { mutableStateOf(cached?.coverBitmap) }
     val scope = rememberCoroutineScope()
 
     fun load() {
-        loading = true
+        if (profile == null) loading = true
         activityError = ""
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
@@ -3326,6 +3358,11 @@ fun RemoteProfileScreen(
                     ?.onFailure { activityError = it.message ?: "Unable to load freelancer reviews." }
                 publicProfileResult?.onSuccess { freelancerPublicProfile = it }
                     ?.onFailure { activityError = it.message ?: "Unable to load lifetime rating summary." }
+                profile?.let { loaded ->
+                    RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                        loaded, freelancerReviews, freelancerPublicProfile, profileBitmap, coverBitmap
+                    )
+                }
                 loading = false
             }
         }
@@ -3367,6 +3404,8 @@ fun RemoteProfileScreen(
             withContext(Dispatchers.Main) {
                 result.onSuccess {
                     profile = it
+                    if (isCover) coverBitmap = null else profileBitmap = null
+                    RemoteProfileScreenCache.value = RemoteProfileScreenCache.value?.copy(profile = it)
                     notice = if (isCover) "Cover photo saved successfully." else "Profile photo saved successfully."
                 }.onFailure { e -> error = e.message ?: "The photo could not be saved." }
                 savingPhoto = false
@@ -3384,17 +3423,16 @@ fun RemoteProfileScreen(
     LaunchedEffect(Unit) { load() }
     LaunchedEffect(profile?.photoPath, profile?.coverPhotoUrl) {
         val current = profile
-        profileBitmap = null
-        coverBitmap = null
-        if (current != null) {
+        if (current != null && (profileBitmap == null || coverBitmap == null)) {
             withContext(Dispatchers.IO) {
-                val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
-                    runCatching { account.downloadProfilePhoto(path).let { bytes -> android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
-                }
-                val cover = current.coverPhotoUrl?.let(::loadRemoteCoverBitmap)
+                val photo = if (profileBitmap == null) current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                    runCatching { account.downloadProfilePhoto(path).let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
+                } else profileBitmap
+                val cover = if (coverBitmap == null) current.coverPhotoUrl?.let(::loadRemoteCoverBitmap) else coverBitmap
                 withContext(Dispatchers.Main) {
                     profileBitmap = photo
                     coverBitmap = cover
+                    RemoteProfileScreenCache.value = RemoteProfileScreenCache.value?.copy(profileBitmap = photo, coverBitmap = cover)
                 }
             }
         }
