@@ -129,7 +129,6 @@ insert into public.freelancer_reviews
   (contract_id, freelancer_id, rating, review_text)
 values
   ('a0000000-0000-0000-0000-000000000001',
-   '10000000-0000-0000-0000-000000000001',
    '20000000-0000-0000-0000-000000000002',
    5, 'Excellent delivery.');
 
@@ -184,7 +183,6 @@ begin
       (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
-       '10000000-0000-0000-0000-000000000001',
        '20000000-0000-0000-0000-000000000002', 4, 'Duplicate');
     raise exception 'duplicate review unexpectedly succeeded';
   exception when unique_violation then null;
@@ -195,7 +193,6 @@ begin
       (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000003',
-       '10000000-0000-0000-0000-000000000001',
        '20000000-0000-0000-0000-000000000002', 4, 'Wrong client');
     raise exception 'wrong-client review unexpectedly succeeded';
   exception when insufficient_privilege then null;
@@ -206,7 +203,6 @@ begin
       (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
-       '10000000-0000-0000-0000-000000000001',
        '30000000-0000-0000-0000-000000000003', 4, 'Wrong freelancer');
     raise exception 'review for a mismatched freelancer unexpectedly succeeded';
   exception when insufficient_privilege then null;
@@ -217,7 +213,6 @@ begin
       (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
-       '10000000-0000-0000-0000-000000000001',
        '20000000-0000-0000-0000-000000000002', 0, 'Invalid low rating');
     raise exception 'rating below 1 unexpectedly succeeded';
   exception when check_violation then null;
@@ -228,7 +223,6 @@ begin
       (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
-       '10000000-0000-0000-0000-000000000001',
        '20000000-0000-0000-0000-000000000002', 6, 'Invalid high rating');
     raise exception 'rating above 5 unexpectedly succeeded';
   exception when check_violation then null;
@@ -254,7 +248,6 @@ begin
       (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
-       '30000000-0000-0000-0000-000000000003',
        '20000000-0000-0000-0000-000000000002', 4, 'Unrelated client');
     raise exception 'unrelated client unexpectedly reviewed another client contract';
   exception when insufficient_privilege then null;
@@ -279,7 +272,6 @@ begin
       (contract_id, freelancer_id, rating, review_text)
     values
       ('a0000000-0000-0000-0000-000000000001',
-       '20000000-0000-0000-0000-000000000002',
        '20000000-0000-0000-0000-000000000002', 5, 'Self review');
     raise exception 'freelancer unexpectedly reviewed own work';
   exception when insufficient_privilege then null;
