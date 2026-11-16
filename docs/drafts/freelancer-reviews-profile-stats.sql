@@ -1,4 +1,5 @@
--- DRAFT ONLY — do not apply to Production until the Owner approves the release.
+-- APPLIED to the approved Production project on 2026-11-16 (migration: freelancer_reviews_profile_stats).
+-- Keep this file as the reviewed source artifact; do not re-apply manually.
 -- Adds client-to-freelancer ratings and a guarded contract-completion RPC.
 -- Existing public.work_reviews is reserved for AI/Human work-check requests.
 
@@ -320,5 +321,8 @@ comment on function public.get_public_freelancer_reviews(uuid) is
     'Returns only review id, rating, text, and date to authenticated users; never returns client or contract identifiers.';
 comment on function public.get_my_freelancer_review(uuid) is
     'Returns the calling client own review for one contract without exposing other client or contract identifiers.';
+
+-- Ensure PostgREST refreshes the function signature cache after deployment.
+notify pgrst, 'reload schema';
 
 commit;
