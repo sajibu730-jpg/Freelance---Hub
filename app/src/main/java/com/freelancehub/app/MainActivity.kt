@@ -2119,7 +2119,9 @@ fun RemoteHomeScreen(
     ) {
         item {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                // Extend only the brand header to the screen edges; keep the other
+                // LazyColumn content gutters unchanged.
+                modifier = Modifier.fillParentMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
                 color = navy,
                 shadowElevation = 8.dp
