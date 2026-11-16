@@ -2277,7 +2277,7 @@ fun RemoteHomeScreen(
                 value = homeSearchQuery,
                 onValueChange = { homeSearchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search jobs or skills") },
+                placeholder = { Text("Search jobs by title") },
                 leadingIcon = {
                     Icon(Icons.Filled.Search, contentDescription = "Search jobs", tint = blue)
                 },
@@ -2422,7 +2422,7 @@ fun RemoteHomeScreen(
                                                         verticalArrangement = Arrangement.spacedBy(9.dp)
                                                     ) {
                                                         Text(
-                                                            "Global Freelance\\nMarketplace",
+                                                            "Global Freelance\nMarketplace",
                                                             color = white,
                                                             style = MaterialTheme.typography.headlineSmall,
                                                             fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
@@ -2667,36 +2667,64 @@ fun RemoteHomeScreen(
         ) { job ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                 color = white,
-                shadowElevation = 2.dp
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    androidx.compose.ui.graphics.Color(0xFFE4EAF4)
+                ),
+                shadowElevation = 3.dp
             ) {
-                Column(Modifier.padding(17.dp)) {
-                    Text(
-                        job.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = navy,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Budget: ${job.budgetMinor / 100.0} ${job.currency}",
-                        color = ink,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Surface(
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                        color = purple
+                Column(
+                    modifier = Modifier.padding(17.dp),
+                    verticalArrangement = Arrangement.spacedBy(11.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            "Status: ${job.status}",
-                            modifier = Modifier.padding(
-                                horizontal = 10.dp,
-                                vertical = 5.dp
-                            ),
+                            job.title,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleMedium,
                             color = navy,
-                            style = MaterialTheme.typography.labelMedium
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            maxLines = 2
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            color = purple
+                        ) {
+                            Text(
+                                job.status.toString(),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                color = navy,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    androidx.compose.foundation.layout.HorizontalDivider(
+                        color = androidx.compose.ui.graphics.Color(0xFFEDF1F7)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "PROJECT BUDGET",
+                            color = muted,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                        )
+                        Text(
+                            "${job.budgetMinor / 100.0} ${job.currency}",
+                            color = blue,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                         )
                     }
                 }
