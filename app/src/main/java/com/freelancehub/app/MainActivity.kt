@@ -2288,8 +2288,8 @@ fun RemoteHomeScreen(
                                     .align(androidx.compose.ui.Alignment.CenterEnd)
                                     .size(174.dp)
                             ) {
-                                val center = androidx.compose.ui.geometry.Offset(size.width * 0.58f, size.height * 0.48f)
-                                val radius = size.minDimension * 0.43f
+                                val center = androidx.compose.ui.geometry.Offset(size.width * 0.58f, size.height * 0.34f)
+                                val radius = size.minDimension * 0.31f
                                 drawCircle(
                                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
                                         colors = listOf(
@@ -2326,6 +2326,45 @@ fun RemoteHomeScreen(
                                     start = androidx.compose.ui.geometry.Offset(center.x - radius * 1.18f, center.y + radius * 0.90f),
                                     end = androidx.compose.ui.geometry.Offset(center.x + radius * 1.10f, center.y + radius * 0.90f),
                                     strokeWidth = 2.dp.toPx()
+                                )
+
+                                // Small luminous laptop illustration beneath the globe.
+                                val laptopColor = androidx.compose.ui.graphics.Color(0xFFB9F2FF).copy(alpha = 0.88f)
+                                val screenTop = size.height * 0.56f
+                                val screenLeft = size.width * 0.24f
+                                val screenWidth = size.width * 0.66f
+                                val screenHeight = size.height * 0.30f
+                                drawRoundRect(
+                                    color = laptopColor,
+                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft, screenTop),
+                                    size = androidx.compose.ui.geometry.Size(screenWidth, screenHeight),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                                )
+                                drawRoundRect(
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        colors = listOf(
+                                            androidx.compose.ui.graphics.Color(0xFF1A8DFF).copy(alpha = 0.42f),
+                                            androidx.compose.ui.graphics.Color(0xFF36D9F5).copy(alpha = 0.16f)
+                                        ),
+                                        start = androidx.compose.ui.geometry.Offset(screenLeft, screenTop),
+                                        end = androidx.compose.ui.geometry.Offset(screenLeft + screenWidth, screenTop + screenHeight)
+                                    ),
+                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 4.dp.toPx(), screenTop + 4.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(screenWidth - 8.dp.toPx(), screenHeight - 8.dp.toPx()),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+                                )
+                                drawLine(
+                                    color = laptopColor,
+                                    start = androidx.compose.ui.geometry.Offset(screenLeft - 10.dp.toPx(), screenTop + screenHeight + 5.dp.toPx()),
+                                    end = androidx.compose.ui.geometry.Offset(screenLeft + screenWidth + 10.dp.toPx(), screenTop + screenHeight + 5.dp.toPx()),
+                                    strokeWidth = 4.dp.toPx()
+                                )
+                                drawLine(
+                                    color = laptopColor.copy(alpha = 0.62f),
+                                    start = androidx.compose.ui.geometry.Offset(screenLeft + 22.dp.toPx(), screenTop + screenHeight + 10.dp.toPx()),
+                                    end = androidx.compose.ui.geometry.Offset(screenLeft + screenWidth - 22.dp.toPx(), screenTop + screenHeight + 10.dp.toPx()),
+                                    strokeWidth = 1.5.dp.toPx()
                                 )
                             }
 
