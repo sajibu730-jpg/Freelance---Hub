@@ -2098,8 +2098,6 @@ fun RemoteHomeScreen(
     val openJobs = jobs.count {
         it.status.equals(JobStatus.OPEN, true)
     }
-    val totalJobs = jobs.size
-    val otherStatusJobs = (totalJobs - openJobs).coerceAtLeast(0)
 
     val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
     val blue = androidx.compose.ui.graphics.Color(0xFF246BFD)
@@ -2499,41 +2497,52 @@ fun RemoteHomeScreen(
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                val statCards = listOf(
-                    Triple("TOTAL JOBS", totalJobs.toString(), androidx.compose.ui.graphics.Color(0xFFEAF1FF)),
-                    Triple("OPEN JOBS", openJobs.toString(), androidx.compose.ui.graphics.Color(0xFFE6F7EF)),
-                    Triple("MY JOBS", myJobs.toString(), androidx.compose.ui.graphics.Color(0xFFF0EBFF)),
-                    Triple("OTHER STATUS", otherStatusJobs.toString(), androidx.compose.ui.graphics.Color(0xFFFFF3E5))
-                )
-                statCards.forEach { (label, value, tileColor) ->
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                        color = tileColor
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 12.dp),
-                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Text(
-                                value,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = navy,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                maxLines = 1
-                            )
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = ink,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                maxLines = 2,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    color = paleBlue
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("📂", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            if (role == UserRole.CLIENT) "$myJobs"
+                            else "$openJobs",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = navy,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                        Text(
+                            if (role == UserRole.CLIENT) "My posted jobs"
+                            else "Open jobs",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = ink
+                        )
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    color = green
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("👤", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            mine?.displayName ?: if (loading) "…" else "Account",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = androidx.compose.ui.graphics.Color(0xFF176B49),
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            maxLines = 2
+                        )
+                        Text(
+                            "Your account",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = ink
+                        )
                     }
                 }
             }
