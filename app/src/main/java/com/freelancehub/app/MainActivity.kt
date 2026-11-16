@@ -3606,12 +3606,43 @@ fun RemotePublicFreelancerProfileScreen(
     var profile by remember(freelancerId) { mutableStateOf<RemotePublicFreelancerProfile?>(null) }
     var loading by remember(freelancerId) { mutableStateOf(true) }
     var error by remember(freelancerId) { mutableStateOf("") }
+    var profilePhotoBitmap by remember(freelancerId) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var coverPhotoBitmap by remember(freelancerId) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     LaunchedEffect(freelancerId) {
         withContext(Dispatchers.IO) {
             runCatching { account.getPublicFreelancerProfile(freelancerId) }
                 .onSuccess { loaded -> withContext(Dispatchers.Main) { profile = loaded; loading = false } }
                 .onFailure { failure -> withContext(Dispatchers.Main) { error = failure.message ?: "Unable to load freelancer profile."; loading = false } }
+        }
+    }
+
+    LaunchedEffect(profile?.photoPath, profile?.coverPhotoUrl) {
+        val current = profile
+        profilePhotoBitmap = null
+        coverPhotoBitmap = null
+        if (current != null) {
+            withContext(Dispatchers.IO) {
+                val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                    runCatching {
+                        account.downloadProfilePhoto(path).let { bytes ->
+                            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        }
+                    }.getOrNull()
+                }
+                val cover = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
+                    runCatching {
+                        java.net.URL(url).openConnection().apply {
+                            connectTimeout = 10000
+                            readTimeout = 10000
+                        }.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) }
+                    }.getOrNull()
+                }
+                withContext(Dispatchers.Main) {
+                    profilePhotoBitmap = photo
+                    coverPhotoBitmap = cover
+                }
+            }
         }
     }
 
@@ -3625,15 +3656,67 @@ fun RemotePublicFreelancerProfileScreen(
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
         profile?.let { p ->
             ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(p.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                    if (p.country.isNotBlank()) Text(p.country, color = androidx.compose.ui.graphics.Color(0xFF65748B))
-                    Text(
-                        if (p.reviewCount == 0) "No client ratings yet"
-                        else String.format(java.util.Locale.US, "★ %.1f · %d client reviews", p.averageRating, p.reviewCount),
-                        color = androidx.compose.ui.graphics.Color(0xFF9A6900),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                Column {
+                    Box(
+                        Modifier.fillMaxWidth().height(170.dp)
+                            .background(androidx.compose.ui.graphics.Color(0xFF3157D5))
+                    ) {
+                        if (coverPhotoBitmap != null) {
+                            androidx.compose.foundation.Image(
+                                bitmap = coverPhotoBitmap!!.asImageBitmap(),
+                                contentDescription = "Freelancer cover photo",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Icon(
+                                    Icons.Filled.Image,
+                                    contentDescription = "Cover photo unavailable",
+                                    tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                                    modifier = Modifier.size(42.dp)
+                                )
+                            }
+                        }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            Modifier.size(82.dp)
+                                .background(androidx.compose.ui.graphics.Color(0xFFE5EBF7), androidx.compose.foundation.shape.CircleShape),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            if (profilePhotoBitmap != null) {
+                                androidx.compose.foundation.Image(
+                                    bitmap = profilePhotoBitmap!!.asImageBitmap(),
+                                    contentDescription = "Freelancer profile photo",
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.AccountCircle,
+                                    contentDescription = "Profile photo unavailable",
+                                    tint = androidx.compose.ui.graphics.Color(0xFF65748B),
+                                    modifier = Modifier.size(68.dp)
+                                )
+                            }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(p.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            if (p.country.isNotBlank()) Text(p.country, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            Text(
+                                if (p.reviewCount == 0) "No client ratings yet"
+                                else String.format(java.util.Locale.US, "★ %.1f · %d client reviews", p.averageRating, p.reviewCount),
+                                color = androidx.compose.ui.graphics.Color(0xFF9A6900),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
                 }
             }
             ElevatedCard(Modifier.fillMaxWidth()) {
