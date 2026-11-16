@@ -335,4 +335,73 @@ begin
 end
 $privilege_check$;
 
+-- RLS and privileged-function hardening checks.
+do $security_surface$
+declare
+  v_signature text;
+  v_is_security_definer boolean;
+  v_config text[];
+begin
+  if not (select relrowsecurity from pg_class where oid = 'public.freelancer_reviews'::regclass) then
+    raise exception 'freelancer_reviews row-level security is not enabled';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'freelancer_reviews'
+      and policyname = 'Completed contract clients can review freelancer'
+      and cmd = 'INSERT'
+  ) then
+    raise exception 'completed-contract review insert policy is missing';
+  end if;
+
+  if has_column_privilege('authenticated', 'public.freelancer_reviews', 'client_id', 'INSERT') then
+    raise exception 'authenticated role can forge freelancer review client_id';
+  end if;
+  if has_table_privilege('authenticated', 'public.freelancer_reviews', 'UPDATE') then
+    raise exception 'authenticated role can update freelancer reviews directly';
+  end if;
+  if has_table_privilege('authenticated', 'public.freelancer_reviews', 'DELETE') then
+    raise exception 'authenticated role can delete freelancer reviews directly';
+  end if;
+  if has_table_privilege('anon', 'public.freelancer_reviews', 'SELECT')
+     or has_table_privilege('anon', 'public.freelancer_reviews', 'INSERT') then
+    raise exception 'anon role has direct access to freelancer_reviews';
+  end if;
+
+  if has_function_privilege('anon', 'freelance_hub_private.can_review_completed_contract(uuid,uuid)', 'EXECUTE') then
+    raise exception 'anon can execute the private review authorization helper';
+  end if;
+  if not has_function_privilege('authenticated', 'freelance_hub_private.can_review_completed_contract(uuid,uuid)', 'EXECUTE') then
+    raise exception 'authenticated role cannot evaluate the review authorization policy';
+  end if;
+
+  foreach v_signature in array array[
+    'freelance_hub_private.can_review_completed_contract(uuid,uuid)',
+    'public.complete_contract(uuid)',
+    'public.get_public_freelancer_profile(uuid)',
+    'public.get_public_freelancer_reviews(uuid)',
+    'public.get_my_freelancer_review(uuid)'
+  ]
+  loop
+    select p.prosecdef, p.proconfig
+      into v_is_security_definer, v_config
+      from pg_proc p
+     where p.oid = to_regprocedure(v_signature);
+
+    if not coalesce(v_is_security_definer, false) then
+      raise exception 'expected SECURITY DEFINER function: %', v_signature;
+    end if;
+    if not exists (
+      select 1
+        from unnest(coalesce(v_config, array[]::text[])) setting
+       where setting like 'search_path=%'
+    ) then
+      raise exception 'function has no fixed search_path: %', v_signature;
+    end if;
+  end loop;
+end
+$security_surface$;
+
 select 'PASS: local PostgreSQL draft integration checks completed' as result;
