@@ -2212,18 +2212,7 @@ fun RemoteHomeScreen(
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier.size(48.dp),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center
-                                ) {
-                                    Text(
-                                        "F",
-                                        color = androidx.compose.ui.graphics.Color(0xFF20D6F4),
-                                        fontSize = 43.sp,
-                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black
-                                    )
-                                }
+                                FreelanceHubBrandMark(Modifier.size(48.dp))
                                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                         Text(
