@@ -3446,6 +3446,7 @@ fun RemoteProfileScreen(
                         Column(Modifier.weight(1f).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(p.displayName.ifBlank { "Your profile" }, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
                             Text(p.role.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            Text("Member Since · ${formatMemberSince(p.createdAt)}", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
                         }
                     }
                 }
@@ -3467,6 +3468,16 @@ ElevatedCard(
     }
 }
 
+
+
+private fun formatMemberSince(createdAt: String): String {
+    if (createdAt.isBlank()) return "Date unavailable"
+    return runCatching {
+        java.time.Instant.parse(createdAt)
+            .atZone(java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.getDefault()))
+    }.getOrDefault("Date unavailable")
+}
 
 @Composable
 fun RemoteSettingsScreen(account: RemoteAccountRepository, auth: com.freelancehub.app.auth.AuthService, back: () -> Unit) {
