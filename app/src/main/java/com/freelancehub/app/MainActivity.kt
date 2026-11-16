@@ -22,6 +22,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -1850,6 +1852,74 @@ Surface(
     var activityVersion by remember{mutableStateOf(0)}
     var showExitDialog by remember { mutableStateOf(false) }
 
+    // Seed the profile screen from private local cache before any network work.
+    remember(repo) {
+        repo.cachedRemoteProfile()?.let { cached ->
+            RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                cached, emptyList(), null, null, null
+            )
+        }
+    }
+
+    // Warm the current account in the background. Publish basic profile data first;
+    // reviews, statistics and media must never block the profile's first paint.
+    LaunchedEffect(remoteAccount, remoteMarketplace, role) {
+        withContext(Dispatchers.IO) {
+            val loaded = runCatching { remoteAccount.currentUser() }.getOrNull()
+                ?: return@withContext
+            repo.cacheRemoteProfile(loaded)
+
+            val cachedPhotoBytes = repo.cachedProfileImage("profile")
+            val cachedCoverBytes = repo.cachedProfileImage("cover")
+            val cachedPhoto = cachedPhotoBytes?.let { bytes ->
+                runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+            }
+            val cachedCover = cachedCoverBytes?.let { bytes ->
+                runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+            }
+            RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                loaded, emptyList(), null, cachedPhoto, cachedCover
+            )
+
+            coroutineScope {
+                val reviewsTask = async {
+                    if (role == UserRole.FREELANCER) runCatching {
+                        remoteMarketplace.listFreelancerReviews(loaded.id, 20)
+                    }.getOrDefault(emptyList()) else emptyList()
+                }
+                val statsTask = async {
+                    if (role == UserRole.FREELANCER) runCatching {
+                        remoteAccount.getPublicFreelancerProfile(loaded.id)
+                    }.getOrNull() else null
+                }
+                val photoTask = async {
+                    if (cachedPhoto != null) cachedPhoto else loaded.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                        runCatching {
+                            remoteAccount.downloadProfilePhoto(path).also { bytes ->
+                                repo.cacheProfileImage("profile", bytes)
+                            }.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                        }.getOrNull()
+                    }
+                }
+                val coverTask = async {
+                    if (cachedCover != null) cachedCover else loaded.coverPhotoUrl?.let { url ->
+                        runCatching {
+                            java.net.URL(url).openConnection().apply {
+                                connectTimeout = 5000
+                                readTimeout = 5000
+                            }.getInputStream().use { it.readBytes() }.also { bytes ->
+                                repo.cacheProfileImage("cover", bytes)
+                            }.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                        }.getOrNull()
+                    }
+                }
+                RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                    loaded, reviewsTask.await(), statsTask.await(), photoTask.await(), coverTask.await()
+                )
+            }
+        }
+    }
+
 BackHandler {
     when {
         showExitDialog -> showExitDialog = false
@@ -1966,12 +2036,12 @@ Scaffold(bottomBar={
             showMatching->RemoteJobMatchingScreen(remoteMarketplace,remoteAccount,{showMatching=false})
             showFreelancerAnalysis->RemoteFreelancerAnalysisScreen(remoteAccount,{showFreelancerAnalysis=false})
             showSettings->RemoteSettingsScreen(remoteAccount,auth,{showSettings=false})
-            editing->RemoteProfileScreen(remoteAccount,auth,{editing=false},{logout()})
+            editing->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{editing=false},{logout()},cacheRepo=repo)
             tab==0->RemoteHomeScreen(remoteMarketplace,remoteAccount,role,{showWorkChecker=true},{showProjectAnalysis=true},{showMatching=true},{showFreelancerAnalysis=true},{showSettings=true},{logout()}){if(role==UserRole.CLIENT)showPostJob=true}
             tab==1->RemoteJobsScreen(remoteMarketplace,remoteAccount,role,{if(role==UserRole.CLIENT)showPostJob=true})
             tab==2->RemoteNotificationsScreen()
             tab==3->RemoteCommunicationScreen()
-            else->RemoteProfileScreen(remoteAccount,auth,{showSettings=true},{logout()})
+            else->RemoteProfileScreen(remoteMarketplace,remoteAccount,role,auth,{showSettings=true},{logout()},cacheRepo=repo)
         }}
     }
 }
@@ -2051,191 +2121,172 @@ fun RemoteHomeScreen(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
-                color = navy
+                color = navy,
+                shadowElevation = 8.dp
             ) {
-                Column(
+                Box(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .background(
                             androidx.compose.ui.graphics.Brush.linearGradient(
-                                listOf(
-                                    androidx.compose.ui.graphics.Color(0xFF081B3B),
-                                    androidx.compose.ui.graphics.Color(0xFF174A9A),
-                                    androidx.compose.ui.graphics.Color(0xFF246BFD),
-                                    androidx.compose.ui.graphics.Color(0xFF153C82)
-                                )
+                                colors = listOf(
+                                    androidx.compose.ui.graphics.Color(0xFF071A35),
+                                    androidx.compose.ui.graphics.Color(0xFF103A78),
+                                    androidx.compose.ui.graphics.Color(0xFF1D5AC0)
+                                ),
+                                start = androidx.compose.ui.geometry.Offset.Zero,
+                                end = androidx.compose.ui.geometry.Offset(900f, 620f)
                             )
                         )
-                        .padding(22.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(174.dp)
-                            .drawBehind {
-                                // Soft atmospheric highlights give the hero header more depth.
-                                val glowCenter = androidx.compose.ui.geometry.Offset(size.width * 0.18f, size.height * 0.18f)
-                                drawCircle(
-                                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                        colors = listOf(
-                                            androidx.compose.ui.graphics.Color(0xFF69CFFF).copy(alpha = 0.22f),
-                                            androidx.compose.ui.graphics.Color.Transparent
-                                        ),
-                                        center = glowCenter,
-                                        radius = 190.dp.toPx()
+                        .drawBehind {
+                            val glow = androidx.compose.ui.geometry.Offset(
+                                size.width * 0.94f,
+                                size.height * 0.48f
+                            )
+                            drawCircle(
+                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                    colors = listOf(
+                                        androidx.compose.ui.graphics.Color(0xFF54C8FF).copy(alpha = 0.22f),
+                                        androidx.compose.ui.graphics.Color.Transparent
                                     ),
-                                    radius = 190.dp.toPx(),
-                                    center = glowCenter
-                                )
+                                    center = glow,
+                                    radius = 170.dp.toPx()
+                                ),
+                                radius = 170.dp.toPx(),
+                                center = glow
+                            )
+                            for (ring in 0..2) {
                                 drawCircle(
-                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.035f),
-                                    radius = 118.dp.toPx(),
-                                    center = androidx.compose.ui.geometry.Offset(size.width * 0.96f, size.height * 0.08f)
-                                )
-                                // Dotted Earth globe sits behind the right side of the centered brand.
-                                val ocean = androidx.compose.ui.graphics.Color(0xFF42BFFF)
-                                val land = androidx.compose.ui.graphics.Color(0xFF8ADFFF)
-                                val cx = size.width - 76.dp.toPx()
-                                val cy = 76.dp.toPx()
-                                val radius = 82.dp.toPx()
-                                val step = 4.2.dp.toPx()
-                                val landShapes = listOf(
-                                    floatArrayOf(-0.48f, -0.18f, 0.24f, 0.25f),
-                                    floatArrayOf(-0.20f, -0.52f, 0.13f, 0.13f),
-                                    floatArrayOf(-0.22f, 0.34f, 0.11f, 0.29f),
-                                    floatArrayOf(0.15f, -0.16f, 0.13f, 0.12f),
-                                    floatArrayOf(0.43f, -0.18f, 0.30f, 0.22f),
-                                    floatArrayOf(0.25f, 0.20f, 0.16f, 0.27f),
-                                    floatArrayOf(0.58f, 0.53f, 0.13f, 0.10f)
-                                )
-                                for (row in -19..19) {
-                                    val ny = row / 19f
-                                    val rowRadius = kotlin.math.sqrt((1f - ny * ny).coerceAtLeast(0f)) * radius
-                                    val count = (rowRadius / step).toInt()
-                                    for (column in -count..count) {
-                                        val nx = column * step / radius
-                                        val depth = 1f - nx * nx - ny * ny
-                                        if (depth >= 0f) {
-                                            val front = kotlin.math.sqrt(depth)
-                                            val isLand = landShapes.any { shape ->
-                                                val dx = (nx - shape[0]) / shape[2]
-                                                val dy = (ny - shape[1]) / shape[3]
-                                                dx * dx + dy * dy <= 1f
-                                            }
-                                            drawCircle(
-                                                color = (if (isLand) land else ocean).copy(
-                                                    alpha = (front * 0.66f + 0.10f) * if (isLand) 0.90f else 0.52f
-                                                ),
-                                                radius = if (isLand) 1.05.dp.toPx() else 0.72.dp.toPx(),
-                                                center = androidx.compose.ui.geometry.Offset(
-                                                    cx + column * step,
-                                                    cy + ny * radius
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                                drawCircle(
-                                    color = androidx.compose.ui.graphics.Color(0xFF70CFFF).copy(alpha = 0.16f),
-                                    radius = radius,
-                                    center = androidx.compose.ui.geometry.Offset(cx, cy),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx())
+                                    color = androidx.compose.ui.graphics.Color.White.copy(
+                                        alpha = 0.075f - ring * 0.018f
+                                    ),
+                                    radius = (76 + ring * 22).dp.toPx(),
+                                    center = androidx.compose.ui.geometry.Offset(
+                                        size.width * 0.96f,
+                                        size.height * 0.52f
+                                    ),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 1.dp.toPx()
+                                    )
                                 )
                             }
-                    ) {
-                        // Keep the overflow menu at the upper-right without shifting the centered logo.
-                        Box(Modifier.align(androidx.compose.ui.Alignment.TopEnd)) {
-                            IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "Main menu", tint = white)
-                            }
-                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                                DropdownMenuItem(text = { Text("Account settings") }, leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) }, onClick = { menuExpanded = false; onOpenSettings() })
-                                DropdownMenuItem(text = { Text("Refresh home") }, leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) }, onClick = { menuExpanded = false; reload() })
-                            }
+                            drawCircle(
+                                color = androidx.compose.ui.graphics.Color(0xFF8DDEFF).copy(alpha = 0.12f),
+                                radius = 5.dp.toPx(),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    size.width * 0.79f,
+                                    size.height * 0.20f
+                                )
+                            )
                         }
-                        Column(
-                            modifier = Modifier
-                                .align(androidx.compose.ui.Alignment.Center)
-                                .fillMaxWidth(),
-                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(7.dp)
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(
-                                    "F",
-                                    color = androidx.compose.ui.graphics.Color(0xFF48C8FF),
-                                    style = MaterialTheme.typography.displaySmall,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
-                                )
-                                Spacer(Modifier.width(9.dp))
                                 Box(
-                                    Modifier
-                                        .width(1.dp)
-                                        .height(34.dp)
-                                        .background(androidx.compose.ui.graphics.Color(0xFF8CCBFF).copy(alpha = 0.72f))
-                                )
-                                Spacer(Modifier.width(9.dp))
-                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
+                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f)),
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) {
                                     Text(
-                                        "Freelance",
-                                        color = white,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        "F",
+                                        color = androidx.compose.ui.graphics.Color(0xFF63D5FF),
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
                                     )
-                                    Spacer(Modifier.width(4.dp))
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                        Text(
+                                            "Freelance",
+                                            color = white,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        )
+                                        Text(
+                                            " Hub",
+                                            color = androidx.compose.ui.graphics.Color(0xFF63D5FF),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        )
+                                    }
                                     Text(
-                                        "Hub",
-                                        color = androidx.compose.ui.graphics.Color(0xFF55D5FF),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                        "GLOBAL FREELANCE MARKETPLACE",
+                                        color = androidx.compose.ui.graphics.Color(0xFFB8D5FF),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                                     )
                                 }
                             }
+
+                            Box {
+                                IconButton(onClick = { menuExpanded = true }) {
+                                    Icon(
+                                        Icons.Filled.MoreVert,
+                                        contentDescription = "Main menu",
+                                        tint = white
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Account settings") },
+                                        leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                                        onClick = { menuExpanded = false; onOpenSettings() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Refresh home") },
+                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                        onClick = { menuExpanded = false; reload() }
+                                    )
+                                }
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(0.88f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Text(
                                 "Your work. Your world. Your future.",
                                 color = white,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                            Text(
+                                "A global space to connect, collaborate and grow.",
+                                color = androidx.compose.ui.graphics.Color(0xFFD5E5FF),
                                 style = MaterialTheme.typography.bodyMedium
                             )
-
                         }
-                        // Center the label by its measured text width inside the full header.
-                        Box(
-                            modifier = Modifier
-                                .align(androidx.compose.ui.Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .padding(bottom = 30.dp),
-                            contentAlignment = androidx.compose.ui.Alignment.Center
+
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.13f)
                         ) {
                             Text(
-                                "GLOBAL FREELANCE MARKETPLACE",
-                                modifier = Modifier.fillMaxWidth(),
-                                color = androidx.compose.ui.graphics.Color(0xFFBFD5FF),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                text = if (role == UserRole.CLIENT) "CLIENT WORKSPACE" else "FREELANCER WORKSPACE",
+                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                                color = white,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                             )
                         }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Surface(
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                        color = androidx.compose.ui.graphics.Color(0x332FFFFFF)
-                    ) {
-                        Text(
-                            text = if (role == UserRole.CLIENT)
-                                "CLIENT WORKSPACE"
-                            else
-                                "FREELANCER WORKSPACE",
-                            modifier = Modifier.padding(
-                                horizontal = 14.dp,
-                                vertical = 9.dp
-                            ),
-                            color = white,
-                            style = MaterialTheme.typography.labelLarge
-                        )
                     }
                 }
             }
@@ -2311,53 +2362,14 @@ fun RemoteHomeScreen(
             }
         }
 
-        item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-                color = white
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Marketplace status",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = ink
-                        )
-                        if (loading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(
-                                "● Live",
-                                color = androidx.compose.ui.graphics.Color(0xFF16845B),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Messages & notifications: open Messages",
-                        color = muted,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    if (error.isNotBlank()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            error,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    TextButton(onClick = { reload() }) {
-                        Text("↻  Refresh live data")
-                    }
-                }
+        if (error.isNotBlank()) {
+            item {
+                Text(
+                    error,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
 
@@ -2527,8 +2539,8 @@ fun RemoteHomeScreen(
     val me=repo.profile(); val allJobs=(DemoJobs.all+repo.savedJobs()).distinctBy{it.id}; val myJobs=allJobs.count{it.ownerEmail.equals(me.email,true)}; val myProposals=repo.proposals().count{it.freelancerEmail.equals(me.email,true)}; val saved=repo.favoriteJobIds().size
     LazyColumn(Modifier.fillMaxSize().padding(20.dp)){
         item{Text("Welcome to Freelance Hub",style=MaterialTheme.typography.headlineMedium);Text("Work globally. Learn skills. Build your career.");Spacer(Modifier.height(16.dp));Text("Dashboard",style=MaterialTheme.typography.titleLarge);Spacer(Modifier.height(8.dp))
-            if(role==UserRole.CLIENT){Text("My jobs: $myJobs");Text("Activity updates: available in Messages")}else{Text("My proposals: $myProposals");Text("Saved jobs: $saved")}
-            Text("Messages & notifications: open Messages");Spacer(Modifier.height(20.dp));Text("Quick actions",style=MaterialTheme.typography.titleLarge);
+            if(role==UserRole.CLIENT){Text("My jobs: $myJobs");}else{Text("My proposals: $myProposals");Text("Saved jobs: $saved")}
+            Text("Quick actions",style=MaterialTheme.typography.titleLarge);
             if(role==UserRole.CLIENT){Spacer(Modifier.height(10.dp));Button(onClick=onPostJob,modifier=Modifier.fillMaxWidth()){Text("Post a job")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onProjectAnalysis,modifier=Modifier.fillMaxWidth()){Text("Analyze My Project")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onMatching,modifier=Modifier.fillMaxWidth()){Text("Find My Job Matches") }} else {Spacer(Modifier.height(10.dp));Button(onClick=onWorkCheck,modifier=Modifier.fillMaxWidth()){Text("Check My Work")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onMatching,modifier=Modifier.fillMaxWidth()){Text("Find Jobs For Me")};Spacer(Modifier.height(8.dp));OutlinedButton(onClick=onFreelancerAnalysis,modifier=Modifier.fillMaxWidth()){Text("Analyze My Freelancer Profile")}}
         }
         items(listOf("Find freelance jobs","Learn practical skills","Build your portfolio","Explore Premium")){ElevatedCard(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(it,Modifier.padding(18.dp))}}
@@ -2616,7 +2628,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var reviewOpen by remember{mutableStateOf(false)}
     if(proposalOpen){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
     if(workOpen){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
-    if(reviewOpen){RemoteWorkReviewScreen(current,marketplace,{reviewOpen=false});return}
+    if(reviewOpen){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
     var error by remember{mutableStateOf("")}
     LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{account.currentUser()}.onSuccess{me=it}.onFailure{error=it.message?:"Unable to load account."}}}
@@ -2683,46 +2695,136 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 }
 
-@Composable fun RemoteWorkReviewScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+@Composable fun RemoteWorkReviewScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,account:RemoteAccountRepository,back:()->Unit){
     var submissions by remember{mutableStateOf<List<RemoteWorkSubmission>>(emptyList())}
     var selected by remember{mutableStateOf<RemoteWorkSubmission?>(null)}
+    var contract by remember{mutableStateOf<RemoteContract?>(null)}
+    var existingReview by remember{mutableStateOf<RemoteFreelancerReview?>(null)}
+    var showFreelancerProfile by remember{mutableStateOf(false)}
     var comment by remember{mutableStateOf("")}
+    var rating by remember{mutableIntStateOf(5)}
+    var reviewText by remember{mutableStateOf("")}
     var error by remember{mutableStateOf("")}
+    var notice by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
-    
-fun reload() {
-    scope.launch {
-        runCatching {
-            withContext(Dispatchers.IO) {
-                marketplace.listWorkSubmissions(j.id)
+
+    fun reload() {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val loadedSubmissions = marketplace.listWorkSubmissions(j.id)
+                    val loadedContract = marketplace.getContractForJob(j.id)
+                    val loadedReview = if (loadedContract.status.equals("completed", true)) {
+                        runCatching { marketplace.getFreelancerReviewForContract(loadedContract.id) }.getOrNull()
+                    } else null
+                    Triple(loadedSubmissions, loadedContract, loadedReview)
+                }
             }
-        }.onSuccess {
-            submissions = it
-            error = ""
-        }.onFailure { e ->
-            error = e.message ?: "Unable to load submissions."
+            result.onSuccess { data ->
+                submissions = data.first
+                selected = selected?.let { previous -> data.first.firstOrNull { it.id == previous.id } }
+                contract = data.second
+                existingReview = data.third
+                error = ""
+            }.onFailure { e ->
+                error = e.message ?: "Unable to load work submissions."
+            }
         }
     }
-}
 
     LaunchedEffect(Unit){reload()}
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Client Work Review",style=MaterialTheme.typography.headlineSmall);Text(j.title,style=MaterialTheme.typography.titleMedium);Spacer(Modifier.height(10.dp))
+    if (showFreelancerProfile && contract != null) {
+        RemotePublicFreelancerProfileScreen(contract!!.freelancerId, account) {
+            showFreelancerProfile = false
+        }
+        return
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
+        Text("Client Work Review",style=MaterialTheme.typography.headlineSmall)
+        Text(j.title,style=MaterialTheme.typography.titleMedium)
+        if (contract != null) {
+            OutlinedButton(
+                onClick = { showFreelancerProfile = true },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("View freelancer public profile") }
+        }
+        Spacer(Modifier.height(10.dp))
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+        if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
         if(submissions.isEmpty())Text("No authorized work submissions are available yet.")
         submissions.forEach{s->
             ElevatedCard(onClick={selected=s},modifier=Modifier.fillMaxWidth().padding(vertical=4.dp)){
-                Column(Modifier.padding(12.dp)){Text("Status: ${s.status}");Text(s.summary.take(180));Text("Check score: ${s.checkScore}%")}
+                Column(Modifier.padding(12.dp)){
+                    Text("Status: ${s.status}")
+                    Text(s.summary.take(180))
+                    Text("Check score: ${s.checkScore}%")
+                }
             }
         }
         selected?.let{s->
-            Spacer(Modifier.height(10.dp));Text("Selected submission",style=MaterialTheme.typography.titleMedium);Text(s.summary)
+            Spacer(Modifier.height(10.dp))
+            Text("Selected submission",style=MaterialTheme.typography.titleMedium)
+            Text(s.summary)
             if(s.fileLinks.isNotEmpty())Text("Files: ${s.fileLinks.joinToString()}")
-            OutlinedTextField(comment,{comment=it},label={Text("Review / revision feedback")},minLines=3,modifier=Modifier.fillMaxWidth())
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                Button(enabled=!busy,onClick={busy=true;scope.launch(Dispatchers.IO){runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.APPROVED,comment.trim()))}.onSuccess{withContext(Dispatchers.Main){busy=false;comment="";reload()}}.onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Approval failed."}}}}){Text("Approve")}
-                OutlinedButton(enabled=!busy,onClick={busy=true;scope.launch(Dispatchers.IO){runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.CHANGES_REQUESTED,comment.trim()))}.onSuccess{withContext(Dispatchers.Main){busy=false;comment="";reload()}}.onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Revision request failed."}}}}){Text("Request changes")}
+            if(!s.status.equals(WorkSubmissionStatus.APPROVED,true)){
+                OutlinedTextField(comment,{comment=it},label={Text("Review / revision feedback")},minLines=3,modifier=Modifier.fillMaxWidth())
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=!busy,onClick={
+                        busy=true
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.APPROVED,comment.trim()))}
+                                .onSuccess{withContext(Dispatchers.Main){busy=false;comment="";notice="Work approved. You can now complete the contract.";reload()}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Approval failed."}}
+                        }
+                    }){Text("Approve")}
+                    OutlinedButton(enabled=!busy,onClick={
+                        busy=true
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.reviewWorkSubmission(s.id,RemoteWorkReviewCreate(WorkSubmissionStatus.CHANGES_REQUESTED,comment.trim()))}
+                                .onSuccess{withContext(Dispatchers.Main){busy=false;comment="";reload()}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Revision request failed."}}
+                        }
+                    }){Text("Request changes")}
+                }
+            } else {
+                val currentContract = contract
+                if(currentContract == null){
+                    Text("Contract details are not available yet.",color=MaterialTheme.colorScheme.error)
+                } else if(!currentContract.status.equals("completed",true)){
+                    Text("The approved delivery is ready. Confirm completion to record this job in the freelancer's work history.")
+                    Button(enabled=!busy,onClick={
+                        busy=true;error="";notice=""
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.completeContract(currentContract.id)}
+                                .onSuccess{withContext(Dispatchers.Main){busy=false;contract=currentContract.copy(status="completed");notice="Contract completed. Please rate the freelancer.";reload()}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Contract completion failed."}}
+                        }
+                    },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Completing…" else "Complete contract")}
+                } else if(existingReview != null){
+                    Text("Your review has been submitted.",style=MaterialTheme.typography.titleMedium)
+                    Text("${"★".repeat(existingReview!!.rating.coerceIn(0,5))}  ${existingReview!!.rating}/5")
+                    if(existingReview!!.reviewText.isNotBlank())Text(existingReview!!.reviewText)
+                } else {
+                    Text("Rate the freelancer's work quality",style=MaterialTheme.typography.titleMedium)
+                    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                        (1..5).forEach{star->
+                            TextButton(onClick={rating=star},enabled=!busy){
+                                Text(if(star<=rating)"★" else "☆",color=androidx.compose.ui.graphics.Color(0xFFFFB300),style=MaterialTheme.typography.titleLarge)
+                            }
+                        }
+                        Text("$rating / 5")
+                    }
+                    OutlinedTextField(reviewText,{reviewText=it.take(2000)},label={Text("Write a review (optional)")},minLines=3,modifier=Modifier.fillMaxWidth())
+                    Button(enabled=!busy,onClick={
+                        busy=true;error="";notice=""
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.createFreelancerReview(currentContract.id,currentContract.freelancerId,rating,reviewText.trim())}
+                                .onSuccess{saved->withContext(Dispatchers.Main){busy=false;existingReview=saved;notice="Thank you. Your freelancer review has been published."}}
+                                .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Review submission failed."}}
+                        }
+                    },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Submit freelancer review")}
+                }
             }
         }
         TextButton(onClick=back){Text("Back")}
@@ -3257,31 +3359,81 @@ fun RemoteNotificationsScreen() {
         Button(onClick={if(reviewee.isNotBlank())onSubmit(Review(j.id,p.email,p.name,reviewee,revieweeName,rating,comment))},enabled=reviewee.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("Submit review")};Text("Reviews can be submitted once per participant per completed job.");TextButton(onClick=back){Text("Cancel")}}
 }
 
+private data class RemoteProfileScreenSnapshot(
+    val profile: RemoteAccount,
+    val reviews: List<RemoteFreelancerReview>,
+    val publicProfile: RemotePublicFreelancerProfile?,
+    val profileBitmap: android.graphics.Bitmap?,
+    val coverBitmap: android.graphics.Bitmap?
+)
+
+private object RemoteProfileScreenCache {
+    @Volatile var value: RemoteProfileScreenSnapshot? = null
+}
+
 @Composable
 fun RemoteProfileScreen(
+    marketplace: RemoteMarketplaceRepository,
     account: RemoteAccountRepository,
+    role: UserRole,
     auth: com.freelancehub.app.auth.AuthService,
     edit: () -> Unit,
-    logout: () -> Unit
+    logout: () -> Unit,
+    cacheRepo: AppRepository? = null
 ) {
     val context = LocalContext.current
-    var profile by remember { mutableStateOf<RemoteAccount?>(null) }
-    var loading by remember { mutableStateOf(true) }
+    val cached = RemoteProfileScreenCache.value
+    var profile by remember { mutableStateOf<RemoteAccount?>(cached?.profile) }
+    var freelancerReviews by remember { mutableStateOf(cached?.reviews ?: emptyList()) }
+    var freelancerPublicProfile by remember { mutableStateOf<RemotePublicFreelancerProfile?>(cached?.publicProfile) }
+    var activityError by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(cached?.profile == null) }
     var savingPhoto by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
-    var profileBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-    var coverBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var profileBitmap by remember { mutableStateOf(cached?.profileBitmap) }
+    var coverBitmap by remember { mutableStateOf(cached?.coverBitmap) }
     val scope = rememberCoroutineScope()
 
     fun load() {
-        loading = true
+        if (profile == null) loading = true
+        activityError = ""
         scope.launch(Dispatchers.IO) {
             val result = runCatching { account.currentUser() }
+            val loadedProfile = result.getOrNull()
             withContext(Dispatchers.Main) {
-                result.onSuccess { profile = it }
-                    .onFailure { error = it.message ?: "Unable to load profile." }
-                loading = false
+                result.onSuccess {
+                    profile = it
+                    cacheRepo?.cacheRemoteProfile(it)
+                    loading = false
+                    RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                        it, freelancerReviews, freelancerPublicProfile, profileBitmap, coverBitmap
+                    )
+                }.onFailure {
+                    error = it.message ?: "Unable to load profile."
+                    loading = false
+                }
+            }
+            if (loadedProfile != null && role == UserRole.FREELANCER) {
+                coroutineScope {
+                    val reviewsTask = async(Dispatchers.IO) {
+                        runCatching { marketplace.listFreelancerReviews(loadedProfile.id, 20) }
+                    }
+                    val statsTask = async(Dispatchers.IO) {
+                        runCatching { account.getPublicFreelancerProfile(loadedProfile.id) }
+                    }
+                    val reviewsResult = reviewsTask.await()
+                    val statsResult = statsTask.await()
+                    withContext(Dispatchers.Main) {
+                        reviewsResult.onSuccess { freelancerReviews = it }
+                            .onFailure { activityError = it.message ?: "Unable to load freelancer reviews." }
+                        statsResult.onSuccess { freelancerPublicProfile = it }
+                            .onFailure { activityError = it.message ?: "Unable to load lifetime rating summary." }
+                        RemoteProfileScreenCache.value = RemoteProfileScreenSnapshot(
+                            loadedProfile, freelancerReviews, freelancerPublicProfile, profileBitmap, coverBitmap
+                        )
+                    }
+                }
             }
         }
     }
@@ -3322,6 +3474,9 @@ fun RemoteProfileScreen(
             withContext(Dispatchers.Main) {
                 result.onSuccess {
                     profile = it
+                    cacheRepo?.cacheRemoteProfile(it)
+                    if (isCover) coverBitmap = null else profileBitmap = null
+                    RemoteProfileScreenCache.value = RemoteProfileScreenCache.value?.copy(profile = it)
                     notice = if (isCover) "Cover photo saved successfully." else "Profile photo saved successfully."
                 }.onFailure { e -> error = e.message ?: "The photo could not be saved." }
                 savingPhoto = false
@@ -3339,22 +3494,40 @@ fun RemoteProfileScreen(
     LaunchedEffect(Unit) { load() }
     LaunchedEffect(profile?.photoPath, profile?.coverPhotoUrl) {
         val current = profile
-        profileBitmap = null
-        coverBitmap = null
-        if (current != null) {
+        if (current != null && (profileBitmap == null || coverBitmap == null)) {
             withContext(Dispatchers.IO) {
-                val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
-                    runCatching { account.downloadProfilePhoto(path).let { bytes -> android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } }.getOrNull()
-                }
-                val cover = current.coverPhotoUrl?.takeIf { it.startsWith("https://") }?.let { url ->
-                    runCatching { java.net.URL(url).openConnection().apply {
-                        connectTimeout = 10000
-                        readTimeout = 10000
-                    }.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) } }.getOrNull()
-                }
+                val cachedPhoto = if (profileBitmap == null) cacheRepo?.cachedProfileImage("profile")?.let { bytes ->
+                    runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                } else profileBitmap
+                val cachedCover = if (coverBitmap == null) cacheRepo?.cachedProfileImage("cover")?.let { bytes ->
+                    runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+                } else coverBitmap
                 withContext(Dispatchers.Main) {
-                    profileBitmap = photo
-                    coverBitmap = cover
+                    if (cachedPhoto != null) profileBitmap = cachedPhoto
+                    if (cachedCover != null) coverBitmap = cachedCover
+                }
+                val photo = if (cachedPhoto == null) current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                    runCatching {
+                        account.downloadProfilePhoto(path).also { bytes -> cacheRepo?.cacheProfileImage("profile", bytes) }
+                            .let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                    }.getOrNull()
+                } else cachedPhoto
+                val cover = if (cachedCover == null) current.coverPhotoUrl?.let { url ->
+                    runCatching {
+                        java.net.URL(url).openConnection().apply {
+                            connectTimeout = 5000
+                            readTimeout = 5000
+                        }.getInputStream().use { it.readBytes() }.also { bytes ->
+                            cacheRepo?.cacheProfileImage("cover", bytes)
+                        }.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                    }.getOrNull()
+                } else cachedCover
+                withContext(Dispatchers.Main) {
+                    if (photo != null) profileBitmap = photo
+                    if (cover != null) coverBitmap = cover
+                    RemoteProfileScreenCache.value = RemoteProfileScreenCache.value?.copy(
+                        profileBitmap = profileBitmap, coverBitmap = coverBitmap
+                    )
                 }
             }
         }
@@ -3445,7 +3618,7 @@ fun RemoteProfileScreen(
                         }
                         Column(Modifier.weight(1f).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(p.displayName.ifBlank { "Your profile" }, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
-                            Text(p.role.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            Text(role.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
                             Text("Member Since · ${formatMemberSince(p.createdAt)}", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
                         }
                     }
@@ -3464,11 +3637,279 @@ ElevatedCard(
                     if (p.skills.isNotBlank()) Text("Skills: ${p.skills}")
                 }
             }
+
+            if (role == UserRole.FREELANCER) {
+            ElevatedCard(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+            ) {
+                val completedJobs = freelancerPublicProfile?.completedJobs ?: 0
+                val activeJobs = freelancerPublicProfile?.activeJobs ?: 0
+                val completedUsd = String.format(
+                    java.util.Locale.US,
+                    "$%.2f",
+                    (freelancerPublicProfile?.completedUsdMinor ?: 0L) / 100.0
+                )
+                val lifetimeReviewCount = freelancerPublicProfile?.reviewCount
+                val lifetimeAverageRating = freelancerPublicProfile?.averageRating
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(activeJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Active jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(completedJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF102A56), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Completed jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(completedUsd, style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text("Completed value (USD)", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Text(
+                        "Total jobs: ${activeJobs + completedJobs}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = androidx.compose.ui.graphics.Color(0xFF65748B)
+                    )
+                    Text(
+                        when {
+                            lifetimeReviewCount == null || lifetimeAverageRating == null -> "Lifetime rating summary unavailable"
+                            lifetimeReviewCount == 0 -> "No client reviews yet"
+                            else -> String.format(java.util.Locale.US, "★ %.1f average · %d total client reviews", lifetimeAverageRating, lifetimeReviewCount)
+                        },
+                        color = androidx.compose.ui.graphics.Color(0xFF9A6900),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (activityError.isNotBlank()) Text(activityError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            ElevatedCard(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = androidx.compose.ui.graphics.Color.White)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Client Reviews", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = androidx.compose.ui.graphics.Color(0xFF102A56))
+                    if (freelancerReviews.isEmpty()) {
+                        Text("Completed client reviews will appear here.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                    } else {
+                        freelancerReviews.forEachIndexed { index, review ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("${"★".repeat(review.rating.coerceIn(0, 5))}  ${review.rating}/5", color = androidx.compose.ui.graphics.Color(0xFFFFB300), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                if (review.reviewText.isNotBlank()) Text(review.reviewText)
+                                Text("Verified completed contract", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            }
+                            if (index < freelancerReviews.lastIndex) Divider(color = androidx.compose.ui.graphics.Color(0xFFE7ECF5))
+                        }
+                    }
+                }
+            }
+            }
         }
     }
 }
 
 
+private fun loadRemoteCoverBitmap(rawUrl: String): android.graphics.Bitmap? {
+    val parsed = runCatching { java.net.URL(rawUrl) }.getOrNull() ?: return null
+    if (!parsed.protocol.equals("https", ignoreCase = true)) return null
+
+    val connection = runCatching {
+        parsed.openConnection().apply {
+            connectTimeout = 10000
+            readTimeout = 10000
+            useCaches = false
+        }
+    }.getOrNull() ?: return null
+
+    return try {
+        val length = connection.getHeaderFieldLong("Content-Length", -1L)
+        if (length > 5L * 1024 * 1024) return null
+        val bytes = connection.getInputStream().use { input ->
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                total += count
+                if (total > 5 * 1024 * 1024) return null
+                output.write(buffer, 0, count)
+            }
+            output.toByteArray()
+        }
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    } catch (_: Exception) {
+        null
+    } finally {
+        (connection as? java.net.HttpURLConnection)?.disconnect()
+    }
+}
+
+@Composable
+fun RemotePublicFreelancerProfileScreen(
+    freelancerId: String,
+    account: RemoteAccountRepository,
+    back: () -> Unit
+) {
+    var profile by remember(freelancerId) { mutableStateOf<RemotePublicFreelancerProfile?>(null) }
+    var loading by remember(freelancerId) { mutableStateOf(true) }
+    var error by remember(freelancerId) { mutableStateOf("") }
+    var profilePhotoBitmap by remember(freelancerId) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var coverPhotoBitmap by remember(freelancerId) { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    LaunchedEffect(freelancerId) {
+        withContext(Dispatchers.IO) {
+            runCatching { account.getPublicFreelancerProfile(freelancerId) }
+                .onSuccess { loaded -> withContext(Dispatchers.Main) { profile = loaded; loading = false } }
+                .onFailure { failure -> withContext(Dispatchers.Main) { error = failure.message ?: "Unable to load freelancer profile."; loading = false } }
+        }
+    }
+
+    LaunchedEffect(profile?.photoPath, profile?.coverPhotoUrl) {
+        val current = profile
+        profilePhotoBitmap = null
+        coverPhotoBitmap = null
+        if (current != null) {
+            withContext(Dispatchers.IO) {
+                val photo = current.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                    runCatching {
+                        account.downloadProfilePhoto(path).let { bytes ->
+                            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        }
+                    }.getOrNull()
+                }
+                val cover = current.coverPhotoUrl?.let(::loadRemoteCoverBitmap)
+                withContext(Dispatchers.Main) {
+                    profilePhotoBitmap = photo
+                    coverPhotoBitmap = cover
+                }
+            }
+        }
+    }
+
+    Column(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3F6FC))
+            .verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        TextButton(onClick = back) { Text("Back to work review") }
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+        profile?.let { p ->
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Box(
+                        Modifier.fillMaxWidth().height(170.dp)
+                            .background(androidx.compose.ui.graphics.Color(0xFF3157D5))
+                    ) {
+                        if (coverPhotoBitmap != null) {
+                            androidx.compose.foundation.Image(
+                                bitmap = coverPhotoBitmap!!.asImageBitmap(),
+                                contentDescription = "Freelancer cover photo",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Icon(
+                                    Icons.Filled.Image,
+                                    contentDescription = "Cover photo unavailable",
+                                    tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                                    modifier = Modifier.size(42.dp)
+                                )
+                            }
+                        }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            Modifier.size(82.dp)
+                                .background(androidx.compose.ui.graphics.Color(0xFFE5EBF7), androidx.compose.foundation.shape.CircleShape),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            if (profilePhotoBitmap != null) {
+                                androidx.compose.foundation.Image(
+                                    bitmap = profilePhotoBitmap!!.asImageBitmap(),
+                                    contentDescription = "Freelancer profile photo",
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.AccountCircle,
+                                    contentDescription = "Profile photo unavailable",
+                                    tint = androidx.compose.ui.graphics.Color(0xFF65748B),
+                                    modifier = Modifier.size(68.dp)
+                                )
+                            }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(p.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            if (p.country.isNotBlank()) Text(p.country, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            Text(
+                                if (p.reviewCount == 0) "No client ratings yet"
+                                else String.format(java.util.Locale.US, "★ %.1f · %d client reviews", p.averageRating, p.reviewCount),
+                                color = androidx.compose.ui.graphics.Color(0xFF9A6900),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                }
+            }
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Work Statistics", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(p.activeJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF3157D5))
+                            Text("Active Jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(p.completedJobs.toString(), style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color(0xFF176B49))
+                            Text("Completed Jobs", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(String.format(java.util.Locale.US, "$%.2f", p.completedUsdMinor / 100.0), style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color(0xFF176B49))
+                            Text("Completed Value (USD)", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text(p.bio.ifBlank { "No introduction has been added yet." })
+                    if (p.capabilities.isNotBlank()) Text("Services: ${p.capabilities}")
+                    if (p.skills.isNotBlank()) Text("Skills: ${p.skills}")
+                }
+            }
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Client Reviews", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    if (p.reviews.isEmpty()) {
+                        Text("Verified client reviews will appear here.", color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                    } else {
+                        p.reviews.forEachIndexed { index, review ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("${"★".repeat(review.rating.coerceIn(0, 5))}  ${review.rating}/5", color = androidx.compose.ui.graphics.Color(0xFFFFB300), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                if (review.reviewText.isNotBlank()) Text(review.reviewText)
+                                Text("Verified completed contract", style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFF65748B))
+                            }
+                            if (index < p.reviews.lastIndex) Divider(color = androidx.compose.ui.graphics.Color(0xFFE7ECF5))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 private fun formatMemberSince(createdAt: String): String {
     if (createdAt.isBlank()) return "Date unavailable"
