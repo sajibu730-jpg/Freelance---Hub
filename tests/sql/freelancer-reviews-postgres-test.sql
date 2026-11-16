@@ -320,7 +320,7 @@ end
 $unauthenticated_rpc$;
 
 reset role;
-do $
+do $privilege_check$
 begin
   if has_function_privilege('anon', 'public.complete_contract(uuid)', 'EXECUTE') then
     raise exception 'anon can execute complete_contract';
@@ -335,6 +335,6 @@ begin
     raise exception 'anon can execute own-review RPC';
   end if;
 end
-$$;
+$privilege_check$;
 
 select 'PASS: local PostgreSQL draft integration checks completed' as result;
