@@ -154,6 +154,12 @@ begin
   if has_table_privilege('authenticated', 'public.freelancer_reviews', 'SELECT') then
     raise exception 'authenticated role has direct SELECT on freelancer_reviews';
   end if;
+  if has_column_privilege('authenticated', 'public.freelancer_reviews', 'created_at', 'INSERT') then
+    raise exception 'authenticated role can forge freelancer review timestamps';
+  end if;
+  if has_column_privilege('authenticated', 'public.freelancer_reviews', 'id', 'INSERT') then
+    raise exception 'authenticated role can supply freelancer review IDs';
+  end if;
   if has_table_privilege('authenticated', 'public.contracts', 'SELECT') then
     raise exception 'authenticated role unexpectedly has direct SELECT on contracts';
   end if;
