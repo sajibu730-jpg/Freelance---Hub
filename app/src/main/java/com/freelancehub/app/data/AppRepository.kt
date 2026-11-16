@@ -12,6 +12,58 @@ class AppRepository(context: Context) {
     private val tokenStore = TokenStore(context.applicationContext)
     private val prefs = context.getSharedPreferences("freelance_hub", Context.MODE_PRIVATE)
 
+    private val appContext = context.applicationContext
+
+    /** Persist the latest server-confirmed profile for instant cache-first rendering. */
+    fun cacheRemoteProfile(account: RemoteAccount) {
+        val json = JSONObject()
+            .put("id", account.id)
+            .put("coverPhotoUrl", account.coverPhotoUrl ?: "")
+            .put("photoPath", account.photoPath ?: "")
+            .put("email", account.email)
+            .put("displayName", account.displayName)
+            .put("bio", account.bio)
+            .put("role", account.role.name)
+            .put("capabilities", account.capabilities)
+            .put("skills", account.skills)
+            .put("mobileNumber", account.mobileNumber)
+            .put("mobileNumberChangedAt", account.mobileNumberChangedAt ?: "")
+        prefs.edit().putString("remote_profile_cache", json.toString()).apply()
+    }
+
+    fun cachedRemoteProfile(): RemoteAccount? = runCatching {
+        val json = prefs.getString("remote_profile_cache", null)?.let(::JSONObject) ?: return null
+        val id = json.optString("id")
+        val email = json.optString("email")
+        if (id.isBlank() || !Validation.email(email)) return null
+        RemoteAccount(
+            id = id,
+            coverPhotoUrl = json.optString("coverPhotoUrl").takeIf { it.isNotBlank() },
+            photoPath = json.optString("photoPath").takeIf { it.isNotBlank() },
+            email = email,
+            displayName = json.optString("displayName"),
+            bio = json.optString("bio"),
+            role = runCatching { UserRole.valueOf(json.optString("role")) }.getOrDefault(UserRole.FREELANCER),
+            capabilities = json.optString("capabilities"),
+            skills = json.optString("skills"),
+            mobileNumber = json.optString("mobileNumber"),
+            mobileNumberChangedAt = json.optString("mobileNumberChangedAt").takeIf { it.isNotBlank() }
+        )
+    }.getOrNull()
+
+    /** Small private app-internal image cache; never exposes profile images publicly. */
+    fun cacheProfileImage(kind: String, bytes: ByteArray) {
+        if (kind != "profile" && kind != "cover") return
+        if (bytes.isEmpty() || bytes.size > 5 * 1024 * 1024) return
+        appContext.openFileOutput("profile_cache_$kind", Context.MODE_PRIVATE).use { it.write(bytes) }
+    }
+
+    fun cachedProfileImage(kind: String): ByteArray? {
+        if (kind != "profile" && kind != "cover") return null
+        val file = appContext.getFileStreamPath("profile_cache_$kind")
+        return if (file.isFile && file.length() in 1..(5L * 1024 * 1024)) file.readBytes() else null
+    }
+
     /** Authentication authority is the secure token, never a local boolean preference. */
     fun isLoggedIn(): Boolean = !tokenStore.readAccessToken().isNullOrBlank()
 
