@@ -2337,7 +2337,7 @@ fun RemoteHomeScreen(
                                 verticalArrangement = Arrangement.spacedBy(9.dp)
                             ) {
                                 Text(
-                                    "Your work. Your world.\\nYour future.",
+                                    "Your work. Your world.\nYour future.",
                                     color = white,
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
