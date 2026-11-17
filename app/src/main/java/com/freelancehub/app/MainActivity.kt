@@ -1728,7 +1728,7 @@ Surface(
                             Surface(
                                 shape = androidx.compose.foundation.shape.CircleShape,
                                 color = androidx.compose.ui.graphics.Color(0xFFD4E8FF),
-                                modifier = Modifier.size(42.dp)
+                                modifier = Modifier.size(38.dp)
                             ) {
                                 Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
                                     Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
@@ -2317,8 +2317,8 @@ fun RemoteHomeScreen(
                             // Laptop body and screen, with the large world globe integrated on its display.
                             Surface(
                                 modifier = Modifier
-                                    .width(158.dp)
-                                    .height(112.dp)
+                                    .width(140.dp)
+                                    .height(100.dp)
                                     .align(androidx.compose.ui.Alignment.Center)
                                     .offset(y = (-5).dp),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
@@ -2337,12 +2337,12 @@ fun RemoteHomeScreen(
                                     ),
                                     contentAlignment = androidx.compose.ui.Alignment.Center
                                 ) {
-                                    GlobalGlobeMark(Modifier.size(126.dp), white)
+                                    GlobalGlobeMark(Modifier.size(112.dp), white)
                                 }
                             }
                             Surface(
                                 modifier = Modifier
-                                    .width(174.dp)
+                                    .width(152.dp)
                                     .height(10.dp)
                                     .align(androidx.compose.ui.Alignment.Center)
                                     .offset(y = 55.dp),
