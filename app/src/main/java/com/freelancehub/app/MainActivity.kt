@@ -2231,26 +2231,47 @@ fun RemoteHomeScreen(
                             }
                         }
                         Box(Modifier.weight(.88f).height(184.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            // Laptop illustration: keep the screen distinct from the floating global globe mark.
                             Surface(
-                                modifier = Modifier.size(width = 150.dp, height = 116.dp).offset(y = (-10).dp),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                modifier = Modifier.size(width = 116.dp, height = 86.dp).align(androidx.compose.ui.Alignment.CenterStart).offset(x = 2.dp, y = (-10).dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
                                 color = androidx.compose.ui.graphics.Color(0xFF071A3F),
                                 shadowElevation = 12.dp
                             ) {
-                                Box(Modifier.fillMaxSize().padding(5.dp).background(
-                                    androidx.compose.ui.graphics.Brush.linearGradient(
-                                        listOf(androidx.compose.ui.graphics.Color(0xFF0A66C9), androidx.compose.ui.graphics.Color(0xFF031C56))
-                                    ), androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                                ), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                    GlobalGlobeMark(Modifier.size(112.dp), white)
+                                Box(
+                                    Modifier.fillMaxSize().padding(5.dp).background(
+                                        androidx.compose.ui.graphics.Brush.linearGradient(
+                                            listOf(androidx.compose.ui.graphics.Color(0xFF0A66C9), androidx.compose.ui.graphics.Color(0xFF031C56))
+                                        ),
+                                        androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                                    ),
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) {
+                                    Text(
+                                        "F",
+                                        color = androidx.compose.ui.graphics.Color(0xFF8BEAFF),
+                                        fontSize = 54.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
+                                    )
                                 }
                             }
                             Surface(
-                                modifier = Modifier.width(170.dp).height(12.dp).align(androidx.compose.ui.Alignment.BottomCenter).offset(y = (-18).dp),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                modifier = Modifier.width(132.dp).height(9.dp).align(androidx.compose.ui.Alignment.CenterStart).offset(x = (-6).dp, y = 39.dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp, topStart = 3.dp, topEnd = 3.dp),
                                 color = androidx.compose.ui.graphics.Color(0xFFB7E9FF),
                                 shadowElevation = 5.dp
                             ) {}
+                            // Separate globe badge, visible beside the laptop rather than inside its screen.
+                            Surface(
+                                modifier = Modifier.size(72.dp).align(androidx.compose.ui.Alignment.TopEnd).offset(x = (-2).dp, y = 12.dp),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = androidx.compose.ui.graphics.Color(0xFF0A347D),
+                                shadowElevation = 10.dp
+                            ) {
+                                Box(Modifier.fillMaxSize().padding(5.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    GlobalGlobeMark(Modifier.fillMaxSize(), white)
+                                }
+                            }
                         }
                     }
                 }
