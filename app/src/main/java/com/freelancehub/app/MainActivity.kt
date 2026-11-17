@@ -2219,39 +2219,53 @@ fun RemoteHomeScreen(
             }
         }
         item {
-            Surface(Modifier.fillMaxWidth().heightIn(min = 224.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), color = navy, shadowElevation = 3.dp) {
-                Row(
-                    Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(
-                        androidx.compose.ui.graphics.Color(0xFF061D65),
-                        androidx.compose.ui.graphics.Color(0xFF0753B9),
-                        androidx.compose.ui.graphics.Color(0xFF0786E8)
-                    ))).padding(start = 22.dp, top = 20.dp, bottom = 18.dp, end = 10.dp),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1.2f)) {
-                        Text("Global Freelance", color = white, style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
-                        Text("Marketplace", color = cyan, style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
-                        Spacer(Modifier.height(9.dp))
-                        Text("Find the right talent or get your work done worldwide.",
-                            color = androidx.compose.ui.graphics.Color(0xFFEAF6FF), style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = { if (role == UserRole.CLIENT) onPostJob() else onMatching() },
-                            colors = ButtonDefaults.buttonColors(containerColor = blue),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
-                            contentPadding = PaddingValues(horizontal = 17.dp, vertical = 9.dp)) {
-                            Text(if (role == UserRole.CLIENT) "Post a Job  →" else "Find Jobs  →",
-                                color = white, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Surface(Modifier.fillMaxWidth().heightIn(min = 244.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), color = navy, shadowElevation = 4.dp) {
+                Box(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(
+                    androidx.compose.ui.graphics.Color(0xFF061D65),
+                    androidx.compose.ui.graphics.Color(0xFF0753B9),
+                    androidx.compose.ui.graphics.Color(0xFF0786E8)
+                )))) {
+                    Box(Modifier.align(androidx.compose.ui.Alignment.CenterEnd).size(210.dp)
+                        .background(androidx.compose.ui.graphics.Color(0xFF1CB9FF).copy(alpha = .10f),
+                            androidx.compose.foundation.shape.CircleShape))
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 22.dp, top = 22.dp, bottom = 18.dp, end = 10.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1.15f)) {
+                            Text("Global Freelance", color = white, style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                            Text("Marketplace", color = cyan, style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                            Spacer(Modifier.height(9.dp))
+                            Text("Find the right talent or get your work done worldwide.",
+                                color = androidx.compose.ui.graphics.Color(0xFFEAF6FF), style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.height(14.dp))
+                            Button(onClick = { if (role == UserRole.CLIENT) onPostJob() else onMatching() },
+                                colors = ButtonDefaults.buttonColors(containerColor = blue),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)) {
+                                Text(if (role == UserRole.CLIENT) "Post a Job  →" else "Find Jobs  →",
+                                    color = white, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
                         }
-                    }
-                    Box(Modifier.weight(.8f).height(170.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                        GlobalGlobeMark(Modifier.size(112.dp), white)
-                        Icon(Icons.Filled.Laptop, "Global work on a laptop", tint = androidx.compose.ui.graphics.Color(0xFFD8F8FF),
-                            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 2.dp, bottom = 12.dp).size(70.dp))
-                        Icon(Icons.Filled.Work, null, tint = white,
-                            modifier = Modifier.align(androidx.compose.ui.Alignment.CenterStart).size(27.dp))
+                        Box(Modifier.weight(.85f).height(184.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Box(Modifier.size(150.dp).background(
+                                androidx.compose.ui.graphics.Color(0xFF27C8FF).copy(alpha = .12f),
+                                androidx.compose.foundation.shape.CircleShape))
+                            GlobalGlobeMark(Modifier.size(126.dp), white)
+                            Icon(Icons.Filled.Laptop, "Global work on a laptop", tint = androidx.compose.ui.graphics.Color(0xFFD8F8FF),
+                                modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 0.dp, bottom = 8.dp).size(72.dp))
+                            Surface(Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(top = 13.dp, end = 0.dp),
+                                shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFF8658E8)) {
+                                Icon(Icons.Filled.Handshake, null, tint = white, modifier = Modifier.padding(9.dp).size(21.dp))
+                            }
+                            Surface(Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(start = 2.dp, bottom = 26.dp),
+                                shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color(0xFF079E9A)) {
+                                Icon(Icons.Filled.TrendingUp, null, tint = white, modifier = Modifier.padding(9.dp).size(21.dp))
+                            }
+                        }
                     }
                 }
             }
@@ -2262,8 +2276,8 @@ fun RemoteHomeScreen(
                 Row(Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 6.dp),
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     val stats = listOf(
-                        Triple("$openJobs", "Open Jobs", androidx.compose.ui.graphics.Color(0xFF176BFA)),
-                        Triple("$activeClients", "Clients", androidx.compose.ui.graphics.Color(0xFF13A875)),
+                        Triple("$openJobs", "Active Jobs", androidx.compose.ui.graphics.Color(0xFF176BFA)),
+                        Triple("$activeClients", "Hiring Clients", androidx.compose.ui.graphics.Color(0xFF13A875)),
                         Triple("$myJobs", "Your Jobs", androidx.compose.ui.graphics.Color(0xFF7254E8)),
                         Triple("$completedJobs", "Completed", androidx.compose.ui.graphics.Color(0xFFE99A16))
                     )
@@ -2297,24 +2311,28 @@ fun RemoteHomeScreen(
                     Triple("Profile AI", Icons.Filled.WorkspacePremium, androidx.compose.ui.graphics.Color(0xFFFFEED9))
                 )
                 actions.forEachIndexed { i, a ->
-                    Surface(Modifier.weight(1f).height(100.dp).clickable {
+                    Surface(Modifier.weight(1f).height(108.dp).clickable {
                         when (i) {
                             0 -> if (role == UserRole.CLIENT) onPostJob() else onMatching()
                             1 -> if (role == UserRole.CLIENT) onProjectAnalysis() else onWorkCheck()
                             2 -> onMatching()
                             else -> onFreelancerAnalysis()
                         }
-                    }, shape = androidx.compose.foundation.shape.RoundedCornerShape(17.dp), color = a.third) {
-                        Column(Modifier.fillMaxSize().padding(5.dp),
+                    }, shape = androidx.compose.foundation.shape.RoundedCornerShape(19.dp),
+                        color = a.third, shadowElevation = 1.dp) {
+                        Column(Modifier.fillMaxSize().padding(horizontal = 3.dp, vertical = 9.dp),
                             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center) {
-                            Icon(a.second, null, tint = listOf(
-                                androidx.compose.ui.graphics.Color(0xFF126BFA),
-                                androidx.compose.ui.graphics.Color(0xFF8658E8),
-                                androidx.compose.ui.graphics.Color(0xFF0D9B70),
-                                androidx.compose.ui.graphics.Color(0xFFE99A16)
-                            )[i], modifier = Modifier.size(29.dp))
-                            Spacer(Modifier.height(6.dp))
+                            Surface(shape = androidx.compose.foundation.shape.CircleShape,
+                                color = white.copy(alpha = .88f)) {
+                                Icon(a.second, null, tint = listOf(
+                                    androidx.compose.ui.graphics.Color(0xFF126BFA),
+                                    androidx.compose.ui.graphics.Color(0xFF8658E8),
+                                    androidx.compose.ui.graphics.Color(0xFF0D9B70),
+                                    androidx.compose.ui.graphics.Color(0xFFE99A16)
+                                )[i], modifier = Modifier.padding(8.dp).size(25.dp))
+                            }
+                            Spacer(Modifier.height(7.dp))
                             Text(a.first, color = ink, style = MaterialTheme.typography.labelLarge,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, maxLines = 1)
                         }
