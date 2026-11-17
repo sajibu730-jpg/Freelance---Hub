@@ -2214,28 +2214,6 @@ fun RemoteHomeScreen(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-                    color = white,
-                    shadowElevation = 2.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Search, contentDescription = null, tint = muted)
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "Search jobs, freelancers or services",
-                            color = muted,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Filled.Tune, contentDescription = "Search filters", tint = navy)
-                    }
-                }
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
                     color = androidx.compose.ui.graphics.Color(0xFFEAF3FF)
                 ) {
