@@ -2077,6 +2077,7 @@ fun RemoteHomeScreen(
 ) {
     var me by remember { mutableStateOf<RemoteAccount?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     var jobs by remember { mutableStateOf<List<RemoteJob>>(emptyList()) }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
@@ -2109,6 +2110,14 @@ fun RemoteHomeScreen(
         else jobs.count { it.ownerId == mine.id }
     val openJobs = jobs.count {
         it.status.equals(JobStatus.OPEN, true)
+    }
+    val visibleJobs = remember(jobs, searchQuery) {
+        val query = searchQuery.trim()
+        if (query.isEmpty()) jobs else jobs.filter { job ->
+            job.title.contains(query, ignoreCase = true) ||
+                job.description.contains(query, ignoreCase = true) ||
+                job.skills.any { it.contains(query, ignoreCase = true) }
+        }
     }
 
     val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
@@ -2227,7 +2236,46 @@ fun RemoteHomeScreen(
 
         item {
             Surface(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp),
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+                color = white,
+                shadowElevation = 3.dp
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            "Search for jobs, freelancers or services...",
+                            color = androidx.compose.ui.graphics.Color(0xFF71809A),
+                            maxLines = 1
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = "Search",
+                            tint = navy,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    },
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        focusedContainerColor = white,
+                        unfocusedContainerColor = white,
+                        cursorColor = blue
+                    )
+                )
+            }
+        }
+
+        item {
+            Surface(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 230.dp),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                 color = navy,
                 shadowElevation = 5.dp
@@ -2287,7 +2335,7 @@ fun RemoteHomeScreen(
                             }
                         }
                         Box(
-                            Modifier.weight(.92f).height(204.dp),
+                            Modifier.weight(1.0f).height(178.dp),
                             contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
                             // Soft orbit lines behind the globe/laptop artwork.
@@ -2317,8 +2365,8 @@ fun RemoteHomeScreen(
                             // Laptop body and screen, with the large world globe integrated on its display.
                             Surface(
                                 modifier = Modifier
-                                    .width(140.dp)
-                                    .height(100.dp)
+                                    .width(154.dp)
+                                    .height(108.dp)
                                     .align(androidx.compose.ui.Alignment.Center)
                                     .offset(y = (-5).dp),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
@@ -2337,12 +2385,12 @@ fun RemoteHomeScreen(
                                     ),
                                     contentAlignment = androidx.compose.ui.Alignment.Center
                                 ) {
-                                    GlobalGlobeMark(Modifier.size(112.dp), white)
+                                    GlobalGlobeMark(Modifier.size(96.dp), white)
                                 }
                             }
                             Surface(
                                 modifier = Modifier
-                                    .width(152.dp)
+                                    .width(166.dp)
                                     .height(10.dp)
                                     .align(androidx.compose.ui.Alignment.Center)
                                     .offset(y = 55.dp),
@@ -2376,7 +2424,7 @@ fun RemoteHomeScreen(
                                 shadowElevation = 8.dp
                             ) {
                                 Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                    Icon(Icons.Filled.People, contentDescription = null,
+                                    Icon(Icons.Filled.Handshake, contentDescription = null,
                                         tint = white, modifier = Modifier.size(22.dp))
                                 }
                             }
@@ -2600,7 +2648,7 @@ fun RemoteHomeScreen(
             }
         }
 
-        items(jobs.take(5)) { job ->
+        items(visibleJobs.take(5)) { job ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
