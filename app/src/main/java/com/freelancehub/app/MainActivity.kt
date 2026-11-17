@@ -2082,6 +2082,7 @@ fun RemoteHomeScreen(
     val openJobs = jobs.count { it.status.equals(JobStatus.OPEN, true) }
     val myJobs = jobs.count { it.ownerId == me?.id }
     val activeClients = jobs.filter { it.status.equals(JobStatus.OPEN, true) }.map { it.ownerId }.distinct().size
+    val completedJobs = jobs.count { it.status.equals(JobStatus.COMPLETED, true) }
     val visibleJobs = remember(jobs, search, sort) {
         val matches = jobs.filter { j ->
             search.isBlank() || j.title.contains(search, true) ||
@@ -2262,19 +2263,21 @@ fun RemoteHomeScreen(
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     val stats = listOf(
                         Triple("$openJobs", "Open Jobs", androidx.compose.ui.graphics.Color(0xFF176BFA)),
-                        Triple("$activeClients", "Active Clients", androidx.compose.ui.graphics.Color(0xFF13A875)),
-                        Triple("$myJobs", "Your Jobs", androidx.compose.ui.graphics.Color(0xFF7254E8))
+                        Triple("$activeClients", "Clients", androidx.compose.ui.graphics.Color(0xFF13A875)),
+                        Triple("$myJobs", "Your Jobs", androidx.compose.ui.graphics.Color(0xFF7254E8)),
+                        Triple("$completedJobs", "Completed", androidx.compose.ui.graphics.Color(0xFFE99A16))
                     )
-                    stats.forEachIndexed { i, s ->
-                        if (i > 0) androidx.compose.material3.VerticalDivider(Modifier.height(60.dp),
+                    val statIcons = listOf(Icons.Filled.Work, Icons.Filled.Groups,
+                        Icons.Filled.AssignmentTurnedIn, Icons.Filled.CheckCircle)
+                    stats.forEachIndexed { i, stat ->
+                        if (i > 0) androidx.compose.material3.VerticalDivider(Modifier.height(58.dp),
                             color = androidx.compose.ui.graphics.Color(0xFFE3EAF4))
                         Column(Modifier.weight(1f), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                            Icon(listOf(Icons.Filled.Work, Icons.Filled.Groups, Icons.Filled.AssignmentTurnedIn)[i],
-                                null, tint = s.third, modifier = Modifier.size(26.dp))
-                            Spacer(Modifier.height(4.dp))
-                            Text(s.first, color = ink, style = MaterialTheme.typography.titleLarge,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                            Text(s.second, color = muted, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                            Icon(statIcons[i], null, tint = stat.third, modifier = Modifier.size(23.dp))
+                            Spacer(Modifier.height(3.dp))
+                            Text(stat.first, color = ink, style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1)
+                            Text(stat.second, color = muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                     }
                 }
@@ -2282,18 +2285,23 @@ fun RemoteHomeScreen(
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val actions = listOf(
+                val actions = if (role == UserRole.CLIENT) listOf(
+                    Triple("Post a Job", Icons.Filled.Add, androidx.compose.ui.graphics.Color(0xFFE1ECFF)),
+                    Triple("Project AI", Icons.Filled.Analytics, androidx.compose.ui.graphics.Color(0xFFF0E8FF)),
+                    Triple("Explore Talent", Icons.Filled.Groups, androidx.compose.ui.graphics.Color(0xFFDDF8EF)),
+                    Triple("Profile AI", Icons.Filled.WorkspacePremium, androidx.compose.ui.graphics.Color(0xFFFFEED9))
+                ) else listOf(
                     Triple("Find Jobs", Icons.Filled.Search, androidx.compose.ui.graphics.Color(0xFFE1ECFF)),
-                    Triple("Hire Talent", Icons.Filled.PersonAdd, androidx.compose.ui.graphics.Color(0xFFF0E8FF)),
-                    Triple("Work Check", Icons.Filled.School, androidx.compose.ui.graphics.Color(0xFFDDF8EF)),
+                    Triple("Work Check", Icons.Filled.School, androidx.compose.ui.graphics.Color(0xFFF0E8FF)),
+                    Triple("Job Matches", Icons.Filled.Work, androidx.compose.ui.graphics.Color(0xFFDDF8EF)),
                     Triple("Profile AI", Icons.Filled.WorkspacePremium, androidx.compose.ui.graphics.Color(0xFFFFEED9))
                 )
                 actions.forEachIndexed { i, a ->
                     Surface(Modifier.weight(1f).height(100.dp).clickable {
                         when (i) {
-                            0 -> onMatching()
-                            1 -> if (role == UserRole.CLIENT) onProjectAnalysis() else onMatching()
-                            2 -> onWorkCheck()
+                            0 -> if (role == UserRole.CLIENT) onPostJob() else onMatching()
+                            1 -> if (role == UserRole.CLIENT) onProjectAnalysis() else onWorkCheck()
+                            2 -> onMatching()
                             else -> onFreelancerAnalysis()
                         }
                     }, shape = androidx.compose.foundation.shape.RoundedCornerShape(17.dp), color = a.third) {
@@ -2357,12 +2365,27 @@ fun RemoteHomeScreen(
                         Text(job.title, color = ink, style = MaterialTheme.typography.titleMedium,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 2)
                         Spacer(Modifier.height(5.dp))
-                        Text("Budget: ${job.budgetMinor / 100.0} ${job.currency}", color = navy,
-                            style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Surface(color = androidx.compose.ui.graphics.Color(0xFFE5F0FF),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)) {
+                                Text("Fixed Price", Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                    color = blue, style = MaterialTheme.typography.labelSmall)
+                            }
+                            Text("${job.budgetMinor / 100.0} ${job.currency}", color = navy,
+                                style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                maxLines = 1)
+                        }
                         Spacer(Modifier.height(4.dp))
                         Text("Worldwide  •  ${job.status}", color = muted, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                     }
-                    Icon(Icons.Filled.ChevronRight, "Explore job", tint = muted, modifier = Modifier.size(24.dp))
+                    Button(onClick = onMatching,
+                        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 7.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFDCEAFF),
+                            contentColor = navy)) {
+                        Text("Apply Now", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    }
                 }
             }
         }
