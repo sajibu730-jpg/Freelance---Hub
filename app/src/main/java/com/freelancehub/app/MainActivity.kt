@@ -2048,6 +2048,21 @@ Scaffold(bottomBar={
 
 
 @Composable
+private fun FreelanceHubReferenceMark(modifier: Modifier = Modifier) {
+    val ribbon = androidx.compose.ui.graphics.Brush.horizontalGradient(
+        listOf(androidx.compose.ui.graphics.Color(0xFF176BFF), androidx.compose.ui.graphics.Color(0xFF12D7F0))
+    )
+    Box(modifier = modifier) {
+        Box(Modifier.align(androidx.compose.ui.Alignment.TopStart).width(48.dp).height(12.dp)
+            .background(ribbon, androidx.compose.foundation.shape.RoundedCornerShape(topStart = 8.dp, bottomEnd = 6.dp)))
+        Box(Modifier.align(androidx.compose.ui.Alignment.TopStart).width(12.dp).height(48.dp)
+            .background(ribbon, androidx.compose.foundation.shape.RoundedCornerShape(topStart = 8.dp, bottomEnd = 6.dp)))
+        Box(Modifier.align(androidx.compose.ui.Alignment.TopStart).offset(y = 19.dp).width(34.dp).height(11.dp)
+            .background(ribbon, androidx.compose.foundation.shape.RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp)))
+    }
+}
+
+@Composable
 fun RemoteHomeScreen(
     marketplace: RemoteMarketplaceRepository,
     account: RemoteAccountRepository,
@@ -2136,15 +2151,7 @@ fun RemoteHomeScreen(
                     ).padding(horizontal = 18.dp, vertical = 18.dp),
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier.size(54.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
-                            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .10f)),
-                        contentAlignment = androidx.compose.ui.Alignment.Center
-                    ) {
-                        Text("F", color = androidx.compose.ui.graphics.Color(0xFF31D5FF),
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
-                    }
+                    FreelanceHubReferenceMark(Modifier.size(54.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -2224,10 +2231,26 @@ fun RemoteHomeScreen(
                             }
                         }
                         Box(Modifier.weight(.88f).height(184.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                            Box(Modifier.size(150.dp).background(
-                                androidx.compose.ui.graphics.Color(0xFF27C8FF).copy(alpha = .12f),
-                                androidx.compose.foundation.shape.CircleShape))
-                            GlobalGlobeMark(Modifier.size(126.dp), white)
+                            Surface(
+                                modifier = Modifier.size(width = 150.dp, height = 116.dp).offset(y = (-10).dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                color = androidx.compose.ui.graphics.Color(0xFF071A3F),
+                                shadowElevation = 12.dp
+                            ) {
+                                Box(Modifier.fillMaxSize().padding(5.dp).background(
+                                    androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(androidx.compose.ui.graphics.Color(0xFF0A66C9), androidx.compose.ui.graphics.Color(0xFF031C56))
+                                    ), androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                ), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    GlobalGlobeMark(Modifier.size(112.dp), white)
+                                }
+                            }
+                            Surface(
+                                modifier = Modifier.width(170.dp).height(12.dp).align(androidx.compose.ui.Alignment.BottomCenter).offset(y = (-18).dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                color = androidx.compose.ui.graphics.Color(0xFFB7E9FF),
+                                shadowElevation = 5.dp
+                            ) {}
                         }
                     }
                 }
