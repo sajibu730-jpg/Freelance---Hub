@@ -1728,7 +1728,7 @@ Surface(
                             Surface(
                                 shape = androidx.compose.foundation.shape.CircleShape,
                                 color = androidx.compose.ui.graphics.Color(0xFFD4E8FF),
-                                modifier = Modifier.size(38.dp)
+                                modifier = Modifier.size(42.dp)
                             ) {
                                 Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
                                     Icon(Icons.Filled.Person, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF1768C9))
