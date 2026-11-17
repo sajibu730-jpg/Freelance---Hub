@@ -2223,13 +2223,71 @@ fun RemoteHomeScreen(
                             )
                         )
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(
-                            start = 20.dp, top = 22.dp, bottom = 18.dp, end = 8.dp
-                        ),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(230.dp)
+                            .drawBehind {
+                                val glowCenter = androidx.compose.ui.geometry.Offset(
+                                    size.width * 0.78f, size.height * 0.53f
+                                )
+                                drawCircle(
+                                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                        colors = listOf(
+                                            androidx.compose.ui.graphics.Color(0x6648C8FF),
+                                            androidx.compose.ui.graphics.Color(0x2239AFFF),
+                                            androidx.compose.ui.graphics.Color.Transparent
+                                        ),
+                                        center = glowCenter,
+                                        radius = size.height * 0.82f
+                                    ),
+                                    radius = size.height * 0.82f,
+                                    center = glowCenter
+                                )
+                                val orbit = androidx.compose.ui.graphics.Path().apply {
+                                    moveTo(size.width * 0.42f, size.height * 0.82f)
+                                    cubicTo(
+                                        size.width * 0.55f, size.height * 0.08f,
+                                        size.width * 0.90f, size.height * 0.10f,
+                                        size.width * 1.04f, size.height * 0.62f
+                                    )
+                                }
+                                drawPath(
+                                    orbit,
+                                    color = androidx.compose.ui.graphics.Color(0x6659CFFF),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx())
+                                )
+                                val orbitTwo = androidx.compose.ui.graphics.Path().apply {
+                                    moveTo(size.width * 0.48f, size.height * 0.95f)
+                                    cubicTo(
+                                        size.width * 0.67f, size.height * 0.42f,
+                                        size.width * 0.88f, size.height * 0.33f,
+                                        size.width * 1.02f, size.height * 0.22f
+                                    )
+                                }
+                                drawPath(
+                                    orbitTwo,
+                                    color = androidx.compose.ui.graphics.Color(0x447CE4FF),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.8.dp.toPx())
+                                )
+                            }
                     ) {
-                        Column(Modifier.weight(1.08f)) {
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.home_hero_art),
+                            contentDescription = "Glowing global globe and laptop marketplace illustration",
+                            modifier = Modifier
+                                .align(androidx.compose.ui.Alignment.CenterEnd)
+                                .fillMaxHeight()
+                                .fillMaxWidth(0.70f)
+                                .padding(end = 2.dp, top = 4.dp, bottom = 2.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
+                        Column(
+                            modifier = Modifier
+                                .align(androidx.compose.ui.Alignment.CenterStart)
+                                .fillMaxWidth(0.59f)
+                                .padding(start = 20.dp, top = 20.dp, bottom = 18.dp)
+                        ) {
                             Text(
                                 "Global Freelance",
                                 color = white,
@@ -2264,12 +2322,7 @@ fun RemoteHomeScreen(
                                 )
                             }
                         }
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.home_hero_art),
-                            contentDescription = "Global globe and laptop marketplace illustration",
-                            modifier = Modifier.weight(1.0f).height(178.dp),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                        )
+                    }
                     }
                 }
             }
