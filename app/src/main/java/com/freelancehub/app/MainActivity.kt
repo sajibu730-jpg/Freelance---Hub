@@ -2313,114 +2313,12 @@ fun RemoteHomeScreen(
                                 )
                             }
                         }
-                        Box(
-                            Modifier.weight(1.0f).height(178.dp),
-                            contentAlignment = androidx.compose.ui.Alignment.Center
-                        ) {
-                            // Soft orbit lines behind the globe/laptop artwork.
-                            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                                val orbit = androidx.compose.ui.graphics.Color(0x8879DFFF)
-                                drawOval(
-                                    color = orbit,
-                                    topLeft = androidx.compose.ui.geometry.Offset(
-                                        size.width * .02f, size.height * .18f
-                                    ),
-                                    size = androidx.compose.ui.geometry.Size(
-                                        size.width * .94f, size.height * .62f
-                                    ),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-                                )
-                                drawOval(
-                                    color = androidx.compose.ui.graphics.Color(0x66B7F1FF),
-                                    topLeft = androidx.compose.ui.geometry.Offset(
-                                        size.width * .08f, size.height * .05f
-                                    ),
-                                    size = androidx.compose.ui.geometry.Size(
-                                        size.width * .84f, size.height * .82f
-                                    ),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
-                                )
-                            }
-                            // Laptop body and screen, with the large world globe integrated on its display.
-                            Surface(
-                                modifier = Modifier
-                                    .width(154.dp)
-                                    .height(108.dp)
-                                    .align(androidx.compose.ui.Alignment.Center)
-                                    .offset(y = (-5).dp),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
-                                color = androidx.compose.ui.graphics.Color(0xFF071A3F),
-                                shadowElevation = 14.dp
-                            ) {
-                                Box(
-                                    Modifier.fillMaxSize().padding(5.dp).background(
-                                        androidx.compose.ui.graphics.Brush.linearGradient(
-                                            listOf(
-                                                androidx.compose.ui.graphics.Color(0xFF0A66C9),
-                                                androidx.compose.ui.graphics.Color(0xFF031C56)
-                                            )
-                                        ),
-                                        androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
-                                    ),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center
-                                ) {
-                                    GlobalGlobeMark(Modifier.size(96.dp), white)
-                                }
-                            }
-                            Surface(
-                                modifier = Modifier
-                                    .width(166.dp)
-                                    .height(10.dp)
-                                    .align(androidx.compose.ui.Alignment.Center)
-                                    .offset(y = 55.dp),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(
-                                    bottomStart = 10.dp, bottomEnd = 10.dp,
-                                    topStart = 3.dp, topEnd = 3.dp
-                                ),
-                                color = androidx.compose.ui.graphics.Color(0xFFB7E9FF),
-                                shadowElevation = 6.dp
-                            ) {}
-                            // Small marketplace feature bubbles around the main illustration.
-                            Surface(
-                                modifier = Modifier.size(42.dp)
-                                    .align(androidx.compose.ui.Alignment.CenterStart)
-                                    .offset(x = 0.dp, y = (-35).dp),
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                color = androidx.compose.ui.graphics.Color(0xFF087BEB),
-                                shadowElevation = 8.dp
-                            ) {
-                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                    Icon(Icons.Filled.Work, contentDescription = null,
-                                        tint = white, modifier = Modifier.size(22.dp))
-                                }
-                            }
-                            Surface(
-                                modifier = Modifier.size(42.dp)
-                                    .align(androidx.compose.ui.Alignment.TopEnd)
-                                    .offset(x = (-1).dp, y = 22.dp),
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                color = androidx.compose.ui.graphics.Color(0xFF8C45F5),
-                                shadowElevation = 8.dp
-                            ) {
-                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                    Icon(Icons.Filled.Handshake, contentDescription = null,
-                                        tint = white, modifier = Modifier.size(22.dp))
-                                }
-                            }
-                            Surface(
-                                modifier = Modifier.size(42.dp)
-                                    .align(androidx.compose.ui.Alignment.BottomEnd)
-                                    .offset(x = (-2).dp, y = (-18).dp),
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                color = androidx.compose.ui.graphics.Color(0xFF08AFA4),
-                                shadowElevation = 8.dp
-                            ) {
-                                Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                    Icon(Icons.Filled.TrendingUp, contentDescription = null,
-                                        tint = white, modifier = Modifier.size(22.dp))
-                                }
-                            }
-                        }
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = R.drawable.home_hero_art),
+                            contentDescription = "Global globe and laptop marketplace illustration",
+                            modifier = Modifier.weight(1.0f).height(178.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        )
                     }
                 }
             }
