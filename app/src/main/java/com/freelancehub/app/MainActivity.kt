@@ -2077,7 +2077,6 @@ fun RemoteHomeScreen(
 ) {
     var me by remember { mutableStateOf<RemoteAccount?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
     var jobs by remember { mutableStateOf<List<RemoteJob>>(emptyList()) }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
@@ -2111,15 +2110,6 @@ fun RemoteHomeScreen(
     val openJobs = jobs.count {
         it.status.equals(JobStatus.OPEN, true)
     }
-    val visibleJobs = remember(jobs, searchQuery) {
-        val query = searchQuery.trim()
-        if (query.isEmpty()) jobs else jobs.filter { job ->
-            job.title.contains(query, ignoreCase = true) ||
-                job.description.contains(query, ignoreCase = true) ||
-                job.skills.any { it.contains(query, ignoreCase = true) }
-        }
-    }
-
     val navy = androidx.compose.ui.graphics.Color(0xFF102A56)
     val blue = androidx.compose.ui.graphics.Color(0xFF246BFD)
     val paleBlue = androidx.compose.ui.graphics.Color(0xFFEAF1FF)
@@ -2210,45 +2200,6 @@ fun RemoteHomeScreen(
                         }
                     }
                 }
-            }
-        }
-
-        item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
-                color = white,
-                shadowElevation = 3.dp
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = {
-                        Text(
-                            "Search for jobs, freelancers or services...",
-                            color = androidx.compose.ui.graphics.Color(0xFF71809A),
-                            maxLines = 1
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Filled.Search,
-                            contentDescription = "Search",
-                            tint = navy,
-                            modifier = Modifier.size(25.dp)
-                        )
-                    },
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                        unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                        focusedContainerColor = white,
-                        unfocusedContainerColor = white,
-                        cursorColor = blue
-                    )
-                )
             }
         }
 
@@ -2525,7 +2476,7 @@ fun RemoteHomeScreen(
             }
         }
 
-        items(visibleJobs.take(5)) { job ->
+        items(jobs.take(5)) { job ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
