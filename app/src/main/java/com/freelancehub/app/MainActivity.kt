@@ -2192,27 +2192,6 @@ fun RemoteHomeScreen(
                             maxLines = 1
                         )
                     }
-                    Box(
-                        modifier = Modifier.padding(end = 2.dp),
-                        contentAlignment = androidx.compose.ui.Alignment.TopEnd
-                    ) {
-                        Icon(
-                            Icons.Filled.Notifications,
-                            contentDescription = "Notifications",
-                            tint = white,
-                            modifier = Modifier.padding(8.dp).size(27.dp)
-                        )
-                        Surface(
-                            modifier = Modifier.size(18.dp).offset(x = (-1).dp, y = 1.dp),
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            color = androidx.compose.ui.graphics.Color(0xFFFF3B45)
-                        ) {
-                            Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                Text("3", color = white, fontSize = 10.sp,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                            }
-                        }
-                    }
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
                             Icon(Icons.Filled.MoreVert, contentDescription = "Main menu", tint = white)
