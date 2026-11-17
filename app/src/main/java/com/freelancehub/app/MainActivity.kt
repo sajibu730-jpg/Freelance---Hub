@@ -2120,172 +2120,114 @@ fun RemoteHomeScreen(
         item {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
                 color = navy,
                 shadowElevation = 8.dp
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            androidx.compose.ui.graphics.Brush.linearGradient(
-                                colors = listOf(
-                                    androidx.compose.ui.graphics.Color(0xFF071A35),
-                                    androidx.compose.ui.graphics.Color(0xFF103A78),
-                                    androidx.compose.ui.graphics.Color(0xFF1D5AC0)
-                                ),
-                                start = androidx.compose.ui.geometry.Offset.Zero,
-                                end = androidx.compose.ui.geometry.Offset(900f, 620f)
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color(0xFF061A55),
+                                androidx.compose.ui.graphics.Color(0xFF0649A8),
+                                androidx.compose.ui.graphics.Color(0xFF0878D8)
                             )
                         )
-                        .drawBehind {
-                            val glow = androidx.compose.ui.geometry.Offset(
-                                size.width * 0.94f,
-                                size.height * 0.48f
-                            )
-                            drawCircle(
-                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                    colors = listOf(
-                                        androidx.compose.ui.graphics.Color(0xFF54C8FF).copy(alpha = 0.22f),
-                                        androidx.compose.ui.graphics.Color.Transparent
-                                    ),
-                                    center = glow,
-                                    radius = 170.dp.toPx()
-                                ),
-                                radius = 170.dp.toPx(),
-                                center = glow
-                            )
-                            for (ring in 0..2) {
-                                drawCircle(
-                                    color = androidx.compose.ui.graphics.Color.White.copy(
-                                        alpha = 0.075f - ring * 0.018f
-                                    ),
-                                    radius = (76 + ring * 22).dp.toPx(),
-                                    center = androidx.compose.ui.geometry.Offset(
-                                        size.width * 0.96f,
-                                        size.height * 0.52f
-                                    ),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 1.dp.toPx()
-                                    )
-                                )
-                            }
-                            drawCircle(
-                                color = androidx.compose.ui.graphics.Color(0xFF8DDEFF).copy(alpha = 0.12f),
-                                radius = 5.dp.toPx(),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    size.width * 0.79f,
-                                    size.height * 0.20f
-                                )
-                            )
-                        }
-                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                    ).padding(horizontal = 18.dp, vertical = 18.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                    Box(
+                        modifier = Modifier.size(54.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
+                            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = .10f)),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
-                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f)),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center
-                                ) {
-                                    Text(
-                                        "F",
-                                        color = androidx.compose.ui.graphics.Color(0xFF63D5FF),
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
-                                    )
-                                }
-                                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                        Text(
-                                            "Freelance",
-                                            color = white,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                        )
-                                        Text(
-                                            " Hub",
-                                            color = androidx.compose.ui.graphics.Color(0xFF63D5FF),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                        )
-                                    }
-                                    Text(
-                                        "GLOBAL FREELANCE MARKETPLACE",
-                                        color = androidx.compose.ui.graphics.Color(0xFFB8D5FF),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                                    )
-                                }
-                            }
-
-                            Box {
-                                IconButton(onClick = { menuExpanded = true }) {
-                                    Icon(
-                                        Icons.Filled.MoreVert,
-                                        contentDescription = "Main menu",
-                                        tint = white
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = menuExpanded,
-                                    onDismissRequest = { menuExpanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Account settings") },
-                                        leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                                        onClick = { menuExpanded = false; onOpenSettings() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Refresh home") },
-                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                                        onClick = { menuExpanded = false; reload() }
-                                    )
-                                }
-                            }
+                        Text("F", color = androidx.compose.ui.graphics.Color(0xFF31D5FF),
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Text("Freelance", color = white, style = MaterialTheme.typography.titleLarge,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                            Text(" Hub", color = androidx.compose.ui.graphics.Color(0xFF38D9FF),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
                         }
+                        Text("Your work. Your world. Your future.", color = white,
+                            style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                        Text("GLOBAL FREELANCE MARKETPLACE",
+                            color = androidx.compose.ui.graphics.Color(0xFF9DE8FF),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            letterSpacing = .6.sp)
+                    }
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "Main menu", tint = white)
+                        }
+                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                            DropdownMenuItem(text = { Text("Account settings") },
+                                leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                                onClick = { menuExpanded = false; onOpenSettings() })
+                            DropdownMenuItem(text = { Text("Refresh home") },
+                                leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                onClick = { menuExpanded = false; reload() })
+                        }
+                    }
+                }
+            }
+        }
 
-                        Column(
-                            modifier = Modifier.fillMaxWidth(0.88f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                "Your work. Your world. Your future.",
-                                color = white,
+        item {
+            Surface(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 244.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                color = navy,
+                shadowElevation = 5.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color(0xFF061D65),
+                                androidx.compose.ui.graphics.Color(0xFF0753B9),
+                                androidx.compose.ui.graphics.Color(0xFF0786E8)
+                            )
+                        )
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, top = 22.dp, bottom = 18.dp, end = 8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1.12f)) {
+                            Text("Global Freelance", color = white,
                                 style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                            )
-                            Text(
-                                "A global space to connect, collaborate and grow.",
-                                color = androidx.compose.ui.graphics.Color(0xFFD5E5FF),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                            Text("Marketplace", color = androidx.compose.ui.graphics.Color(0xFF32D5FF),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold)
+                            Spacer(Modifier.height(8.dp))
+                            Text("Find the right talent or get your work done worldwide.",
+                                color = androidx.compose.ui.graphics.Color(0xFFEAF6FF),
+                                style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.height(13.dp))
+                            Button(
+                                onClick = { if (role == UserRole.CLIENT) onPostJob() else onMatching() },
+                                colors = ButtonDefaults.buttonColors(containerColor = blue),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 9.dp)
+                            ) {
+                                Text(if (role == UserRole.CLIENT) "Post a Job  →" else "Find Jobs  →",
+                                    color = white, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
                         }
-
-                        Surface(
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.13f)
-                        ) {
-                            Text(
-                                text = if (role == UserRole.CLIENT) "CLIENT WORKSPACE" else "FREELANCER WORKSPACE",
-                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                                color = white,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                            )
+                        Box(Modifier.weight(.88f).height(184.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Box(Modifier.size(150.dp).background(
+                                androidx.compose.ui.graphics.Color(0xFF27C8FF).copy(alpha = .12f),
+                                androidx.compose.foundation.shape.CircleShape))
+                            GlobalGlobeMark(Modifier.size(126.dp), white)
                         }
                     }
                 }
