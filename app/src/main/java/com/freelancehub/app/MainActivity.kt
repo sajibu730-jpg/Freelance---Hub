@@ -2338,158 +2338,147 @@ fun RemoteHomeScreen(
                             androidx.compose.foundation.Canvas(
                                 modifier = Modifier.weight(0.88f).height(214.dp)
                             ) {
-                                val c = androidx.compose.ui.geometry.Offset(size.width * 0.53f, size.height * 0.34f)
-                                val r = size.minDimension * 0.30f
+                                val C = androidx.compose.ui.graphics.Color
+                                val O = androidx.compose.ui.geometry.Offset
+                                val S = androidx.compose.ui.geometry.Size
+                                val P = androidx.compose.ui.graphics.Path
+                                val ST = androidx.compose.ui.graphics.drawscope.Stroke
+                                val cx = size.width * 0.53f
+                                val cy = size.height * 0.285f
+                                val r = size.minDimension * 0.275f
+                                val center = O(cx, cy)
+
+                                // Atmospheric glow and shaded 3D ocean.
                                 drawCircle(
                                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                        colors = listOf(
-                                            androidx.compose.ui.graphics.Color(0xFF7DEBFF).copy(alpha = 0.42f),
-                                            androidx.compose.ui.graphics.Color(0xFF36BFFF).copy(alpha = 0.14f),
-                                            androidx.compose.ui.graphics.Color.Transparent
-                                        ),
-                                        center = c,
-                                        radius = r * 2.0f
+                                        listOf(C(0x9975EFFF), C(0x3335BFFF), C.Transparent),
+                                        center, r * 2.1f
                                     ),
-                                    radius = r * 2.0f,
-                                    center = c
+                                    radius = r * 2.1f,
+                                    center = center
                                 )
                                 drawCircle(
                                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                        colors = listOf(
-                                            androidx.compose.ui.graphics.Color(0xFFBDF8FF),
-                                            androidx.compose.ui.graphics.Color(0xFF39AFFF),
-                                            androidx.compose.ui.graphics.Color(0xFF0752B5),
-                                            androidx.compose.ui.graphics.Color(0xFF03245F)
-                                        ),
-                                        center = androidx.compose.ui.geometry.Offset(c.x - r * 0.32f, c.y - r * 0.36f),
-                                        radius = r * 1.65f
+                                        colors = listOf(C(0xFFBDF8FF), C(0xFF42C4FF), C(0xFF0874CF), C(0xFF03265E)),
+                                        center = O(cx-r*.34f,cy-r*.38f),
+                                        radius = r*1.7f
                                     ),
                                     radius = r,
-                                    center = c
-                                )
-                                val land = androidx.compose.ui.graphics.Color(0xFFD7FFF1)
-                                fun continent(points: List<Pair<Float, Float>>) {
-                                    val path = androidx.compose.ui.graphics.Path()
-                                    points.forEachIndexed { index, point ->
-                                        val x = c.x + (point.first - 0.5f) * r * 1.72f
-                                        val y = c.y + (point.second - 0.5f) * r * 1.72f
-                                        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                                    }
-                                    path.close()
-                                    drawPath(path, land.copy(alpha = 0.88f))
-                                }
-                                continent(listOf(0.12f to 0.24f, 0.22f to 0.12f, 0.36f to 0.18f, 0.34f to 0.31f, 0.27f to 0.38f, 0.20f to 0.34f, 0.14f to 0.40f))
-                                continent(listOf(0.29f to 0.43f, 0.38f to 0.46f, 0.37f to 0.62f, 0.32f to 0.82f, 0.27f to 0.69f, 0.25f to 0.53f))
-                                continent(listOf(0.43f to 0.22f, 0.53f to 0.16f, 0.67f to 0.18f, 0.84f to 0.28f, 0.77f to 0.39f, 0.65f to 0.36f, 0.56f to 0.42f, 0.47f to 0.34f))
-                                continent(listOf(0.49f to 0.40f, 0.61f to 0.40f, 0.64f to 0.54f, 0.56f to 0.75f, 0.48f to 0.63f, 0.45f to 0.49f))
-                                continent(listOf(0.72f to 0.67f, 0.82f to 0.64f, 0.87f to 0.72f, 0.80f to 0.79f, 0.73f to 0.76f))
-                                val grid = androidx.compose.ui.graphics.Color(0x88D8F7FF)
-                                drawOval(
-                                    color = grid,
-                                    topLeft = androidx.compose.ui.geometry.Offset(c.x - r * 0.38f, c.y - r),
-                                    size = androidx.compose.ui.geometry.Size(r * 0.76f, r * 2f),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
-                                )
-                                drawLine(
-                                    color = grid,
-                                    start = androidx.compose.ui.geometry.Offset(c.x - r * 0.96f, c.y),
-                                    end = androidx.compose.ui.geometry.Offset(c.x + r * 0.96f, c.y),
-                                    strokeWidth = 1.dp.toPx()
-                                )
-                                drawOval(
-                                    color = grid.copy(alpha = 0.72f),
-                                    topLeft = androidx.compose.ui.geometry.Offset(c.x - r * 0.88f, c.y - r * 0.48f),
-                                    size = androidx.compose.ui.geometry.Size(r * 1.76f, r * 0.96f),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.9.dp.toPx())
-                                )
-                                drawCircle(
-                                    color = androidx.compose.ui.graphics.Color(0xFFE8FCFF),
-                                    radius = r,
-                                    center = c,
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8.dp.toPx())
-                                )
-                                drawArc(
-                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.82f),
-                                    startAngle = 205f,
-                                    sweepAngle = 70f,
-                                    useCenter = false,
-                                    topLeft = androidx.compose.ui.geometry.Offset(c.x - r, c.y - r),
-                                    size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 2.2.dp.toPx(),
-                                        cap = androidx.compose.ui.graphics.StrokeCap.Round
-                                    )
+                                    center = center
                                 )
 
-                                // Perspective laptop with a luminous screen and metallic base.
-                                val screenLeft = size.width * 0.20f
-                                val screenTop = size.height * 0.59f
-                                val screenWidth = size.width * 0.72f
-                                val screenHeight = size.height * 0.29f
-                                drawRoundRect(
-                                    color = androidx.compose.ui.graphics.Color(0xFF041B43),
-                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft, screenTop),
-                                    size = androidx.compose.ui.geometry.Size(screenWidth, screenHeight),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
-                                )
-                                drawRoundRect(
-                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                        listOf(
-                                            androidx.compose.ui.graphics.Color(0xFFB9F5FF),
-                                            androidx.compose.ui.graphics.Color(0xFF45BFFF),
-                                            androidx.compose.ui.graphics.Color(0xFF0D5CC5)
-                                        ),
-                                        start = androidx.compose.ui.geometry.Offset(screenLeft, screenTop),
-                                        end = androidx.compose.ui.geometry.Offset(screenLeft + screenWidth, screenTop + screenHeight)
-                                    ),
-                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 4.dp.toPx(), screenTop + 4.dp.toPx()),
-                                    size = androidx.compose.ui.geometry.Size(screenWidth - 8.dp.toPx(), screenHeight - 8.dp.toPx()),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx())
-                                )
-                                // Add a restrained marketplace interface inside the laptop screen.
-                                val ui = androidx.compose.ui.graphics.Color(0xFF0756A8)
-                                drawRoundRect(
-                                    color = ui.copy(alpha = 0.72f),
-                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 10.dp.toPx(), screenTop + 9.dp.toPx()),
-                                    size = androidx.compose.ui.geometry.Size(screenWidth * 0.24f, 3.dp.toPx()),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-                                )
-                                drawRoundRect(
-                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.82f),
-                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 10.dp.toPx(), screenTop + 19.dp.toPx()),
-                                    size = androidx.compose.ui.geometry.Size(screenWidth * 0.48f, 2.dp.toPx()),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-                                )
-                                drawRoundRect(
-                                    color = androidx.compose.ui.graphics.Color(0xFF0D75C9).copy(alpha = 0.72f),
-                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 10.dp.toPx(), screenTop + 27.dp.toPx()),
-                                    size = androidx.compose.ui.geometry.Size(screenWidth * 0.28f, 2.dp.toPx()),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-                                )
-                                val base = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(size.width * 0.16f, size.height * 0.90f)
-                                    lineTo(size.width * 0.96f, size.height * 0.90f)
-                                    lineTo(size.width * 0.88f, size.height * 0.98f)
-                                    lineTo(size.width * 0.04f, size.height * 0.98f)
+                                // Smooth continent silhouettes.
+                                val north = P().apply {
+                                    moveTo(cx-r*.78f,cy-r*.38f)
+                                    cubicTo(cx-r*.68f,cy-r*.82f,cx-r*.20f,cy-r*.82f,cx-r*.10f,cy-r*.52f)
+                                    cubicTo(cx+r*.02f,cy-r*.35f,cx-r*.20f,cy-r*.20f,cx-r*.35f,cy-r*.16f)
+                                    cubicTo(cx-r*.40f,cy+r*.02f,cx-r*.58f,cy+r*.02f,cx-r*.63f,cy+r*.20f)
+                                    cubicTo(cx-r*.80f,cy+r*.10f,cx-r*.90f,cy-r*.12f,cx-r*.78f,cy-r*.38f)
                                     close()
                                 }
-                                drawPath(
-                                    base,
-                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                        listOf(
-                                            androidx.compose.ui.graphics.Color(0xFFE4FAFF),
-                                            androidx.compose.ui.graphics.Color(0xFF5DCBFF),
-                                            androidx.compose.ui.graphics.Color(0xFFB8F0FF)
-                                        )
-                                    )
+                                val south = P().apply {
+                                    moveTo(cx-r*.35f,cy+r*.05f)
+                                    cubicTo(cx-r*.12f,cy+r*.06f,cx-r*.12f,cy+r*.35f,cx-r*.23f,cy+r*.55f)
+                                    cubicTo(cx-r*.30f,cy+r*.72f,cx-r*.33f,cy+r*.92f,cx-r*.47f,cy+r*.78f)
+                                    cubicTo(cx-r*.53f,cy+r*.56f,cx-r*.62f,cy+r*.28f,cx-r*.35f,cy+r*.05f)
+                                    close()
+                                }
+                                val asia = P().apply {
+                                    moveTo(cx-r*.08f,cy-r*.52f)
+                                    cubicTo(cx+r*.18f,cy-r*.88f,cx+r*.65f,cy-r*.72f,cx+r*.83f,cy-r*.40f)
+                                    cubicTo(cx+r*.92f,cy-r*.22f,cx+r*.68f,cy-r*.12f,cx+r*.52f,cy-r*.20f)
+                                    cubicTo(cx+r*.35f,cy-r*.04f,cx+r*.16f,cy-r*.16f,cx+r*.08f,cy+r*.02f)
+                                    cubicTo(cx-r*.08f,cy-r*.04f,cx-r*.22f,cy-r*.28f,cx-r*.08f,cy-r*.52f)
+                                    close()
+                                }
+                                val africa = P().apply {
+                                    moveTo(cx+r*.08f,cy-r*.02f)
+                                    cubicTo(cx+r*.34f,cy-r*.08f,cx+r*.43f,cy+r*.20f,cx+r*.30f,cy+r*.43f)
+                                    cubicTo(cx+r*.24f,cy+r*.65f,cx+r*.08f,cy+r*.72f,cx-r*.02f,cy+r*.48f)
+                                    cubicTo(cx-r*.10f,cy+r*.27f,cx-r*.08f,cy+r*.08f,cx+r*.08f,cy-r*.02f)
+                                    close()
+                                }
+                                val australia = P().apply {
+                                    moveTo(cx+r*.55f,cy+r*.48f)
+                                    cubicTo(cx+r*.70f,cy+r*.38f,cx+r*.88f,cy+r*.50f,cx+r*.82f,cy+r*.68f)
+                                    cubicTo(cx+r*.68f,cy+r*.82f,cx+r*.52f,cy+r*.68f,cx+r*.55f,cy+r*.48f)
+                                    close()
+                                }
+                                listOf(north,south,asia,africa,australia).forEach {
+                                    drawPath(it,C(0xFFBDF4DF).copy(alpha=.94f))
+                                }
+
+                                // Fine latitude and longitude lines.
+                                val grid=C(0x99D7F7FF)
+                                drawOval(grid,O(cx-r*.43f,cy-r),S(r*.86f,r*2f),style=ST(1.dp.toPx()))
+                                drawOval(grid.copy(alpha=.65f),O(cx-r*.78f,cy-r*.48f),S(r*1.56f,r*.96f),style=ST(.9.dp.toPx()))
+                                drawLine(grid.copy(alpha=.72f),O(cx-r*.96f,cy),O(cx+r*.96f,cy),1.dp.toPx())
+                                drawCircle(C(0xFFE9FCFF),r,center,style=ST(1.7.dp.toPx()))
+                                drawArc(C.White.copy(alpha=.86f),208f,62f,false,O(cx-r*.91f,cy-r*.91f),S(r*1.82f,r*1.82f),style=ST(2.1.dp.toPx(),cap=androidx.compose.ui.graphics.StrokeCap.Round))
+
+                                // Network connections over the globe.
+                                val nodes=listOf(O(cx-r*.56f,cy-r*.12f),O(cx-r*.06f,cy-r*.48f),O(cx+r*.48f,cy-r*.18f),O(cx+r*.34f,cy+r*.40f))
+                                for(i in 0 until nodes.lastIndex) drawLine(C(0xAAE5FFFF),nodes[i],nodes[i+1],1.dp.toPx())
+                                nodes.forEach {
+                                    drawCircle(C(0xFFECFFFF),2.1.dp.toPx(),it)
+                                    drawCircle(C(0x665FE6FF),5.dp.toPx(),it)
+                                }
+
+                                // Premium laptop with a clean marketplace dashboard on screen.
+                                val left=size.width*.13f
+                                val top=size.height*.585f
+                                val w=size.width*.78f
+                                val h=size.height*.285f
+                                drawRoundRect(C(0x5500193D),O(left+3.dp.toPx(),top+5.dp.toPx()),S(w,h),androidx.compose.ui.geometry.CornerRadius(11.dp.toPx()))
+                                drawRoundRect(
+                                    brush=androidx.compose.ui.graphics.Brush.linearGradient(listOf(C(0xFF06152F),C(0xFF183B68),C(0xFF04152F)),O(left,top),O(left+w,top+h)),
+                                    topLeft=O(left,top),size=S(w,h),cornerRadius=androidx.compose.ui.geometry.CornerRadius(11.dp.toPx())
                                 )
-                                drawLine(
-                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.72f),
-                                    start = androidx.compose.ui.geometry.Offset(size.width * 0.23f, size.height * 0.92f),
-                                    end = androidx.compose.ui.geometry.Offset(size.width * 0.88f, size.height * 0.92f),
-                                    strokeWidth = 1.dp.toPx()
+                                val inset=4.dp.toPx()
+                                val sx=left+inset
+                                val sy=top+inset
+                                val sw=w-inset*2
+                                val sh=h-inset*2
+                                drawRoundRect(
+                                    brush=androidx.compose.ui.graphics.Brush.linearGradient(listOf(C(0xFFF4FCFF),C(0xFFD8F2FF),C(0xFFB5E6FF)),O(sx,sy),O(sx+sw,sy+sh)),
+                                    topLeft=O(sx,sy),size=S(sw,sh),cornerRadius=androidx.compose.ui.geometry.CornerRadius(7.dp.toPx())
                                 )
-                            }
+                                drawRoundRect(C(0xFF0B3971),O(sx,sy),S(sw,sh*.19f),cornerRadius=androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
+                                for(i in 0..2) drawCircle(C(0xFF8DEBFF),1.1.dp.toPx(),O(sx+7.dp.toPx()+i*4.dp.toPx(),sy+4.dp.toPx()))
+                                drawRoundRect(C(0xFFB6DDF2),O(sx+5.dp.toPx(),sy+sh*.27f),S(sw*.19f,sh*.61f),cornerRadius=androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+                                val cardX=sx+sw*.25f
+                                val cardY=sy+sh*.29f
+                                val cardW=sw*.20f
+                                for(i in 0..2) {
+                                    drawRoundRect(C.White,O(cardX+i*(cardW+3.dp.toPx()),cardY),S(cardW,sh*.23f),androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
+                                    drawRoundRect(C(0xFF31A9E8),O(cardX+3.dp.toPx()+i*(cardW+3.dp.toPx()),cardY+4.dp.toPx()),S(cardW*.45f,2.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
+                                }
+                                for(i in 0..2) {
+                                    val yy=sy+sh*.62f+i*3.dp.toPx()
+                                    drawRoundRect(C(0xFF72BDE8),O(cardX,yy),S(sw*.30f,1.6.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
+                                }
+                                val chart=P().apply {
+                                    moveTo(sx+sw*.63f,sy+sh*.82f)
+                                    lineTo(sx+sw*.72f,sy+sh*.65f)
+                                    lineTo(sx+sw*.80f,sy+sh*.73f)
+                                    lineTo(sx+sw*.91f,sy+sh*.48f)
+                                }
+                                drawPath(chart,C(0xFF1599D6),style=ST(1.6.dp.toPx(),cap=androidx.compose.ui.graphics.StrokeCap.Round))
+                                val deck=P().apply {
+                                    moveTo(size.width*.10f,size.height*.885f)
+                                    lineTo(size.width*.94f,size.height*.885f)
+                                    lineTo(size.width*.99f,size.height*.965f)
+                                    quadraticTo(size.width*.995f,size.height*.985f,size.width*.96f,size.height*.985f)
+                                    lineTo(size.width*.035f,size.height*.985f)
+                                    quadraticTo(size.width*.005f,size.height*.985f,size.width*.025f,size.height*.965f)
+                                    close()
+                                }
+                                drawPath(deck,androidx.compose.ui.graphics.Brush.linearGradient(listOf(C(0xFFF2FCFF),C(0xFF8BCFEF),C(0xFFDFF7FF)),O(0f,size.height*.88f),O(0f,size.height)))
+                                for(row in 0..1) for(col in 0..7) {
+                                    drawRoundRect(C(0xFF3E8CB7).copy(alpha=.48f),O(size.width*(.22f+col*.075f),size.height*(.906f+row*.018f)),S(2.dp.toPx(),1.2.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(.5.dp.toPx()))
+                                }
+                                drawRoundRect(C(0x6681BBD7),O(size.width*.48f,size.height*.946f),S(size.width*.16f,3.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(1.5.dp.toPx()))
+                            }                            }
                         }
                     }
                 }
