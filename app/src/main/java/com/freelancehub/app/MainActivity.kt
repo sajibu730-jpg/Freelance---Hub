@@ -2350,7 +2350,7 @@ fun RemoteHomeScreen(
 
                                 // Use the familiar 🌏 emoji as the global symbol for a clear, friendly and recognizable mark.
                                 val globePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                                    textSize =  sixtyDp(size.minDimension)
+                                    textSize = size.minDimension * .56f
                                     textAlign = android.graphics.Paint.Align.CENTER
                                 }
                                 drawContext.canvas.nativeCanvas.drawText(
