@@ -1,0 +1,83 @@
+name: Owner Dashboard Pull Request Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "owner-dashboard/**"
+      - "scripts/check_system_evolution_draft.py"
+      - "tests/test_system_evolution_release_draft.py"
+      - "docs/drafts/system-evolution-center.draft.md"
+      - "docs/drafts/system-evolution-backend-release-approval.draft.md"
+      - ".github/workflows/owner-dashboard-check.yml"
+      - ".github/workflows/deploy-owner-dashboard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-dashboard-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate dashboard before production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proposed change
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate dashboard module syntax and required safety markers
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("owner-dashboard/index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r'<script type="module">(.*?)</script>', html, re.S)
+          if len(scripts) != 1:
+              raise SystemExit(f"Expected exactly one dashboard module script, found {len(scripts)}")
+          Path("/tmp/owner-dashboard.mjs").write_text(scripts[0], encoding="utf-8")
+          required = [
+              'Owner sign in',
+              'PRIVATE OWNER CONSOLE',
+              'System Monitoring',
+              'Owner Security',
+              'Platform Overview',
+              'Workforce Control',
+              'Invite a new workforce member',
+              'workforce-invitation-form',
+              'WORKFORCE_API_ENABLED=false',
+              'owner-workforce-control',
+              'owner-analytics',
+              'owner-security',
+          ]
+          missing = [marker for marker in required if marker not in html]
+          if missing:
+              raise SystemExit("Missing required dashboard safety/features: " + ", ".join(missing))
+          if re.search(r'\bservice_role\b|sb_secret_[A-Za-z0-9_]+', html):
+              raise SystemExit("A server-only Supabase credential pattern was found in dashboard source")
+          print("Dashboard structural and public-client safety checks passed.")
+          PY
+          node --check /tmp/owner-dashboard.mjs
+          python3 scripts/check_system_evolution_draft.py
+          python3 -m unittest tests/test_system_evolution_release_draft.py -v
+
+      - name: Verify production deployment remains main-only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          workflow = Path(".github/workflows/deploy-owner-dashboard.yml").read_text(encoding="utf-8")
+          if "branches: [main]" not in workflow:
+              raise SystemExit("Owner Dashboard production deployment must remain restricted to main.")
+          if "pull_request:" in workflow:
+              raise SystemExit("Production Pages deployment must not run directly for pull requests.")
+          if "Validate dashboard JavaScript" not in workflow:
+              raise SystemExit("Production deployment is missing its JavaScript validation step.")
+          print("Production deployment boundary checks passed.")
+          PY
