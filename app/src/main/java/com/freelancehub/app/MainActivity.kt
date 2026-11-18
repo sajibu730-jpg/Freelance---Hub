@@ -2481,10 +2481,10 @@ fun RemoteHomeScreen(
                                 val deck = androidx.compose.ui.graphics.Path().apply {
                                     moveTo(size.width * .085f, size.height * .787f)
                                     lineTo(size.width * .915f, size.height * .787f)
-                                    lineTo(size.width * .915f, size.height * .963f)
-                                    quadraticTo(size.width * .935f, size.height * .982f, size.width * .065f, size.height * .982f)
-                                    lineTo(size.width * .085f, size.height * .982f)
-                                    quadraticTo(size.width * .065f, size.height * .982f, size.width * .085f, size.height * .963f)
+                                    lineTo(size.width * .95f, size.height * .963f)
+                                    quadraticTo(size.width * .965f, size.height * .982f, size.width * .935f, size.height * .982f)
+                                    lineTo(size.width * .065f, size.height * .982f)
+                                    quadraticTo(size.width * .035f, size.height * .982f, size.width * .05f, size.height * .963f)
                                     close()
                                 }
                                 drawPath(
