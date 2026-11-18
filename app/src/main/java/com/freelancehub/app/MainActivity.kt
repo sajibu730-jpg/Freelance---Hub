@@ -2404,60 +2404,144 @@ fun RemoteHomeScreen(
                                     drawCircle(androidx.compose.ui.graphics.Color(0x665FE6FF),5.dp.toPx(),it)
                                 }
 
-                                // Premium laptop with a clean marketplace dashboard on screen.
-                                val left=size.width*.13f
-                                val top=size.height*.585f
-                                val w=size.width*.78f
-                                val h=size.height*.285f
-                                drawRoundRect(androidx.compose.ui.graphics.Color(0x5500193D),androidx.compose.ui.geometry.Offset(left+3.dp.toPx(),top+5.dp.toPx()),androidx.compose.ui.geometry.Size(w,h),androidx.compose.ui.geometry.CornerRadius(11.dp.toPx()))
+                                // Refined premium laptop: slim graphite display, crisp UI and balanced aluminium deck.
+                                val lp = size.width * .115f
+                                val tp = size.height * .585f
+                                val lw = size.width * .77f
+                                val lh = size.height * .292f
+                                val bezel = 3.2.dp.toPx()
+                                val corner = 8.dp.toPx()
                                 drawRoundRect(
-                                    brush=androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF06152F),androidx.compose.ui.graphics.Color(0xFF183B68),androidx.compose.ui.graphics.Color(0xFF04152F)),androidx.compose.ui.geometry.Offset(left,top),androidx.compose.ui.geometry.Offset(left+w,top+h)),
-                                    topLeft=androidx.compose.ui.geometry.Offset(left,top),size=androidx.compose.ui.geometry.Size(w,h),cornerRadius=androidx.compose.ui.geometry.CornerRadius(11.dp.toPx())
+                                    color = androidx.compose.ui.graphics.Color(0x66001835),
+                                    topLeft = androidx.compose.ui.geometry.Offset(lp + 3.dp.toPx(), tp + 5.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(lw, lh),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner)
                                 )
-                                val inset=4.dp.toPx()
-                                val sx=left+inset
-                                val sy=top+inset
-                                val sw=w-inset*2
-                                val sh=h-inset*2
                                 drawRoundRect(
-                                    brush=androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFFF4FCFF),androidx.compose.ui.graphics.Color(0xFFD8F2FF),androidx.compose.ui.graphics.Color(0xFFB5E6FF)),androidx.compose.ui.geometry.Offset(sx,sy),androidx.compose.ui.geometry.Offset(sx+sw,sy+sh)),
-                                    topLeft=androidx.compose.ui.geometry.Offset(sx,sy),size=androidx.compose.ui.geometry.Size(sw,sh),cornerRadius=androidx.compose.ui.geometry.CornerRadius(7.dp.toPx())
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(androidx.compose.ui.graphics.Color(0xFF0A1424), androidx.compose.ui.graphics.Color(0xFF52677D), androidx.compose.ui.graphics.Color(0xFF101D30)),
+                                        androidx.compose.ui.geometry.Offset(lp, tp),
+                                        androidx.compose.ui.geometry.Offset(lp + lw, tp + lh)
+                                    ),
+                                    topLeft = androidx.compose.ui.geometry.Offset(lp, tp),
+                                    size = androidx.compose.ui.geometry.Size(lw, lh),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner)
                                 )
-                                drawRoundRect(androidx.compose.ui.graphics.Color(0xFF0B3971),androidx.compose.ui.geometry.Offset(sx,sy),androidx.compose.ui.geometry.Size(sw,sh*.19f),cornerRadius=androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
-                                for(i in 0..2) drawCircle(androidx.compose.ui.graphics.Color(0xFF8DEBFF),1.1.dp.toPx(),androidx.compose.ui.geometry.Offset(sx+7.dp.toPx()+i*4.dp.toPx(),sy+4.dp.toPx()))
-                                drawRoundRect(androidx.compose.ui.graphics.Color(0xFFB6DDF2),androidx.compose.ui.geometry.Offset(sx+5.dp.toPx(),sy+sh*.27f),androidx.compose.ui.geometry.Size(sw*.19f,sh*.61f),cornerRadius=androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
-                                val cardX=sx+sw*.25f
-                                val cardY=sy+sh*.29f
-                                val cardW=sw*.20f
-                                for(i in 0..2) {
-                                    drawRoundRect(androidx.compose.ui.graphics.Color.White,androidx.compose.ui.geometry.Offset(cardX+i*(cardW+3.dp.toPx()),cardY),androidx.compose.ui.geometry.Size(cardW,sh*.23f),androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
-                                    drawRoundRect(androidx.compose.ui.graphics.Color(0xFF31A9E8),androidx.compose.ui.geometry.Offset(cardX+3.dp.toPx()+i*(cardW+3.dp.toPx()),cardY+4.dp.toPx()),androidx.compose.ui.geometry.Size(cardW*.45f,2.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
+                                val sx = lp + bezel
+                                val sy = tp + bezel
+                                val sw = lw - bezel * 2f
+                                val sh = lh - bezel * 2f
+                                drawRoundRect(
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(androidx.compose.ui.graphics.Color(0xFFF8FCFF), androidx.compose.ui.graphics.Color(0xFFDDEEFF)),
+                                        androidx.compose.ui.geometry.Offset(sx, sy),
+                                        androidx.compose.ui.geometry.Offset(sx + sw, sy + sh)
+                                    ),
+                                    topLeft = androidx.compose.ui.geometry.Offset(sx, sy),
+                                    size = androidx.compose.ui.geometry.Size(sw, sh),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx())
+                                )
+                                drawCircle(androidx.compose.ui.graphics.Color(0xFF7895AD), .8.dp.toPx(), androidx.compose.ui.geometry.Offset(lp + lw * .5f, tp + 1.5.dp.toPx()))
+                                val barH = sh * .19f
+                                drawRoundRect(
+                                    color = androidx.compose.ui.graphics.Color(0xFF0A3268),
+                                    topLeft = androidx.compose.ui.geometry.Offset(sx, sy),
+                                    size = androidx.compose.ui.geometry.Size(sw, barH),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+                                )
+                                for (i in 0..2) drawCircle(
+                                    color = androidx.compose.ui.graphics.Color(0xFF8BE8FF),
+                                    radius = 1.dp.toPx(),
+                                    center = androidx.compose.ui.geometry.Offset(sx + 6.dp.toPx() + i * 4.dp.toPx(), sy + barH * .5f)
+                                )
+                                val sideX = sx + 4.dp.toPx()
+                                val contentY = sy + barH + 3.dp.toPx()
+                                val sideW = sw * .17f
+                                drawRoundRect(
+                                    color = androidx.compose.ui.graphics.Color(0xFFBBD8EE),
+                                    topLeft = androidx.compose.ui.geometry.Offset(sideX, contentY),
+                                    size = androidx.compose.ui.geometry.Size(sideW, sh * .56f),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                                )
+                                for (i in 0..3) drawRoundRect(
+                                    color = androidx.compose.ui.graphics.Color(0xFF78A9CE),
+                                    topLeft = androidx.compose.ui.geometry.Offset(sideX + 3.dp.toPx(), contentY + 5.dp.toPx() + i * 5.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(sideW * .62f, 1.5.dp.toPx()),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
+                                )
+                                val cardsX = sideX + sideW + 4.dp.toPx()
+                                val cardGap = 3.dp.toPx()
+                                val cardW = (sw - sideW - 17.dp.toPx()) / 3f
+                                for (i in 0..2) {
+                                    val x = cardsX + i * (cardW + cardGap)
+                                    drawRoundRect(
+                                        color = androidx.compose.ui.graphics.Color.White,
+                                        topLeft = androidx.compose.ui.geometry.Offset(x, contentY),
+                                        size = androidx.compose.ui.geometry.Size(cardW, sh * .27f),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                                    )
+                                    drawRoundRect(
+                                        color = androidx.compose.ui.graphics.Color(0xFF31A9E8),
+                                        topLeft = androidx.compose.ui.geometry.Offset(x + 3.dp.toPx(), contentY + 4.dp.toPx()),
+                                        size = androidx.compose.ui.geometry.Size(cardW * .42f, 2.dp.toPx()),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
+                                    )
+                                    drawRoundRect(
+                                        color = androidx.compose.ui.graphics.Color(0xFF9CC7E5),
+                                        topLeft = androidx.compose.ui.geometry.Offset(x + 3.dp.toPx(), contentY + 9.dp.toPx()),
+                                        size = androidx.compose.ui.geometry.Size(cardW * .68f, 1.5.dp.toPx()),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
+                                    )
                                 }
-                                for(i in 0..2) {
-                                    val yy=sy+sh*.62f+i*3.dp.toPx()
-                                    drawRoundRect(androidx.compose.ui.graphics.Color(0xFF72BDE8),androidx.compose.ui.geometry.Offset(cardX,yy),androidx.compose.ui.geometry.Size(sw*.30f,1.6.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
+                                val chart = androidx.compose.ui.graphics.Path().apply {
+                                    moveTo(cardsX, contentY + sh * .57f)
+                                    lineTo(cardsX + cardW * .28f, contentY + sh * .43f)
+                                    lineTo(cardsX + cardW * .52f, contentY + sh * .50f)
+                                    lineTo(cardsX + cardW * .78f, contentY + sh * .34f)
+                                    lineTo(cardsX + cardW * 1.08f, contentY + sh * .40f)
                                 }
-                                val chart=androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(sx+sw*.63f,sy+sh*.82f)
-                                    lineTo(sx+sw*.72f,sy+sh*.65f)
-                                    lineTo(sx+sw*.80f,sy+sh*.73f)
-                                    lineTo(sx+sw*.91f,sy+sh*.48f)
-                                }
-                                drawPath(chart,androidx.compose.ui.graphics.Color(0xFF1599D6),style=androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx(),cap=androidx.compose.ui.graphics.StrokeCap.Round))
-                                val deck=androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(size.width*.10f,size.height*.885f)
-                                    lineTo(size.width*.94f,size.height*.885f)
-                                    lineTo(size.width*.99f,size.height*.965f)
-                                    quadraticTo(size.width*.995f,size.height*.985f,size.width*.96f,size.height*.985f)
-                                    lineTo(size.width*.035f,size.height*.985f)
-                                    quadraticTo(size.width*.005f,size.height*.985f,size.width*.025f,size.height*.965f)
+                                drawPath(
+                                    chart,
+                                    color = androidx.compose.ui.graphics.Color(0xFF168ED0),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                                )
+                                val deck = androidx.compose.ui.graphics.Path().apply {
+                                    moveTo(size.width * .075f, size.height * .884f)
+                                    lineTo(size.width * .925f, size.height * .884f)
+                                    lineTo(size.width * .985f, size.height * .958f)
+                                    quadraticTo(size.width, size.height * .984f, size.width * .955f, size.height * .989f)
+                                    lineTo(size.width * .045f, size.height * .989f)
+                                    quadraticTo(size.width * .008f, size.height * .985f, size.width * .025f, size.height * .958f)
                                     close()
                                 }
-                                drawPath(deck,androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFFF2FCFF),androidx.compose.ui.graphics.Color(0xFF8BCFEF),androidx.compose.ui.graphics.Color(0xFFDFF7FF)),androidx.compose.ui.geometry.Offset(0f,size.height*.88f),androidx.compose.ui.geometry.Offset(0f,size.height)))
-                                for(row in 0..1) for(col in 0..7) {
-                                    drawRoundRect(androidx.compose.ui.graphics.Color(0xFF3E8CB7).copy(alpha=.48f),androidx.compose.ui.geometry.Offset(size.width*(.22f+col*.075f),size.height*(.906f+row*.018f)),androidx.compose.ui.geometry.Size(2.dp.toPx(),1.2.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(.5.dp.toPx()))
+                                drawPath(
+                                    deck,
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(androidx.compose.ui.graphics.Color(0xFFEAF7FF), androidx.compose.ui.graphics.Color(0xFF78B6D9), androidx.compose.ui.graphics.Color(0xFFD8F0FF)),
+                                        androidx.compose.ui.geometry.Offset(0f, size.height * .88f),
+                                        androidx.compose.ui.geometry.Offset(0f, size.height)
+                                    )
+                                )
+                                drawLine(
+                                    color = androidx.compose.ui.graphics.Color(0xFF5B9FC7),
+                                    start = androidx.compose.ui.geometry.Offset(size.width * .12f, size.height * .89f),
+                                    end = androidx.compose.ui.geometry.Offset(size.width * .88f, size.height * .89f),
+                                    strokeWidth = .8.dp.toPx()
+                                )
+                                for (row in 0..1) for (col in 0..11) {
+                                    drawRoundRect(
+                                        color = androidx.compose.ui.graphics.Color(0xFF397DA8).copy(alpha = .62f),
+                                        topLeft = androidx.compose.ui.geometry.Offset(size.width * (.19f + col * .052f), size.height * (.908f + row * .018f)),
+                                        size = androidx.compose.ui.geometry.Size(2.dp.toPx(), 1.25.dp.toPx()),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(.6.dp.toPx())
+                                    )
                                 }
-                                drawRoundRect(androidx.compose.ui.graphics.Color(0x6681BBD7),androidx.compose.ui.geometry.Offset(size.width*.48f,size.height*.946f),androidx.compose.ui.geometry.Size(size.width*.16f,3.dp.toPx()),androidx.compose.ui.geometry.CornerRadius(1.5.dp.toPx()))
+                                drawRoundRect(
+                                    color = androidx.compose.ui.graphics.Color(0x6681BBD7),
+                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * .465f, size.height * .947f),
+                                    size = androidx.compose.ui.geometry.Size(size.width * .17f, 2.6.dp.toPx()),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.3.dp.toPx())
+                                )
                             }                            }
                         }
                     }
