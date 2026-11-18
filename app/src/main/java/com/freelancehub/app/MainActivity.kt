@@ -2348,7 +2348,7 @@ fun RemoteHomeScreen(
                                 val r = size.minDimension * 0.275f
                                 val center = androidx.compose.ui.geometry.Offset(cx, cy)
 
-                                // Use the familiar 🌏 emoji as the global symbol for a clear, friendly and recognizable mark.
+                                // Use the familiar 🌏 emoji as the global symbol; size it proportionally to the illustration canvas.
                                 val globePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                                     textSize = size.minDimension * .56f
                                     textAlign = android.graphics.Paint.Align.CENTER
