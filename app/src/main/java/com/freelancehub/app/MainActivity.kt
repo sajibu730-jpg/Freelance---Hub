@@ -2354,19 +2354,39 @@ fun RemoteHomeScreen(
                                     textSize = size.minDimension * .56f
                                     textAlign = android.graphics.Paint.Align.CENTER
                                 }
+                                drawCircle(
+                                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                        colors = listOf(
+                                            androidx.compose.ui.graphics.Color(0xAA4DEBFF),
+                                            androidx.compose.ui.graphics.Color(0x5542BFFF),
+                                            androidx.compose.ui.graphics.Color.Transparent
+                                        ),
+                                        center = center,
+                                        radius = r * 1.75f
+                                    ),
+                                    radius = r * 1.75f,
+                                    center = center
+                                )
+                                globePaint.setShadowLayer(
+                                    size.minDimension * .035f,
+                                    0f,
+                                    size.minDimension * .012f,
+                                    android.graphics.Color.argb(210, 53, 220, 255)
+                                )
                                 drawContext.canvas.nativeCanvas.drawText(
                                     "🌏",
                                     cx,
                                     cy + globePaint.textSize * .36f,
                                     globePaint
                                 )
+                                globePaint.clearShadowLayer()
 
                                 // Refined premium laptop: slim graphite display, crisp UI and balanced aluminium deck.
                                 val lp = size.width * .085f
-                                val tp = size.height * .485f
+                                val tp = size.height * .465f
                                 val lw = size.width * .83f
-                                val lh = size.height * .365f
-                                val bezel = 3.2.dp.toPx()
+                                val lh = size.height * .315f
+                                val bezel = 1.8.dp.toPx()
                                 val corner = 8.dp.toPx()
                                 drawRoundRect(
                                     color = androidx.compose.ui.graphics.Color(0x66001835),
@@ -2375,11 +2395,7 @@ fun RemoteHomeScreen(
                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner)
                                 )
                                 drawRoundRect(
-                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                        listOf(androidx.compose.ui.graphics.Color(0xFF0A1424), androidx.compose.ui.graphics.Color(0xFF52677D), androidx.compose.ui.graphics.Color(0xFF101D30)),
-                                        androidx.compose.ui.geometry.Offset(lp, tp),
-                                        androidx.compose.ui.geometry.Offset(lp + lw, tp + lh)
-                                    ),
+                                    color = androidx.compose.ui.graphics.Color(0xFF26384A),
                                     topLeft = androidx.compose.ui.geometry.Offset(lp, tp),
                                     size = androidx.compose.ui.geometry.Size(lw, lh),
                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner)
@@ -2463,47 +2479,41 @@ fun RemoteHomeScreen(
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
                                 )
                                 val deck = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(size.width * .085f, size.height * .852f)
-                                    lineTo(size.width * .915f, size.height * .852f)
-                                    lineTo(size.width * .965f, size.height * .963f)
-                                    quadraticTo(size.width * .985f, size.height * .982f, size.width * .95f, size.height * .982f)
-                                    lineTo(size.width * .05f, size.height * .982f)
-                                    quadraticTo(size.width * .015f, size.height * .982f, size.width * .035f, size.height * .963f)
+                                    moveTo(size.width * .085f, size.height * .787f)
+                                    lineTo(size.width * .915f, size.height * .787f)
+                                    lineTo(size.width * .915f, size.height * .963f)
+                                    quadraticTo(size.width * .935f, size.height * .982f, size.width * .065f, size.height * .982f)
+                                    lineTo(size.width * .085f, size.height * .982f)
+                                    quadraticTo(size.width * .065f, size.height * .982f, size.width * .085f, size.height * .963f)
                                     close()
                                 }
                                 drawPath(
                                     deck,
-                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                                        listOf(androidx.compose.ui.graphics.Color(0xFFEAF7FF), androidx.compose.ui.graphics.Color(0xFF78B6D9), androidx.compose.ui.graphics.Color(0xFFD8F0FF)),
-                                        androidx.compose.ui.geometry.Offset(0f, size.height * .88f),
-                                        androidx.compose.ui.geometry.Offset(0f, size.height)
-                                    )
+                                    color = androidx.compose.ui.graphics.Color(0xFFDCEAF2)
                                 )
                                 drawLine(
-                                    color = androidx.compose.ui.graphics.Color(0xFF5B9FC7),
-                                    start = androidx.compose.ui.geometry.Offset(size.width * .12f, size.height * .858f),
-                                    end = androidx.compose.ui.geometry.Offset(size.width * .88f, size.height * .858f),
+                                    color = androidx.compose.ui.graphics.Color(0xFF9FB7C7),
+                                    start = androidx.compose.ui.geometry.Offset(size.width * .12f, size.height * .792f),
+                                    end = androidx.compose.ui.geometry.Offset(size.width * .88f, size.height * .792f),
                                     strokeWidth = .8.dp.toPx()
                                 )
                                 // A continuous hinge physically joins the display to the keyboard deck.
                                 drawRoundRect(
                                     brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                         listOf(
-                                            androidx.compose.ui.graphics.Color(0xFF426987),
-                                            androidx.compose.ui.graphics.Color(0xFFE7F7FF),
-                                            androidx.compose.ui.graphics.Color(0xFF477C9D)
+                                            androidx.compose.ui.graphics.Color(0xFFDCEAF2)
                                         )
                                     ),
-                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * .13f, size.height * .846f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * .13f, size.height * .783f),
                                     size = androidx.compose.ui.geometry.Size(size.width * .74f, 4.dp.toPx()),
                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.5.dp.toPx())
                                 )
                                 // Four perspective rows of individual keys make the keyboard visibly part of the same chassis.
                                 for (row in 0..3) for (col in 0..12) {
                                     val keyX = size.width * (.165f + col * .052f + row * .003f)
-                                    val keyY = size.height * (.866f + row * .014f)
-                                    val keyW = size.width * .036f
-                                    val keyH = 2.1.dp.toPx()
+                                    val keyY = size.height * (.808f + row * .021f)
+                                    val keyW = size.width * .039f
+                                    val keyH = 3.dp.toPx()
                                     drawRoundRect(
                                         color = androidx.compose.ui.graphics.Color(0xFF315F7D).copy(alpha = .82f),
                                         topLeft = androidx.compose.ui.geometry.Offset(keyX, keyY),
@@ -2520,7 +2530,7 @@ fun RemoteHomeScreen(
                                 // Wider space bar and centered precision trackpad on the same deck.
                                 drawRoundRect(
                                     color = androidx.compose.ui.graphics.Color(0xFF477D9B).copy(alpha = .78f),
-                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * .405f, size.height * .952f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * .405f, size.height * .885f),
                                     size = androidx.compose.ui.geometry.Size(size.width * .19f, 1.8.dp.toPx()),
                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
                                 )
