@@ -2367,47 +2367,27 @@ fun RemoteHomeScreen(
                                     center = center
                                 )
 
-                                // Smooth continent silhouettes.
-                                val north = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(cx-r*.78f,cy-r*.38f)
-                                    cubicTo(cx-r*.68f,cy-r*.82f,cx-r*.20f,cy-r*.82f,cx-r*.10f,cy-r*.52f)
-                                    cubicTo(cx+r*.02f,cy-r*.35f,cx-r*.20f,cy-r*.20f,cx-r*.35f,cy-r*.16f)
-                                    cubicTo(cx-r*.40f,cy+r*.02f,cx-r*.58f,cy+r*.02f,cx-r*.63f,cy+r*.20f)
-                                    cubicTo(cx-r*.80f,cy+r*.10f,cx-r*.90f,cy-r*.12f,cx-r*.78f,cy-r*.38f)
-                                    close()
-                                }
-                                val south = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(cx-r*.35f,cy+r*.05f)
-                                    cubicTo(cx-r*.12f,cy+r*.06f,cx-r*.12f,cy+r*.35f,cx-r*.23f,cy+r*.55f)
-                                    cubicTo(cx-r*.30f,cy+r*.72f,cx-r*.33f,cy+r*.92f,cx-r*.47f,cy+r*.78f)
-                                    cubicTo(cx-r*.53f,cy+r*.56f,cx-r*.62f,cy+r*.28f,cx-r*.35f,cy+r*.05f)
-                                    close()
-                                }
-                                val asia = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(cx-r*.08f,cy-r*.52f)
-                                    cubicTo(cx+r*.18f,cy-r*.88f,cx+r*.65f,cy-r*.72f,cx+r*.83f,cy-r*.40f)
-                                    cubicTo(cx+r*.92f,cy-r*.22f,cx+r*.68f,cy-r*.12f,cx+r*.52f,cy-r*.20f)
-                                    cubicTo(cx+r*.35f,cy-r*.04f,cx+r*.16f,cy-r*.16f,cx+r*.08f,cy+r*.02f)
-                                    cubicTo(cx-r*.08f,cy-r*.04f,cx-r*.22f,cy-r*.28f,cx-r*.08f,cy-r*.52f)
-                                    close()
-                                }
-                                val africa = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(cx+r*.08f,cy-r*.02f)
-                                    cubicTo(cx+r*.34f,cy-r*.08f,cx+r*.43f,cy+r*.20f,cx+r*.30f,cy+r*.43f)
-                                    cubicTo(cx+r*.24f,cy+r*.65f,cx+r*.08f,cy+r*.72f,cx-r*.02f,cy+r*.48f)
-                                    cubicTo(cx-r*.10f,cy+r*.27f,cx-r*.08f,cy+r*.08f,cx+r*.08f,cy-r*.02f)
-                                    close()
-                                }
-                                val australia = androidx.compose.ui.graphics.Path().apply {
-                                    moveTo(cx+r*.55f,cy+r*.48f)
-                                    cubicTo(cx+r*.70f,cy+r*.38f,cx+r*.88f,cy+r*.50f,cx+r*.82f,cy+r*.68f)
-                                    cubicTo(cx+r*.68f,cy+r*.82f,cx+r*.52f,cy+r*.68f,cx+r*.55f,cy+r*.48f)
-                                    close()
-                                }
-                                listOf(north,south,asia,africa,australia).forEach {
-                                    drawPath(it,androidx.compose.ui.graphics.Color(0xFFBDF4DF).copy(alpha=.94f))
-                                }
-
+                                // Abstract premium global sphere: no continents or land shapes.
+                                // Fine orbital meridians and latitude bands communicate worldwide reach.
+                                val grid = androidx.compose.ui.graphics.Color(0x99DDF8FF)
+                                drawOval(
+                                    color = grid.copy(alpha = .72f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(cx-r*.36f, cy-r),
+                                    size = androidx.compose.ui.geometry.Size(r*.72f, r*2f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(1.05.dp.toPx())
+                                )
+                                drawOval(
+                                    color = grid.copy(alpha = .58f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(cx-r*.70f, cy-r*.55f),
+                                    size = androidx.compose.ui.geometry.Size(r*1.40f, r*1.10f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(.95.dp.toPx())
+                                )
+                                drawOval(
+                                    color = grid.copy(alpha = .48f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(cx-r*.88f, cy-r*.27f),
+                                    size = androidx.compose.ui.geometry.Size(r*1.76f, r*.54f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(.85.dp.toPx())
+                                )
                                 // Fine latitude and longitude lines.
                                 val grid=androidx.compose.ui.graphics.Color(0x99D7F7FF)
                                 drawOval(grid,androidx.compose.ui.geometry.Offset(cx-r*.43f,cy-r),androidx.compose.ui.geometry.Size(r*.86f,r*2f),style=androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
@@ -5639,99 +5619,60 @@ private fun GlobalGlobeMark(
         val r = d * 0.465f
         val ocean = androidx.compose.ui.graphics.Brush.linearGradient(
             colors = listOf(
-                androidx.compose.ui.graphics.Color(0xFF62D8FF),
-                androidx.compose.ui.graphics.Color(0xFF1675D1),
-                androidx.compose.ui.graphics.Color(0xFF082F78)
+                androidx.compose.ui.graphics.Color(0xFF8BE8FF),
+                androidx.compose.ui.graphics.Color(0xFF238DE0),
+                androidx.compose.ui.graphics.Color(0xFF073A83)
             ),
             start = androidx.compose.ui.geometry.Offset(d * 0.12f, d * 0.08f),
             end = androidx.compose.ui.geometry.Offset(d * 0.88f, d * 0.92f)
         )
-        val land = androidx.compose.ui.graphics.Color(0xFFBDF7E7)
-        val edge = androidx.compose.ui.graphics.Color(0xFFDDF8FF)
-        val ring = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = (d * 0.045f).coerceAtLeast(1f)
+        val grid = androidx.compose.ui.graphics.Color(0x99E3FAFF)
+        drawCircle(
+            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                colors = listOf(
+                    androidx.compose.ui.graphics.Color(0x667BE8FF),
+                    androidx.compose.ui.graphics.Color.Transparent
+                ),
+                center = c,
+                radius = r * 1.55f
+            ),
+            radius = r * 1.55f,
+            center = c
         )
-
-        // Blue ocean sphere.
         drawCircle(brush = ocean, radius = r, center = c)
-
-        // Draw simplified, recognizable continent silhouettes inside the sphere.
-        fun continent(points: List<Pair<Float, Float>>) {
-            val p = androidx.compose.ui.graphics.Path()
-            points.forEachIndexed { index, point ->
-                val x = c.x + (point.first - 0.5f) * d * 0.88f
-                val y = c.y + (point.second - 0.5f) * d * 0.88f
-                if (index == 0) p.moveTo(x, y) else p.lineTo(x, y)
-            }
-            p.close()
-            drawPath(
-                path = p,
-                color = land,
-                style = androidx.compose.ui.graphics.drawscope.Fill
-            )
-        }
-
-        // North America.
-        continent(listOf(
-            0.13f to 0.25f, 0.20f to 0.17f, 0.31f to 0.16f, 0.37f to 0.22f,
-            0.34f to 0.29f, 0.29f to 0.32f, 0.27f to 0.40f, 0.22f to 0.43f,
-            0.18f to 0.36f, 0.14f to 0.34f
-        ))
-        // South America.
-        continent(listOf(
-            0.30f to 0.45f, 0.37f to 0.47f, 0.39f to 0.55f, 0.36f to 0.64f,
-            0.34f to 0.76f, 0.30f to 0.84f, 0.27f to 0.73f, 0.28f to 0.62f,
-            0.25f to 0.53f
-        ))
-        // Europe and Asia.
-        continent(listOf(
-            0.43f to 0.25f, 0.49f to 0.20f, 0.57f to 0.21f, 0.62f to 0.17f,
-            0.73f to 0.20f, 0.83f to 0.26f, 0.87f to 0.34f, 0.79f to 0.39f,
-            0.72f to 0.36f, 0.68f to 0.43f, 0.60f to 0.39f, 0.55f to 0.34f,
-            0.49f to 0.36f, 0.45f to 0.32f
-        ))
-        // Africa.
-        continent(listOf(
-            0.48f to 0.40f, 0.58f to 0.40f, 0.64f to 0.48f, 0.61f to 0.59f,
-            0.56f to 0.71f, 0.51f to 0.68f, 0.47f to 0.57f, 0.45f to 0.47f
-        ))
-        // Australia and nearby islands.
-        continent(listOf(
-            0.74f to 0.66f, 0.82f to 0.64f, 0.86f to 0.70f, 0.82f to 0.77f,
-            0.75f to 0.76f, 0.71f to 0.71f
-        ))
-
-        // Subtle curved latitude/longitude details, kept behind the bright rim.
-        val grid = androidx.compose.ui.graphics.Color(0x66D8F7FF)
         drawOval(
             color = grid,
-            topLeft = androidx.compose.ui.geometry.Offset(c.x - d * 0.17f, c.y - r),
-            size = androidx.compose.ui.geometry.Size(d * 0.34f, r * 2f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = d * 0.018f)
+            topLeft = androidx.compose.ui.geometry.Offset(c.x - r * .34f, c.y - r),
+            size = androidx.compose.ui.geometry.Size(r * .68f, r * 2f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = d * .018f)
+        )
+        drawOval(
+            color = grid.copy(alpha = .72f),
+            topLeft = androidx.compose.ui.geometry.Offset(c.x - r * .72f, c.y - r * .48f),
+            size = androidx.compose.ui.geometry.Size(r * 1.44f, r * .96f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = d * .016f)
         )
         drawLine(
             color = grid,
-            start = androidx.compose.ui.geometry.Offset(c.x - r * 0.94f, c.y),
-            end = androidx.compose.ui.geometry.Offset(c.x + r * 0.94f, c.y),
-            strokeWidth = d * 0.018f
+            start = androidx.compose.ui.geometry.Offset(c.x - r * .94f, c.y),
+            end = androidx.compose.ui.geometry.Offset(c.x + r * .94f, c.y),
+            strokeWidth = d * .016f
         )
-
-        // Crisp outer rim and a small specular highlight.
         drawCircle(
-            color = edge,
+            color = androidx.compose.ui.graphics.Color(0xFFEAFBFF),
             radius = r,
             center = c,
-            style = ring
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = d * .045f)
         )
         drawArc(
-            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f),
+            color = androidx.compose.ui.graphics.Color.White.copy(alpha = .86f),
             startAngle = 205f,
             sweepAngle = 72f,
             useCenter = false,
             topLeft = androidx.compose.ui.geometry.Offset(c.x - r, c.y - r),
             size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
             style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = d * 0.035f,
+                width = d * .035f,
                 cap = androidx.compose.ui.graphics.StrokeCap.Round
             )
         )
