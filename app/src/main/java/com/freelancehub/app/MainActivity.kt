@@ -2201,8 +2201,9 @@ fun RemoteHomeScreen(
                             Text(
                                 "Your work. Your world. Your future.",
                                 color = androidx.compose.ui.graphics.Color(0xFFE1F6FF),
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 11.sp,
+                                maxLines = 2
                             )
                             Text(
                                 "GLOBAL FREELANCE MARKETPLACE",
@@ -2286,7 +2287,7 @@ fun RemoteHomeScreen(
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                         ) {
                             Column(
-                                modifier = Modifier.weight(1.08f),
+                                modifier = Modifier.weight(1.12f),
                                 verticalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
                                 Text(
@@ -2297,7 +2298,7 @@ fun RemoteHomeScreen(
                                     letterSpacing = 0.5.sp
                                 )
                                 Text(
-                                    "Global Freelance",
+                                    "Global",
                                     color = white,
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
@@ -2335,10 +2336,10 @@ fun RemoteHomeScreen(
                                 }
                             }
                             androidx.compose.foundation.Canvas(
-                                modifier = Modifier.weight(0.92f).height(204.dp)
+                                modifier = Modifier.weight(0.88f).height(214.dp)
                             ) {
                                 val c = androidx.compose.ui.geometry.Offset(size.width * 0.53f, size.height * 0.34f)
-                                val r = size.minDimension * 0.285f
+                                val r = size.minDimension * 0.30f
                                 drawCircle(
                                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
                                         colors = listOf(
@@ -2395,6 +2396,12 @@ fun RemoteHomeScreen(
                                     end = androidx.compose.ui.geometry.Offset(c.x + r * 0.96f, c.y),
                                     strokeWidth = 1.dp.toPx()
                                 )
+                                drawOval(
+                                    color = grid.copy(alpha = 0.72f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(c.x - r * 0.88f, c.y - r * 0.48f),
+                                    size = androidx.compose.ui.geometry.Size(r * 1.76f, r * 0.96f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.9.dp.toPx())
+                                )
                                 drawCircle(
                                     color = androidx.compose.ui.graphics.Color(0xFFE8FCFF),
                                     radius = r,
@@ -2438,6 +2445,26 @@ fun RemoteHomeScreen(
                                     topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 4.dp.toPx(), screenTop + 4.dp.toPx()),
                                     size = androidx.compose.ui.geometry.Size(screenWidth - 8.dp.toPx(), screenHeight - 8.dp.toPx()),
                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx())
+                                )
+                                // Add a restrained marketplace interface inside the laptop screen.
+                                val ui = androidx.compose.ui.graphics.Color(0xFF0756A8)
+                                drawRoundRect(
+                                    color = ui.copy(alpha = 0.72f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 10.dp.toPx(), screenTop + 9.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(screenWidth * 0.24f, 3.dp.toPx()),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                                )
+                                drawRoundRect(
+                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.82f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 10.dp.toPx(), screenTop + 19.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(screenWidth * 0.48f, 2.dp.toPx()),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                                )
+                                drawRoundRect(
+                                    color = androidx.compose.ui.graphics.Color(0xFF0D75C9).copy(alpha = 0.72f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 10.dp.toPx(), screenTop + 27.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(screenWidth * 0.28f, 2.dp.toPx()),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
                                 )
                                 val base = androidx.compose.ui.graphics.Path().apply {
                                     moveTo(size.width * 0.16f, size.height * 0.90f)
