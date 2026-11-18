@@ -2141,39 +2141,45 @@ fun RemoteHomeScreen(
                                 )
                             )
                             .drawBehind {
-                                // Subtle diagonal cyan light bands and a dotted global texture.
-                                for (band in 0..3) {
-                                    val x = size.width * (0.55f + band * 0.16f)
+                                for (band in 0..4) {
+                                    val x = size.width * (0.52f + band * 0.14f)
                                     drawLine(
-                                        color = androidx.compose.ui.graphics.Color(0xFF65DFFF).copy(alpha = 0.10f),
+                                        color = androidx.compose.ui.graphics.Color(0xFF65DFFF).copy(alpha = 0.11f),
                                         start = androidx.compose.ui.geometry.Offset(x, 0f),
-                                        end = androidx.compose.ui.geometry.Offset(x - size.height * 0.75f, size.height),
-                                        strokeWidth = 26.dp.toPx()
+                                        end = androidx.compose.ui.geometry.Offset(x - size.height * 0.8f, size.height),
+                                        strokeWidth = 24.dp.toPx()
                                     )
                                 }
-                                for (row in 0..4) {
-                                    for (col in 0..7) {
-                                        drawCircle(
-                                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.10f),
-                                            radius = 1.2.dp.toPx(),
-                                            center = androidx.compose.ui.geometry.Offset(
-                                                size.width * (0.48f + col * 0.055f),
-                                                size.height * (0.18f + row * 0.15f)
-                                            )
-                                        )
-                                    }
-                                }
                             }
-                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        Text(
-                            "F",
-                            color = androidx.compose.ui.graphics.Color(0xFF67DEFF),
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
-                        )
-                        Spacer(Modifier.width(11.dp))
+                        androidx.compose.foundation.Canvas(Modifier.size(width = 42.dp, height = 48.dp)) {
+                            val p = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(size.width * 0.08f, size.height * 0.08f)
+                                lineTo(size.width * 0.94f, size.height * 0.08f)
+                                lineTo(size.width * 0.94f, size.height * 0.34f)
+                                lineTo(size.width * 0.38f, size.height * 0.34f)
+                                lineTo(size.width * 0.38f, size.height * 0.49f)
+                                lineTo(size.width * 0.78f, size.height * 0.49f)
+                                lineTo(size.width * 0.78f, size.height * 0.73f)
+                                lineTo(size.width * 0.38f, size.height * 0.73f)
+                                lineTo(size.width * 0.38f, size.height * 0.96f)
+                                lineTo(size.width * 0.08f, size.height * 0.96f)
+                                close()
+                            }
+                            drawPath(
+                                p,
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    listOf(
+                                        androidx.compose.ui.graphics.Color(0xFF20D9FF),
+                                        androidx.compose.ui.graphics.Color(0xFF087BFF),
+                                        androidx.compose.ui.graphics.Color(0xFF35B7FF)
+                                    )
+                                )
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                 Text(
@@ -2203,17 +2209,13 @@ fun RemoteHomeScreen(
                                 color = androidx.compose.ui.graphics.Color(0xFF8EDFFF),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                letterSpacing = 0.6.sp,
+                                letterSpacing = 0.5.sp,
                                 maxLines = 1
                             )
                         }
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
-                                Icon(
-                                    Icons.Filled.MoreVert,
-                                    contentDescription = "Main menu",
-                                    tint = white
-                                )
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Main menu", tint = white)
                             }
                             DropdownMenu(
                                 expanded = menuExpanded,
@@ -2238,7 +2240,7 @@ fun RemoteHomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                     color = navy,
-                    shadowElevation = 6.dp
+                    shadowElevation = 7.dp
                 ) {
                     Box(
                         modifier = Modifier
@@ -2253,59 +2255,62 @@ fun RemoteHomeScreen(
                                 )
                             )
                             .drawBehind {
-                                val glow = androidx.compose.ui.geometry.Offset(size.width * 0.82f, size.height * 0.48f)
+                                val glow = androidx.compose.ui.geometry.Offset(size.width * 0.78f, size.height * 0.52f)
                                 drawCircle(
                                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
                                         colors = listOf(
-                                            androidx.compose.ui.graphics.Color(0xFF43D9FF).copy(alpha = 0.24f),
+                                            androidx.compose.ui.graphics.Color(0xFF63E5FF).copy(alpha = 0.30f),
+                                            androidx.compose.ui.graphics.Color(0xFF168BFF).copy(alpha = 0.08f),
                                             androidx.compose.ui.graphics.Color.Transparent
                                         ),
                                         center = glow,
-                                        radius = 170.dp.toPx()
+                                        radius = 190.dp.toPx()
                                     ),
-                                    radius = 170.dp.toPx(),
+                                    radius = 190.dp.toPx(),
                                     center = glow
                                 )
-                                for (band in 0..3) {
-                                    val x = size.width * (0.58f + band * 0.15f)
+                                for (band in 0..4) {
+                                    val x = size.width * (0.52f + band * 0.14f)
                                     drawLine(
                                         color = androidx.compose.ui.graphics.Color(0xFF7CE7FF).copy(alpha = 0.08f),
                                         start = androidx.compose.ui.geometry.Offset(x, 0f),
-                                        end = androidx.compose.ui.geometry.Offset(x - size.height * 0.7f, size.height),
-                                        strokeWidth = 32.dp.toPx()
+                                        end = androidx.compose.ui.geometry.Offset(x - size.height * 0.72f, size.height),
+                                        strokeWidth = 30.dp.toPx()
                                     )
                                 }
                             }
-                            .padding(start = 20.dp, top = 20.dp, bottom = 18.dp, end = 12.dp)
+                            .padding(start = 18.dp, top = 20.dp, bottom = 18.dp, end = 10.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                         ) {
                             Column(
-                                modifier = Modifier.weight(1.12f),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.weight(1.08f),
+                                verticalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
                                 Text(
                                     "WORK • CONNECT • GROW",
                                     color = androidx.compose.ui.graphics.Color(0xFFBDEEFF),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    letterSpacing = 0.6.sp
+                                    letterSpacing = 0.5.sp
                                 )
                                 Text(
                                     "Global Freelance",
                                     color = white,
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                                 Text(
                                     "Marketplace",
                                     color = androidx.compose.ui.graphics.Color(0xFF65DFFF),
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                                 Text(
                                     "Find the right talent or get your work done worldwide.",
@@ -2315,7 +2320,7 @@ fun RemoteHomeScreen(
                                 )
                                 Button(
                                     onClick = onMatching,
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                                     shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = androidx.compose.ui.graphics.Color(0xFF19C2EB)
@@ -2324,70 +2329,138 @@ fun RemoteHomeScreen(
                                     Text(
                                         if (role == UserRole.CLIENT) "Explore Talent  →" else "Explore Jobs  →",
                                         color = androidx.compose.ui.graphics.Color(0xFF062A61),
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                        maxLines = 1
                                     )
                                 }
                             }
                             androidx.compose.foundation.Canvas(
-                                modifier = Modifier.weight(0.88f).height(190.dp)
+                                modifier = Modifier.weight(0.92f).height(204.dp)
                             ) {
-                                val cx = size.width * 0.56f
-                                val cy = size.height * 0.34f
-                                val radius = size.minDimension * 0.30f
+                                val c = androidx.compose.ui.geometry.Offset(size.width * 0.53f, size.height * 0.34f)
+                                val r = size.minDimension * 0.285f
                                 drawCircle(
-                                    color = androidx.compose.ui.graphics.Color(0xFF51D8FF).copy(alpha = 0.13f),
-                                    radius = radius * 1.55f,
-                                    center = androidx.compose.ui.geometry.Offset(cx, cy)
+                                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                        colors = listOf(
+                                            androidx.compose.ui.graphics.Color(0xFF7DEBFF).copy(alpha = 0.42f),
+                                            androidx.compose.ui.graphics.Color(0xFF36BFFF).copy(alpha = 0.14f),
+                                            androidx.compose.ui.graphics.Color.Transparent
+                                        ),
+                                        center = c,
+                                        radius = r * 2.0f
+                                    ),
+                                    radius = r * 2.0f,
+                                    center = c
                                 )
                                 drawCircle(
                                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
                                         colors = listOf(
-                                            androidx.compose.ui.graphics.Color(0xFFB9F4FF),
-                                            androidx.compose.ui.graphics.Color(0xFF2585E8),
-                                            androidx.compose.ui.graphics.Color(0xFF073B91)
+                                            androidx.compose.ui.graphics.Color(0xFFBDF8FF),
+                                            androidx.compose.ui.graphics.Color(0xFF39AFFF),
+                                            androidx.compose.ui.graphics.Color(0xFF0752B5),
+                                            androidx.compose.ui.graphics.Color(0xFF03245F)
                                         ),
-                                        center = androidx.compose.ui.geometry.Offset(cx - radius * 0.25f, cy - radius * 0.25f),
-                                        radius = radius * 1.65f
+                                        center = androidx.compose.ui.geometry.Offset(c.x - r * 0.32f, c.y - r * 0.36f),
+                                        radius = r * 1.65f
                                     ),
-                                    radius = radius,
-                                    center = androidx.compose.ui.geometry.Offset(cx, cy)
+                                    radius = r,
+                                    center = c
                                 )
-                                drawCircle(
-                                    color = white.copy(alpha = 0.82f),
-                                    radius = radius,
-                                    center = androidx.compose.ui.geometry.Offset(cx, cy),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
-                                )
+                                val land = androidx.compose.ui.graphics.Color(0xFFD7FFF1)
+                                fun continent(points: List<Pair<Float, Float>>) {
+                                    val path = androidx.compose.ui.graphics.Path()
+                                    points.forEachIndexed { index, point ->
+                                        val x = c.x + (point.first - 0.5f) * r * 1.72f
+                                        val y = c.y + (point.second - 0.5f) * r * 1.72f
+                                        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                                    }
+                                    path.close()
+                                    drawPath(path, land.copy(alpha = 0.88f))
+                                }
+                                continent(listOf(0.12f to 0.24f, 0.22f to 0.12f, 0.36f to 0.18f, 0.34f to 0.31f, 0.27f to 0.38f, 0.20f to 0.34f, 0.14f to 0.40f))
+                                continent(listOf(0.29f to 0.43f, 0.38f to 0.46f, 0.37f to 0.62f, 0.32f to 0.82f, 0.27f to 0.69f, 0.25f to 0.53f))
+                                continent(listOf(0.43f to 0.22f, 0.53f to 0.16f, 0.67f to 0.18f, 0.84f to 0.28f, 0.77f to 0.39f, 0.65f to 0.36f, 0.56f to 0.42f, 0.47f to 0.34f))
+                                continent(listOf(0.49f to 0.40f, 0.61f to 0.40f, 0.64f to 0.54f, 0.56f to 0.75f, 0.48f to 0.63f, 0.45f to 0.49f))
+                                continent(listOf(0.72f to 0.67f, 0.82f to 0.64f, 0.87f to 0.72f, 0.80f to 0.79f, 0.73f to 0.76f))
+                                val grid = androidx.compose.ui.graphics.Color(0x88D8F7FF)
                                 drawOval(
-                                    color = white.copy(alpha = 0.60f),
-                                    topLeft = androidx.compose.ui.geometry.Offset(cx - radius * 0.42f, cy - radius),
-                                    size = androidx.compose.ui.geometry.Size(radius * 0.84f, radius * 2f),
+                                    color = grid,
+                                    topLeft = androidx.compose.ui.geometry.Offset(c.x - r * 0.38f, c.y - r),
+                                    size = androidx.compose.ui.geometry.Size(r * 0.76f, r * 2f),
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
                                 )
                                 drawLine(
-                                    color = white.copy(alpha = 0.62f),
-                                    start = androidx.compose.ui.geometry.Offset(cx - radius, cy),
-                                    end = androidx.compose.ui.geometry.Offset(cx + radius, cy),
+                                    color = grid,
+                                    start = androidx.compose.ui.geometry.Offset(c.x - r * 0.96f, c.y),
+                                    end = androidx.compose.ui.geometry.Offset(c.x + r * 0.96f, c.y),
                                     strokeWidth = 1.dp.toPx()
                                 )
-                                val laptopTop = size.height * 0.60f
+                                drawCircle(
+                                    color = androidx.compose.ui.graphics.Color(0xFFE8FCFF),
+                                    radius = r,
+                                    center = c,
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.8.dp.toPx())
+                                )
+                                drawArc(
+                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.82f),
+                                    startAngle = 205f,
+                                    sweepAngle = 70f,
+                                    useCenter = false,
+                                    topLeft = androidx.compose.ui.geometry.Offset(c.x - r, c.y - r),
+                                    size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 2.2.dp.toPx(),
+                                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                    )
+                                )
+
+                                // Perspective laptop with a luminous screen and metallic base.
+                                val screenLeft = size.width * 0.20f
+                                val screenTop = size.height * 0.59f
+                                val screenWidth = size.width * 0.72f
+                                val screenHeight = size.height * 0.29f
                                 drawRoundRect(
-                                    color = androidx.compose.ui.graphics.Color(0xFF092B58),
-                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.06f, laptopTop),
-                                    size = androidx.compose.ui.geometry.Size(size.width * 0.88f, size.height * 0.27f),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx())
+                                    color = androidx.compose.ui.graphics.Color(0xFF041B43),
+                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft, screenTop),
+                                    size = androidx.compose.ui.geometry.Size(screenWidth, screenHeight),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
                                 )
                                 drawRoundRect(
-                                    color = androidx.compose.ui.graphics.Color(0xFF9BEAFF),
-                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.12f, laptopTop + 4.dp.toPx()),
-                                    size = androidx.compose.ui.geometry.Size(size.width * 0.76f, size.height * 0.19f),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx())
-                                )
-                                drawRoundRect(
-                                    color = androidx.compose.ui.graphics.Color(0xFFB9E9FF),
-                                    topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.01f, size.height * 0.89f),
-                                    size = androidx.compose.ui.geometry.Size(size.width * 0.98f, size.height * 0.055f),
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(
+                                            androidx.compose.ui.graphics.Color(0xFFB9F5FF),
+                                            androidx.compose.ui.graphics.Color(0xFF45BFFF),
+                                            androidx.compose.ui.graphics.Color(0xFF0D5CC5)
+                                        ),
+                                        start = androidx.compose.ui.geometry.Offset(screenLeft, screenTop),
+                                        end = androidx.compose.ui.geometry.Offset(screenLeft + screenWidth, screenTop + screenHeight)
+                                    ),
+                                    topLeft = androidx.compose.ui.geometry.Offset(screenLeft + 4.dp.toPx(), screenTop + 4.dp.toPx()),
+                                    size = androidx.compose.ui.geometry.Size(screenWidth - 8.dp.toPx(), screenHeight - 8.dp.toPx()),
                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx())
+                                )
+                                val base = androidx.compose.ui.graphics.Path().apply {
+                                    moveTo(size.width * 0.16f, size.height * 0.90f)
+                                    lineTo(size.width * 0.96f, size.height * 0.90f)
+                                    lineTo(size.width * 0.88f, size.height * 0.98f)
+                                    lineTo(size.width * 0.04f, size.height * 0.98f)
+                                    close()
+                                }
+                                drawPath(
+                                    base,
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(
+                                            androidx.compose.ui.graphics.Color(0xFFE4FAFF),
+                                            androidx.compose.ui.graphics.Color(0xFF5DCBFF),
+                                            androidx.compose.ui.graphics.Color(0xFFB8F0FF)
+                                        )
+                                    )
+                                )
+                                drawLine(
+                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.72f),
+                                    start = androidx.compose.ui.geometry.Offset(size.width * 0.23f, size.height * 0.92f),
+                                    end = androidx.compose.ui.geometry.Offset(size.width * 0.88f, size.height * 0.92f),
+                                    strokeWidth = 1.dp.toPx()
                                 )
                             }
                         }
