@@ -2369,21 +2369,21 @@ fun RemoteHomeScreen(
 
                                 // Abstract premium global sphere: no continents or land shapes.
                                 // Fine orbital meridians and latitude bands communicate worldwide reach.
-                                val grid = androidx.compose.ui.graphics.Color(0x99DDF8FF)
+                                val abstractGrid = androidx.compose.ui.graphics.Color(0x99DDF8FF)
                                 drawOval(
-                                    color = grid.copy(alpha = .72f),
+                                    color = abstractGrid.copy(alpha = .72f),
                                     topLeft = androidx.compose.ui.geometry.Offset(cx-r*.36f, cy-r),
                                     size = androidx.compose.ui.geometry.Size(r*.72f, r*2f),
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(1.05.dp.toPx())
                                 )
                                 drawOval(
-                                    color = grid.copy(alpha = .58f),
+                                    color = abstractGrid.copy(alpha = .58f),
                                     topLeft = androidx.compose.ui.geometry.Offset(cx-r*.70f, cy-r*.55f),
                                     size = androidx.compose.ui.geometry.Size(r*1.40f, r*1.10f),
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(.95.dp.toPx())
                                 )
                                 drawOval(
-                                    color = grid.copy(alpha = .48f),
+                                    color = abstractGrid.copy(alpha = .48f),
                                     topLeft = androidx.compose.ui.geometry.Offset(cx-r*.88f, cy-r*.27f),
                                     size = androidx.compose.ui.geometry.Size(r*1.76f, r*.54f),
                                     style = androidx.compose.ui.graphics.drawscope.Stroke(.85.dp.toPx())
