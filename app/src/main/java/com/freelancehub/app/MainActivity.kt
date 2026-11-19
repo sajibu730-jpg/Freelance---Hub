@@ -2501,6 +2501,7 @@ fun RemoteHomeScreen(
                                 drawRoundRect(
                                     brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                         listOf(
+                                            androidx.compose.ui.graphics.Color(0xFFDCEAF2),
                                             androidx.compose.ui.graphics.Color(0xFFDCEAF2)
                                         )
                                     ),
