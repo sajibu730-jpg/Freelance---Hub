@@ -27,28 +27,30 @@ begin
     raise exception 'Authentication required' using errcode = '28000';
   end if;
 
-  select p.* into v_proposal
-  from public.proposals p
-  join public.jobs j on j.id = p.job_id
-  where p.id = p_proposal_id
-    and j.owner_id = auth.uid()
-    and j.status = 'open'
-    and p.status in ('pending', 'submitted', 'shortlisted')
-  for update of p;
-
-  if not found then
-    raise exception 'Proposal not found or no longer actionable' using errcode = 'P0002';
-  end if;
-
+  -- Lock the parent job first. All accept operations for one job serialize
+  -- on this row before locking proposal rows, avoiding cross-proposal deadlocks.
   select j.* into v_job
   from public.jobs j
-  where j.id = v_proposal.job_id
+  where j.id = (
+      select p.job_id from public.proposals p where p.id = p_proposal_id
+    )
     and j.owner_id = auth.uid()
     and j.status = 'open'
   for update;
 
   if not found then
-    raise exception 'Job is no longer open' using errcode = 'P0001';
+    raise exception 'Proposal not found or job is no longer open' using errcode = 'P0002';
+  end if;
+
+  select p.* into v_proposal
+  from public.proposals p
+  where p.id = p_proposal_id
+    and p.job_id = v_job.id
+    and p.status in ('pending', 'submitted', 'shortlisted')
+  for update;
+
+  if not found then
+    raise exception 'Proposal not found or no longer actionable' using errcode = 'P0002';
   end if;
 
   insert into public.contracts (
