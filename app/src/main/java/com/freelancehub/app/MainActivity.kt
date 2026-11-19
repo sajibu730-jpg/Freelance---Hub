@@ -2604,6 +2604,8 @@ fun RemoteHomeScreen(
                 Column(Modifier.padding(16.dp)){
                     Text(j.title,style=MaterialTheme.typography.titleMedium)
                     Text("Budget: ${j.budgetMinor/100.0} ${j.currency}")
+                    if(j.category.isNotBlank())Text("Category: ${j.category}")
+                    Text("Experience: ${j.experienceLevel} • ${j.durationDays} days • ${j.freelancersNeeded} freelancer(s)")
                     Text("Status: ${j.status}")
                     if(j.description.isNotBlank())Text(j.description,maxLines=3)
                 }
@@ -2720,6 +2722,10 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     Column(Modifier.fillMaxSize().padding(20.dp)){
         Text(current.title,style=MaterialTheme.typography.headlineSmall)
         Text("Budget: ${current.budgetMinor/100.0} ${current.currency}")
+        if(current.category.isNotBlank())Text("Category: ${current.category}")
+        Text("Experience Level: ${current.experienceLevel}")
+        Text("Project Duration / Deadline: ${current.durationDays} days")
+        Text("Freelancers Needed: ${current.freelancersNeeded}")
         Text("Status: ${current.status}")
         Spacer(Modifier.height(10.dp));Text(current.description)
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
