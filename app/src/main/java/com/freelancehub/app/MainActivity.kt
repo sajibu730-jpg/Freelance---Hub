@@ -2839,7 +2839,7 @@ fun RemoteHomeScreen(
                                 Spacer(Modifier.height(6.dp))
                                 Text(title,style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.onSurface)
                                 Spacer(Modifier.height(8.dp))
-                                Text("$"+budget.trim()+" USD",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.primary)
+                                Text("\$"+budget.trim()+" USD",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.primary)
                             }
                         }
                         Spacer(Modifier.height(14.dp))
