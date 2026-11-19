@@ -43,6 +43,10 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
             .put("budget_minor", input.budgetMinor)
             .put("currency", input.currency)
             .put("skills", JSONArray(input.skills.map { it.trim() }.filter { it.isNotBlank() }))
+            .put("category", input.category)
+            .put("experience_level", input.experienceLevel)
+            .put("duration_days", input.durationDays)
+            .put("freelancers_needed", input.freelancersNeeded)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
             client.openJsonPost("/jobs", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
@@ -270,7 +274,9 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         currency = x.optString("currency", "USD"),
         status = x.optString("status", JobStatus.OPEN),
         ownerId = x.optString("owner_id", ""),
-        skills = parseStringList(x.optJSONArray("skills"))
+        skills = parseStringList(x.optJSONArray("skills")),
+        category = x.optString("category"), experienceLevel = x.optString("experience_level"),
+        durationDays = x.optInt("duration_days", 7), freelancersNeeded = x.optInt("freelancers_needed", 1)
     )
 
     private fun parseStringList(array: JSONArray?): List<String> = if (array == null) emptyList() else (0 until array.length()).mapNotNull { array.optString(it, null)?.trim() }.filter { it.isNotBlank() }
@@ -290,7 +296,9 @@ data class RemoteJob(
     val currency: String,
     val status: String,
     val ownerId: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "", val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7, val freelancersNeeded: Int = 1
 )
 
 data class RemoteJobCreate(
@@ -298,7 +306,9 @@ data class RemoteJobCreate(
     val description: String,
     val budgetMinor: Long,
     val currency: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "", val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7, val freelancersNeeded: Int = 1
 )
 
 data class RemoteProposal(
