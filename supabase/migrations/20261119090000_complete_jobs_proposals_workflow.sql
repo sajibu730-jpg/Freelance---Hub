@@ -12,7 +12,12 @@ grant select, insert, update on table public.jobs to authenticated;
 grant select, insert, update on table public.proposals to authenticated;
 grant select on table public.contracts to authenticated;
 
-create or replace function public.accept_job_proposal(p_proposal_id uuid)
+-- Keep privileged implementations in the existing non-exposed private schema.
+create schema if not exists freelance_hub_private;
+revoke all on schema freelance_hub_private from public, anon;
+grant usage on schema freelance_hub_private to authenticated;
+
+create or replace function freelance_hub_private.accept_job_proposal(p_proposal_id uuid)
 returns public.contracts
 language plpgsql
 security definer
@@ -76,7 +81,7 @@ begin
 end;
 $$;
 
-create or replace function public.reject_job_proposal(p_proposal_id uuid)
+create or replace function freelance_hub_private.reject_job_proposal(p_proposal_id uuid)
 returns boolean
 language plpgsql
 security definer
@@ -106,6 +111,31 @@ begin
   return true;
 end;
 $$;
+
+-- Public API wrappers execute as the caller; only the private, owner-checked
+-- implementation runs with elevated privileges.
+create or replace function public.accept_job_proposal(p_proposal_id uuid)
+returns public.contracts
+language sql
+security invoker
+set search_path = ''
+as $
+  select * from freelance_hub_private.accept_job_proposal(p_proposal_id);
+$;
+
+create or replace function public.reject_job_proposal(p_proposal_id uuid)
+returns boolean
+language sql
+security invoker
+set search_path = ''
+as $
+  select freelance_hub_private.reject_job_proposal(p_proposal_id);
+$;
+
+revoke all on function freelance_hub_private.accept_job_proposal(uuid) from public, anon;
+revoke all on function freelance_hub_private.reject_job_proposal(uuid) from public, anon;
+grant execute on function freelance_hub_private.accept_job_proposal(uuid) to authenticated;
+grant execute on function freelance_hub_private.reject_job_proposal(uuid) to authenticated;
 
 revoke all on function public.accept_job_proposal(uuid) from public, anon;
 revoke all on function public.reject_job_proposal(uuid) from public, anon;
