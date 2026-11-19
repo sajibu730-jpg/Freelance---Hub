@@ -2639,6 +2639,10 @@ fun RemoteHomeScreen(
                             Spacer(Modifier.width(6.dp))
                             Text("Budget  ${j.budgetMinor/100.0} ${j.currency}",style=MaterialTheme.typography.labelLarge)
                         }
+                        if(j.category.isNotBlank()){
+                            Spacer(Modifier.height(6.dp))
+                            Text("${j.category} • ${j.experienceLevel} • ${j.durationDays} days • ${j.freelancersNeeded} freelancer(s)",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         if(j.description.isNotBlank()){
                             Spacer(Modifier.height(8.dp))
                             Text(j.description,maxLines=3,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
