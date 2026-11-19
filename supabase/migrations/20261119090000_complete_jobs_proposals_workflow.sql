@@ -1,10 +1,10 @@
 -- Jobs and proposals workflow hardening.
 alter table public.proposals add column if not exists delivery_days integer not null default 7;
-do $ begin
+do $delivery_days$ begin
   if not exists (select 1 from pg_constraint where conname = 'proposals_delivery_days_range') then
     alter table public.proposals add constraint proposals_delivery_days_range check (delivery_days between 1 and 3650);
   end if;
-end $;
+end $delivery_days$;
 
 -- Existing row-level policies remain the authorization boundary.
 grant select, insert, update on table public.jobs to authenticated;
