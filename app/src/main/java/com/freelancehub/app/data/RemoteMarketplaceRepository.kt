@@ -49,7 +49,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         val response = client.readJsonResponse(
             client.openJsonPost("/rest/v1/jobs", payload, token, SecureApiClient.newIdempotencyKey(), true)
         )
-        return parseJob(JSONObject(String(response, StandardCharsets.UTF_8)))
+        return parseJob(parseSingleRow(response))
     }
 
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
@@ -70,7 +70,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         val response = client.readJsonResponse(
             client.openJsonPost("/rest/v1/proposals", payload, token, SecureApiClient.newIdempotencyKey(), true)
         )
-        return parseProposal(JSONObject(String(response, StandardCharsets.UTF_8)))
+        return parseProposal(parseSingleRow(response))
     }
 
     fun listJobProposals(jobId: String): List<RemoteProposal> {
@@ -287,6 +287,17 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         summary = x.optString("summary"), fileLinks = parseStringList(x.optJSONArray("file_links")),
         createdAt = x.optString("created_at")
     )
+
+    private fun parseSingleRow(response: ByteArray): JSONObject {
+        val json = String(response, StandardCharsets.UTF_8).trim()
+        return if (json.startsWith("[")) {
+            val rows = JSONArray(json)
+            require(rows.length() == 1) { "The server did not return the created record." }
+            rows.getJSONObject(0)
+        } else {
+            JSONObject(json)
+        }
+    }
 
     private fun parseContract(x: JSONObject) = RemoteContract(
         id = x.getString("id"), jobId = x.getString("job_id"), proposalId = x.getString("proposal_id"),
