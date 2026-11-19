@@ -163,6 +163,19 @@ begin
   if (select status from public.proposals where id=v_proposal) <> 'pending' then
     raise exception 'Unauthorized proposal status was modified';
   end if;
+
+  v_blocked := false;
+  begin
+    perform public.accept_job_proposal(v_proposal);
+  exception when others then
+    v_blocked := true;
+  end;
+  if not v_blocked then
+    raise exception 'A different client was able to accept another client proposal';
+  end if;
+  if (select status from public.proposals where id=v_proposal) <> 'pending' then
+    raise exception 'Unauthorized accept modified proposal status';
+  end if;
 end;
 $authorization_test$;
 
