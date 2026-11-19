@@ -100,7 +100,7 @@ begin
   if (select count(*) from public.contracts where job_id=v_job) <> 1 then
     raise exception 'Acceptance must create exactly one contract';
   end if;
-end
+end;
 $test$;
 
 do $reject_test$
@@ -124,7 +124,7 @@ begin
   if (select status from public.proposals where id=v_proposal) <> 'rejected' then
     raise exception 'Proposal was not rejected';
   end if;
-end
+end;
 $reject_test$;
 
 do $authorization_test$
@@ -156,7 +156,7 @@ begin
   if (select status from public.proposals where id=v_proposal) <> 'pending' then
     raise exception 'Unauthorized proposal status was modified';
   end if;
-end
+end;
 $authorization_test$;
 
 select 'jobs-proposals-workflow-tests: PASS' as result;
