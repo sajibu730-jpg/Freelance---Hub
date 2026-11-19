@@ -2,14 +2,14 @@
 
 -- Isolated test schema for the Jobs/Proposals workflow migration.
 -- PostgreSQL roles are cluster-wide, so reuse roles created by other CI suites.
-do $ begin
+do $roles$ begin
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then
     create role authenticated nologin;
   end if;
   if not exists (select 1 from pg_roles where rolname = 'anon') then
     create role anon nologin;
   end if;
-end $;
+end; $roles$;
 create schema if not exists auth;
 create or replace function auth.uid()
 returns uuid
