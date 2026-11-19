@@ -64,6 +64,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
             .put("freelancer_id", authenticatedUserId(token))
             .put("cover_letter", input.coverLetter.trim())
             .put("proposed_budget_minor", input.bidMinor)
+            .put("delivery_days", input.deliveryDays)
             .put("currency", input.currency)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
@@ -314,6 +315,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         freelancerId = x.optString("freelancer_id", ""),
         coverLetter = x.optString("cover_letter", ""),
         proposedBudgetMinor = x.optLong("proposed_budget_minor", 0L),
+        deliveryDays = x.optInt("delivery_days", 7),
         currency = x.optString("currency", "USD"),
         createdAt = x.optString("created_at", "")
     )
@@ -345,6 +347,7 @@ data class RemoteProposal(
     val freelancerId: String = "",
     val coverLetter: String = "",
     val proposedBudgetMinor: Long = 0L,
+    val deliveryDays: Int = 7,
     val currency: String = "USD",
     val createdAt: String = ""
 )
