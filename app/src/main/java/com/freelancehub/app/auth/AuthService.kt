@@ -531,7 +531,7 @@ class AuthService(context: Context) {
                 if (isConfigured() && !access.isNullOrBlank()) {
                     request(
                         method = "POST",
-                        path = "/auth/v1/logout",
+                        path = "/auth/v1/logout?scope=local",
                         accessToken = access
                     )
                 }
