@@ -2243,14 +2243,12 @@ fun RemoteHomeScreen(
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Button(
-                                onClick = {
-                                    if (role == UserRole.CLIENT) onPostJob() else onMatching()
-                                },
+                                onClick = onMatching,
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = blue)
                             ) {
-                                Text(if (role == UserRole.CLIENT) "＋  Post a Job" else "Explore Jobs")
+                                Text(if (role == UserRole.CLIENT) "Explore Talent" else "Explore Jobs")
                             }
                         }
                         androidx.compose.foundation.Canvas(
@@ -2575,11 +2573,14 @@ fun RemoteHomeScreen(
     var selected by remember{mutableStateOf<RemoteJob?>(null)}
     var loading by remember{mutableStateOf(true)}
     var error by remember{mutableStateOf("")}
+    var query by remember{mutableStateOf("")}
     val scope=rememberCoroutineScope()
     fun reload(){
         loading=true; error=""
         scope.launch(Dispatchers.IO){
-            runCatching{marketplace.listJobs(50)}.onSuccess{result->withContext(Dispatchers.Main){jobs=result;loading=false}}.onFailure{e->withContext(Dispatchers.Main){error=e.message?:"Unable to load jobs.";loading=false}}
+            runCatching{marketplace.listJobs(50)}
+                .onSuccess{result->withContext(Dispatchers.Main){jobs=result;loading=false}}
+                .onFailure{e->withContext(Dispatchers.Main){error=e.message?: "Unable to load jobs.";loading=false}}
         }
     }
     LaunchedEffect(Unit){reload()}
@@ -2587,30 +2588,74 @@ fun RemoteHomeScreen(
         RemoteJobDetailsScreen(selected!!,account,marketplace,role,{selected=null})
         return
     }
-    var query by remember{mutableStateOf("")}
-    Column(Modifier.fillMaxSize().padding(16.dp)){
+    val filtered=jobs.filter{
+        query.isBlank() || it.title.contains(query,true) ||
+            it.description.contains(query,true) || it.skills.any{skill->skill.contains(query,true)}
+    }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(horizontal=16.dp, vertical=14.dp)){
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
-            Text("Jobs",style=MaterialTheme.typography.headlineSmall)
-            if(role==UserRole.CLIENT)Button(onClick=post){Text("Post job")}
+            Column(Modifier.weight(1f)){
+                Text("Explore opportunities",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)
+                Text("Find the right project. Build your next success.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if(role==UserRole.CLIENT)Button(onClick=post,shape=MaterialTheme.shapes.medium){Icon(Icons.Default.Add,contentDescription=null);Spacer(Modifier.width(5.dp));Text("Post job")}
+        }
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(value=query,onValueChange={query=it},singleLine=true,
+            leadingIcon={Icon(Icons.Default.Search,contentDescription="Search jobs")},
+            placeholder={Text("Search by title, description or skill")},
+            modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large)
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+            Text("Latest jobs",style=MaterialTheme.typography.titleMedium)
+            Text("${filtered.size} opportunities",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(query,{query=it},label={Text("Search jobs or skills")},modifier=Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        if(loading)CircularProgressIndicator()
-        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        val filtered=jobs.filter{it.title.contains(query,true)||it.description.contains(query,true)}
-        LazyColumn{items(filtered){j->
-            ElevatedCard(onClick={selected=j},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp)){
-                Column(Modifier.padding(16.dp)){
-                    Text(j.title,style=MaterialTheme.typography.titleMedium)
-                    Text("Budget: ${j.budgetMinor/100.0} ${j.currency}")
-                    if(j.category.isNotBlank())Text("Category: ${j.category}")
-                    Text("Experience: ${j.experienceLevel} • ${j.durationDays} days • ${j.freelancersNeeded} freelancer(s)")
-                    Text("Status: ${j.status}")
-                    if(j.description.isNotBlank())Text(j.description,maxLines=3)
+        if(loading)Box(Modifier.fillMaxWidth().padding(30.dp),contentAlignment=androidx.compose.ui.Alignment.Center){CircularProgressIndicator()}
+        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(vertical=8.dp))
+        if(!loading && filtered.isEmpty() && error.isBlank()){
+            Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)){
+                Column(Modifier.fillMaxWidth().padding(24.dp),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally){
+                    Icon(Icons.Default.WorkOutline,contentDescription=null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(34.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text(if(query.isBlank())"No open jobs yet" else "No matching jobs",style=MaterialTheme.typography.titleMedium)
+                    Text(if(query.isBlank())"New opportunities will appear here." else "Try another title or skill.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-        }}
+        }
+        LazyColumn(contentPadding=PaddingValues(bottom=24.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+            items(filtered){j->
+                ElevatedCard(onClick={selected=j},modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large){
+                    Column(Modifier.fillMaxWidth().padding(16.dp)){
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.Top){
+                            Text(j.title,modifier=Modifier.weight(1f),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)
+                            Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.small){
+                                Text(j.status.uppercase(),modifier=Modifier.padding(horizontal=9.dp,vertical=5.dp),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                            Icon(Icons.Default.Payments,contentDescription=null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Budget  ${j.budgetMinor/100.0} ${j.currency}",style=MaterialTheme.typography.labelLarge)
+                        }
+                        if(j.description.isNotBlank()){
+                            Spacer(Modifier.height(8.dp))
+                            Text(j.description,maxLines=3,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if(j.skills.isNotEmpty()){
+                            Spacer(Modifier.height(10.dp))
+                            Text(j.skills.take(5).joinToString("  •  "),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                            Text("View details",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.ArrowForward,contentDescription=null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.padding(start=5.dp).size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -2711,9 +2756,11 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
 @Composable fun RemoteJobDetailsScreen(j:RemoteJob,account:RemoteAccountRepository,marketplace:RemoteMarketplaceRepository,role:UserRole,back:()->Unit){
     var current by remember(j.id){mutableStateOf(j)}
     var proposalOpen by remember{mutableStateOf(false)}
+    var proposalManagementOpen by remember{mutableStateOf(false)}
     var workOpen by remember{mutableStateOf(false)}
     var reviewOpen by remember{mutableStateOf(false)}
     if(proposalOpen){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
+    if(proposalManagementOpen){RemoteClientProposalsScreen(current,marketplace){proposalManagementOpen=false};return}
     if(workOpen){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
     if(reviewOpen){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
@@ -2736,11 +2783,109 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             OutlinedButton(onClick={workOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit work & analyze delivery")}
             Text("Server authorization will allow this only when you are the assigned freelancer for the job.",style=MaterialTheme.typography.bodySmall)
         }
+        if(role==UserRole.CLIENT&&current.status==JobStatus.OPEN){
+            Spacer(Modifier.height(8.dp))
+            Button(onClick={proposalManagementOpen=true},modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium){
+                Icon(Icons.Default.FactCheck,contentDescription=null);Spacer(Modifier.width(8.dp));Text("Review proposals")
+            }
+        }
         if(role==UserRole.CLIENT&&current.status!=JobStatus.CLOSED){
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={reviewOpen=true},modifier=Modifier.fillMaxWidth()){Text("Review submitted work")}
         }
         TextButton(onClick=back){Text("Back")}
+    }
+}
+
+@Composable fun RemoteClientProposalsScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+    var proposals by remember(j.id){mutableStateOf<List<RemoteProposal>>(emptyList())}
+    var loading by remember{mutableStateOf(true)}
+    var busyId by remember{mutableStateOf("")}
+    var error by remember{mutableStateOf("")}
+    var notice by remember{mutableStateOf("")}
+    val scope=rememberCoroutineScope()
+    fun reload(){
+        loading=true;error=""
+        scope.launch(Dispatchers.IO){
+            runCatching{marketplace.listJobProposals(j.id)}
+                .onSuccess{rows->withContext(Dispatchers.Main){proposals=rows;loading=false}}
+                .onFailure{e->withContext(Dispatchers.Main){error=e.message?: "Unable to load proposals.";loading=false}}
+        }
+    }
+    LaunchedEffect(j.id){reload()}
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(16.dp)){
+        Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+            IconButton(onClick=back){Icon(Icons.Default.ArrowBack,contentDescription="Back")}
+            Column(Modifier.weight(1f)){
+                Text("Proposal management",style=MaterialTheme.typography.titleLarge)
+                Text(j.title,maxLines=1,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),shape=MaterialTheme.shapes.large){
+            Row(Modifier.fillMaxWidth().padding(16.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                Column{
+                    Text("Applications received",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(proposals.size.toString(),style=MaterialTheme.typography.headlineMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+                Icon(Icons.Default.FactCheck,contentDescription=null,tint=MaterialTheme.colorScheme.onPrimaryContainer,modifier=Modifier.size(32.dp))
+            }
+        }
+        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(vertical=8.dp))
+        if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary,modifier=Modifier.padding(vertical=8.dp))
+        if(loading)Box(Modifier.fillMaxWidth().padding(28.dp),contentAlignment=androidx.compose.ui.Alignment.Center){CircularProgressIndicator()}
+        if(!loading&&proposals.isEmpty()&&error.isBlank()){
+            Card(Modifier.fillMaxWidth().padding(top=12.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)){
+                Column(Modifier.fillMaxWidth().padding(24.dp),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally){
+                    Icon(Icons.Default.Inbox,contentDescription=null,modifier=Modifier.size(34.dp),tint=MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(8.dp))
+                    Text("No proposals yet",style=MaterialTheme.typography.titleMedium)
+                    Text("Freelancer applications will appear here.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        LazyColumn(contentPadding=PaddingValues(top=10.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+            items(proposals){p->
+                Card(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large){
+                    Column(Modifier.fillMaxWidth().padding(16.dp)){
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                            Text("Freelancer ${p.freelancerId.take(8)}",style=MaterialTheme.typography.titleMedium)
+                            Surface(color=if(p.status=="accepted")MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,shape=MaterialTheme.shapes.small){
+                                Text(p.status.uppercase(),modifier=Modifier.padding(horizontal=8.dp,vertical=5.dp),style=MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text("Proposed budget",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${p.proposedBudgetMinor/100.0} ${p.currency}",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.primary)
+                        Text("Estimated delivery: ${p.deliveryDays} days",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(10.dp))
+                        Text("Cover letter",style=MaterialTheme.typography.labelMedium)
+                        Text(p.coverLetter.ifBlank{"No cover letter supplied."},style=MaterialTheme.typography.bodyMedium)
+                        if(p.status in listOf("pending","submitted","shortlisted")&&j.status==JobStatus.OPEN){
+                            Spacer(Modifier.height(14.dp))
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                                OutlinedButton(onClick={
+                                    busyId=p.id;error="";notice=""
+                                    scope.launch(Dispatchers.IO){
+                                        runCatching{marketplace.rejectProposal(p.id)}
+                                            .onSuccess{withContext(Dispatchers.Main){busyId="";notice="Proposal declined.";reload()}}
+                                            .onFailure{e->withContext(Dispatchers.Main){busyId="";error=e.message?: "Unable to decline proposal."}}
+                                    }
+                                },enabled=busyId.isBlank(),modifier=Modifier.weight(1f)){Text(if(busyId==p.id)"Please wait…" else "Decline")}
+                                Button(onClick={
+                                    busyId=p.id;error="";notice=""
+                                    scope.launch(Dispatchers.IO){
+                                        runCatching{marketplace.acceptProposal(p.id)}
+                                            .onSuccess{contract->withContext(Dispatchers.Main){busyId="";notice="Proposal accepted. Contract ${contract.id.take(8)} is now active.";reload()}}
+                                            .onFailure{e->withContext(Dispatchers.Main){busyId="";error=e.message?: "Unable to accept proposal."}}
+                                    }
+                                },enabled=busyId.isBlank(),modifier=Modifier.weight(1f)){Text(if(busyId==p.id)"Processing…" else "Accept & create contract")}
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
