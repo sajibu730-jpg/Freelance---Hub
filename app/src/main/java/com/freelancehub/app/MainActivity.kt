@@ -2243,12 +2243,14 @@ fun RemoteHomeScreen(
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Button(
-                                onClick = onMatching,
+                                onClick = {
+                                    if (role == UserRole.CLIENT) onPostJob() else onMatching()
+                                },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = blue)
                             ) {
-                                Text(if (role == UserRole.CLIENT) "Explore Talent" else "Explore Jobs")
+                                Text(if (role == UserRole.CLIENT) "＋  Post a Job" else "Explore Jobs")
                             }
                         }
                         androidx.compose.foundation.Canvas(
