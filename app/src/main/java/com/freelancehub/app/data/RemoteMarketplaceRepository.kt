@@ -20,7 +20,7 @@ class RemoteMarketplaceRepository(
 fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
     require(limit in 1..50) { "limit must be 1..50" }
 
-    val path = "/rest/v1/jobs?select=*&status=eq.open&order=created_at.desc&limit=$limit"
+    val path = "/rest/v1/jobs?select=*&order=created_at.desc&limit=$limit"
     val response = client.readJsonResponse(
         client.openGet(path, accessTokenProvider())
     )
