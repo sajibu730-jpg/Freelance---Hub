@@ -2672,87 +2672,258 @@ fun RemoteHomeScreen(
     val scope=rememberCoroutineScope()
     val categories=listOf("Design & Creative","Programming & Tech","Writing & Translation","Digital Marketing","Data Entry","Video & Animation","Business","Customer Support","AI Services","Other")
     val experiences=listOf("Beginner","Intermediate","Expert")
-    if(role!=UserRole.CLIENT){Column(Modifier.fillMaxSize().padding(20.dp)){Text("Only client accounts can post jobs.",color=MaterialTheme.colorScheme.error);TextButton(onClick=back){Text("Back")}};return}
+    if(role!=UserRole.CLIENT){
+        Column(Modifier.fillMaxSize().padding(20.dp)){
+            Text("Only client accounts can post jobs.",color=MaterialTheme.colorScheme.error)
+            TextButton(onClick=back){Text("Back")}
+        }
+        return
+    }
     val budgetMinor=budget.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
     val duration=durationDays.trim().toIntOrNull()
     val freelancersCount=freelancersNeeded.toIntOrNull()
     val headValid=Validation.text(title,3,160)&&Validation.text(desc,20,10000)&&budgetMinor!=null&&budgetMinor>=0&&Validation.text(skills,1,1000)
     val requirementsValid=category.isNotBlank()&&experience in experiences&&duration!=null&&duration in 1..3650&&freelancersCount!=null&&freelancersCount in 1..100
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
-        Text("Post a Job",style=MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(6.dp));Text("Step $step of 3",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)){repeat(3){index->Box(Modifier.weight(1f).height(5.dp).background(if(index<step)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,androidx.compose.foundation.shape.RoundedCornerShape(8.dp)))}}
-        Spacer(Modifier.height(18.dp))
-        when(step){
-            1->{
-                Text("Basic Information",style=MaterialTheme.typography.titleMedium)
-                Text("Tell freelancers what work you need done.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(title,{title=it;error=""},label={Text("Job Title")},placeholder={Text("e.g. Simple Data Entry")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(budget,{budget=it;error=""},label={Text("Budget (USD)")},placeholder={Text("e.g. 50")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(skills,{skills=it;error=""},label={Text("Skills")},placeholder={Text("Data Entry, Microsoft Excel")},supportingText={Text("Separate multiple skills with commas.")},modifier=Modifier.fillMaxWidth())
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(desc,{desc=it;error=""},label={Text("Description")},placeholder={Text("Describe the work, requirements and expected result.")},minLines=5,maxLines=10,modifier=Modifier.fillMaxWidth())
+    val fieldShape=MaterialTheme.shapes.large
+    Column(
+        Modifier.fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.42f))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal=16.dp,vertical=18.dp)
+    ){
+        Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+            IconButton(onClick=back){
+                Icon(Icons.Default.ArrowBack,contentDescription="Back",tint=MaterialTheme.colorScheme.onSurface)
             }
-            2->{
-                Text("Job Requirements",style=MaterialTheme.typography.titleMedium)
-                Text("Help freelancers understand the type and size of the project.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(14.dp))
-                Box(Modifier.fillMaxWidth()){
-                    OutlinedTextField(category,{categoryExpanded=true},readOnly=true,label={Text("Category")},placeholder={Text("Select a category")},trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth())
-                    DropdownMenu(expanded=categoryExpanded,onDismissRequest={categoryExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){categories.forEach{item->DropdownMenuItem(text={Text(item)},onClick={category=item;categoryExpanded=false;error=""})}}
-                }
-                Spacer(Modifier.height(12.dp))
-                Box(Modifier.fillMaxWidth()){
-                    OutlinedTextField(experience,{experienceExpanded=true},readOnly=true,label={Text("Experience Level")},trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth())
-                    DropdownMenu(expanded=experienceExpanded,onDismissRequest={experienceExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){experiences.forEach{item->DropdownMenuItem(text={Text(item)},onClick={experience=item;experienceExpanded=false})}}
-                }
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(durationDays,{durationDays=it.filter(Char::isDigit);error=""},label={Text("Project Duration / Deadline (days)")},placeholder={Text("e.g. 7")},supportingText={Text("Enter the number of days allowed to complete the project.")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(freelancersNeeded,{freelancersNeeded=it.filter(Char::isDigit);error=""},label={Text("Number of Freelancers Needed")},placeholder={Text("1")},supportingText={Text("Choose how many freelancers you want to hire (1–100).")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            Column(Modifier.weight(1f)){
+                Text("Create a job",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)
+                Text("Find the right people for your project",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else->{
-                Text("Review Your Job",style=MaterialTheme.typography.titleMedium)
-                Text("Check all details before publishing.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(12.dp))
-                Card(Modifier.fillMaxWidth()){
-                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
-                        Text(title,style=MaterialTheme.typography.titleLarge)
-                        Text("Budget (USD): "+budget.trim(),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)
-                        HorizontalDivider()
-                        Text("Skills",style=MaterialTheme.typography.labelLarge);Text(skills)
-                        Text("Description",style=MaterialTheme.typography.labelLarge);Text(desc)
-                        HorizontalDivider()
-                        Text("Category: $category");Text("Experience Level: $experience")
-                        Text("Project Duration / Deadline: $durationDays days");Text("Freelancers Needed: $freelancersNeeded")
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                TextButton(onClick={step=1;error=""},modifier=Modifier.fillMaxWidth()){Text("Edit Basic Information")}
-                TextButton(onClick={step=2;error=""},modifier=Modifier.fillMaxWidth()){Text("Edit Job Requirements")}
+            Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(50),color=MaterialTheme.colorScheme.primaryContainer){
+                Text("STEP $step / 3",modifier=Modifier.padding(horizontal=11.dp,vertical=7.dp),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
-        if(error.isNotBlank()){Spacer(Modifier.height(8.dp));Text(error,color=MaterialTheme.colorScheme.error)}
         Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-            if(step==1){OutlinedButton(onClick=back,modifier=Modifier.weight(1f)){Text("Cancel")};Button(enabled=headValid,onClick={step=2;error=""},modifier=Modifier.weight(1f)){Text("Next")}}
-            else{
-                OutlinedButton(onClick={step=if(step==2)1 else 2;error=""},enabled=!busy,modifier=Modifier.weight(1f)){Text("Back")}
-                if(step==2)Button(enabled=requirementsValid,onClick={step=3;error=""},modifier=Modifier.weight(1f)){Text("Review Job")}
-                else Button(enabled=!busy,onClick={
-                    busy=true;error=""
-                    scope.launch(Dispatchers.IO){
-                        runCatching{marketplace.createJob(RemoteJobCreate(title=title.trim(),description=desc.trim(),budgetMinor=budgetMinor!!,currency="USD",skills=skills.split(',').map{it.trim()}.filter{it.isNotBlank()},category=category,experienceLevel=experience,durationDays=duration!!,freelancersNeeded=freelancersCount!!))}
-                            .onSuccess{withContext(Dispatchers.Main){onPublished()}}
-                            .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Job publication failed."}}
+        Card(
+            modifier=Modifier.fillMaxWidth(),
+            shape=MaterialTheme.shapes.extraLarge,
+            colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
+            elevation=CardDefaults.cardElevation(defaultElevation=2.dp)
+        ){
+            Column(Modifier.fillMaxWidth().padding(16.dp)){
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)){
+                    listOf("Basic Info","Requirements","Review").forEachIndexed{index,label->
+                        Column(Modifier.weight(1f)){
+                            Box(
+                                Modifier.fillMaxWidth().height(6.dp)
+                                    .background(
+                                        if(index<step)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                        androidx.compose.foundation.shape.RoundedCornerShape(50)
+                                    )
+                            )
+                            Spacer(Modifier.height(7.dp))
+                            Text(
+                                label,
+                                style=MaterialTheme.typography.labelSmall,
+                                color=if(index==step-1)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines=1
+                            )
+                        }
                     }
-                },modifier=Modifier.weight(1f)){Text(if(busy)"Publishing…" else "Confirm & Publish")}
+                }
             }
         }
+        Spacer(Modifier.height(16.dp))
+        Card(
+            modifier=Modifier.fillMaxWidth(),
+            shape=MaterialTheme.shapes.extraLarge,
+            colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
+            elevation=CardDefaults.cardElevation(defaultElevation=1.dp)
+        ){
+            Column(Modifier.fillMaxWidth().padding(18.dp)){
+                when(step){
+                    1->{
+                        Text("Basic Information",style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Start with a clear brief so freelancers know what you need.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(18.dp))
+                        OutlinedTextField(
+                            value=title,onValueChange={title=it;error=""},
+                            label={Text("Job Title")},placeholder={Text("e.g. Build a business website")},
+                            singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(13.dp))
+                        OutlinedTextField(
+                            value=budget,onValueChange={budget=it;error=""},
+                            label={Text("Budget (USD)")},placeholder={Text("Enter your total budget")},
+                            leadingIcon={Text("$",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)},
+                            singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(13.dp))
+                        OutlinedTextField(
+                            value=skills,onValueChange={skills=it;error=""},
+                            label={Text("Required Skills")},placeholder={Text("e.g. Kotlin, UI Design, Testing")},
+                            supportingText={Text("Add multiple skills separated by commas.")},
+                            shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(13.dp))
+                        OutlinedTextField(
+                            value=desc,onValueChange={desc=it;error=""},
+                            label={Text("Project Description")},
+                            placeholder={Text("Explain the work, expected result and important requirements...")},
+                            minLines=5,maxLines=9,shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                        )
+                    }
+                    2->{
+                        Text("Job Requirements",style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Set expectations to help the right freelancers find your job.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(18.dp))
+                        Text("Project Category",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.height(7.dp))
+                        Box(Modifier.fillMaxWidth()){
+                            OutlinedTextField(
+                                value=category,onValueChange={},readOnly=true,
+                                placeholder={Text("Choose a category")},
+                                trailingIcon={Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose category")},
+                                shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                            )
+                            Box(Modifier.matchParentSize().clickable{categoryExpanded=true})
+                            DropdownMenu(expanded=categoryExpanded,onDismissRequest={categoryExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){
+                                categories.forEach{item->DropdownMenuItem(text={Text(item)},onClick={category=item;categoryExpanded=false;error=""})}
+                            }
+                        }
+                        Spacer(Modifier.height(15.dp))
+                        Text("Experience Level",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.height(7.dp))
+                        Box(Modifier.fillMaxWidth()){
+                            OutlinedTextField(
+                                value=experience,onValueChange={},readOnly=true,
+                                trailingIcon={Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose experience level")},
+                                shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                            )
+                            Box(Modifier.matchParentSize().clickable{experienceExpanded=true})
+                            DropdownMenu(expanded=experienceExpanded,onDismissRequest={experienceExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){
+                                experiences.forEach{item->DropdownMenuItem(text={Text(item)},onClick={experience=item;experienceExpanded=false})}
+                            }
+                        }
+                        Spacer(Modifier.height(15.dp))
+                        OutlinedTextField(
+                            value=durationDays,onValueChange={durationDays=it.filter(Char::isDigit);error=""},
+                            label={Text("Project Duration / Deadline (days)")},
+                            placeholder={Text("e.g. 7")},
+                            supportingText={Text("Enter 1–3650 days for the project timeline.")},
+                            singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(15.dp))
+                        OutlinedTextField(
+                            value=freelancersNeeded,onValueChange={freelancersNeeded=it.filter(Char::isDigit);error=""},
+                            label={Text("Number of Freelancers Needed")},
+                            placeholder={Text("e.g. 1")},
+                            supportingText={Text("Choose how many people you want to hire (1–100).")},
+                            singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
+                        )
+                    }
+                    else->{
+                        Text("Review Your Job",style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Everything looks good? Review your details before publishing.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(16.dp))
+                        Surface(
+                            modifier=Modifier.fillMaxWidth(),
+                            shape=MaterialTheme.shapes.large,
+                            color=MaterialTheme.colorScheme.primaryContainer.copy(alpha=0.55f)
+                        ){
+                            Column(Modifier.padding(16.dp)){
+                                Text("YOUR JOB",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.height(6.dp))
+                                Text(title,style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.onSurface)
+                                Spacer(Modifier.height(8.dp))
+                                Text("$"+budget.trim()+" USD",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        Text("Project Overview",style=MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Required Skills",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(skills,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.height(12.dp))
+                        Text("Description",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(desc,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.height(14.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(12.dp))
+                        Text("Job Requirements",style=MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(9.dp))
+                        listOf(
+                            "Category" to category,
+                            "Experience Level" to experience,
+                            "Project Duration" to "$durationDays days",
+                            "Freelancers Needed" to freelancersNeeded
+                        ).forEach{(label,value)->
+                            Row(Modifier.fillMaxWidth().padding(vertical=5.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                                Text(label,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.weight(1f))
+                                Text(value,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedButton(onClick={step=1;error=""},modifier=Modifier.fillMaxWidth(),shape=fieldShape){
+                            Text("Edit Basic Information")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick={step=2;error=""},modifier=Modifier.fillMaxWidth(),shape=fieldShape){
+                            Text("Edit Job Requirements")
+                        }
+                    }
+                }
+                if(error.isNotBlank()){
+                    Spacer(Modifier.height(12.dp))
+                    Surface(color=MaterialTheme.colorScheme.errorContainer,shape=MaterialTheme.shapes.medium){
+                        Text(error,modifier=Modifier.fillMaxWidth().padding(12.dp),color=MaterialTheme.colorScheme.onErrorContainer,style=MaterialTheme.typography.bodySmall)
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                    if(step==1){
+                        OutlinedButton(onClick=back,modifier=Modifier.weight(1f).height(52.dp),shape=fieldShape){Text("Cancel")}
+                        Button(enabled=headValid,onClick={step=2;error=""},modifier=Modifier.weight(1f).height(52.dp),shape=fieldShape){Text("Continue")}
+                    }else{
+                        OutlinedButton(
+                            onClick={step=if(step==2)1 else 2;error=""},
+                            enabled=!busy,modifier=Modifier.weight(1f).height(52.dp),shape=fieldShape
+                        ){Text("Back")}
+                        if(step==2){
+                            Button(enabled=requirementsValid,onClick={step=3;error=""},modifier=Modifier.weight(1f).height(52.dp),shape=fieldShape){
+                                Text("Review Job")
+                            }
+                        }else{
+                            Button(
+                                enabled=!busy,
+                                onClick={
+                                    busy=true;error=""
+                                    scope.launch(Dispatchers.IO){
+                                        runCatching{
+                                            marketplace.createJob(
+                                                RemoteJobCreate(
+                                                    title=title.trim(),description=desc.trim(),budgetMinor=budgetMinor!!,
+                                                    currency="USD",skills=skills.split(',').map{it.trim()}.filter{it.isNotBlank()},
+                                                    category=category,experienceLevel=experience,durationDays=duration!!,
+                                                    freelancersNeeded=freelancersCount!!
+                                                )
+                                            )
+                                        }.onSuccess{withContext(Dispatchers.Main){onPublished()}}
+                                         .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Job publication failed."}}
+                                    }
+                                },
+                                modifier=Modifier.weight(1f).height(52.dp),shape=fieldShape
+                            ){Text(if(busy)"Publishing…" else "Confirm & Publish")}
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        Text("Your job details can be reviewed and edited before publishing.",modifier=Modifier.fillMaxWidth(),textAlign=androidx.compose.ui.text.style.TextAlign.Center,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longValueExact()}.getOrNull()
