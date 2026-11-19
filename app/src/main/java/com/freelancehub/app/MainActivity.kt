@@ -2630,7 +2630,7 @@ fun RemoteHomeScreen(
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.Top){
                             Text(j.title,modifier=Modifier.weight(1f),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)
                             Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=MaterialTheme.shapes.small){
-                                Text("OPEN",modifier=Modifier.padding(horizontal=9.dp,vertical=5.dp),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(j.status.uppercase(),modifier=Modifier.padding(horizontal=9.dp,vertical=5.dp),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                         }
                         Spacer(Modifier.height(8.dp))
@@ -2787,6 +2787,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                         Spacer(Modifier.height(8.dp))
                         Text("Proposed budget",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${p.proposedBudgetMinor/100.0} ${p.currency}",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.primary)
+                        Text("Estimated delivery: ${p.deliveryDays} days",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(10.dp))
                         Text("Cover letter",style=MaterialTheme.typography.labelMedium)
                         Text(p.coverLetter.ifBlank{"No cover letter supplied."},style=MaterialTheme.typography.bodyMedium)
