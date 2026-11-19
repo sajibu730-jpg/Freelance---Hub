@@ -4,7 +4,8 @@ do $delivery_days$ begin
   if not exists (select 1 from pg_constraint where conname = 'proposals_delivery_days_range') then
     alter table public.proposals add constraint proposals_delivery_days_range check (delivery_days between 1 and 3650);
   end if;
-end $delivery_days$;
+end;
+$delivery_days$;
 
 -- Existing row-level policies remain the authorization boundary.
 grant select, insert, update on table public.jobs to authenticated;
