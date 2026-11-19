@@ -60,6 +60,7 @@ create table public.contracts (
 );
 
 \ir ../../supabase/migrations/20261119090000_complete_jobs_proposals_workflow.sql
+\ir ../../supabase/migrations/20261119232200_add_job_posting_requirements.sql
 
 do $test$
 declare
@@ -73,9 +74,17 @@ declare
 begin
   perform set_config('request.jwt.claim.sub', v_client::text, true);
 
-  insert into public.jobs(owner_id,title,description,budget_minor)
-  values(v_client,'Build a landing page','A detailed landing page project for testing.',50000)
+  insert into public.jobs(owner_id,title,description,budget_minor,category,experience_level,duration_days,freelancers_needed)
+  values(v_client,'Build a landing page','A detailed landing page project for testing.',50000,'Programming & Tech','Intermediate',14,2)
   returning id into v_job;
+
+  if not exists (
+    select 1 from public.jobs
+    where id=v_job and category='Programming & Tech'
+      and experience_level='Intermediate' and duration_days=14 and freelancers_needed=2
+  ) then
+    raise exception 'Job posting metadata was not saved correctly';
+  end if;
 
   insert into public.proposals(job_id,freelancer_id,cover_letter,proposed_budget_minor,delivery_days)
   values(v_job,v_freelancer,'I can deliver a responsive and tested landing page.',45000,5)
@@ -178,5 +187,38 @@ begin
   end if;
 end;
 $authorization_test$;
+
+do $metadata_constraint_tests$
+declare
+  v_client uuid := '90000000-0000-4000-8000-000000000009';
+  v_rejected boolean := false;
+begin
+  begin
+    insert into public.jobs(owner_id,title,description,experience_level)
+    values(v_client,'Invalid experience','Testing invalid experience level.','Advanced');
+  exception when check_violation then
+    v_rejected := true;
+  end;
+  if not v_rejected then raise exception 'Unsupported experience level was accepted'; end if;
+
+  v_rejected := false;
+  begin
+    insert into public.jobs(owner_id,title,description,duration_days)
+    values(v_client,'Invalid duration','Testing invalid duration.',0);
+  exception when check_violation then
+    v_rejected := true;
+  end;
+  if not v_rejected then raise exception 'Invalid project duration was accepted'; end if;
+
+  v_rejected := false;
+  begin
+    insert into public.jobs(owner_id,title,description,freelancers_needed)
+    values(v_client,'Invalid freelancer count','Testing invalid freelancer count.',101);
+  exception when check_violation then
+    v_rejected := true;
+  end;
+  if not v_rejected then raise exception 'Invalid freelancer count was accepted'; end if;
+end;
+$metadata_constraint_tests$;
 
 select 'jobs-proposals-workflow-tests: PASS' as result;
