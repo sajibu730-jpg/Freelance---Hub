@@ -119,18 +119,18 @@ returns public.contracts
 language sql
 security invoker
 set search_path = ''
-as $
+as $accept$
   select * from freelance_hub_private.accept_job_proposal(p_proposal_id);
-$;
+$accept$;
 
 create or replace function public.reject_job_proposal(p_proposal_id uuid)
 returns boolean
 language sql
 security invoker
 set search_path = ''
-as $
+as $reject$
   select freelance_hub_private.reject_job_proposal(p_proposal_id);
-$;
+$reject$;
 
 revoke all on function freelance_hub_private.accept_job_proposal(uuid) from public, anon;
 revoke all on function freelance_hub_private.reject_job_proposal(uuid) from public, anon;
