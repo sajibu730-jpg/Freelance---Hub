@@ -272,6 +272,27 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         status = x.optString("status", "active")
     )
 
+    private fun authenticatedUserId(token: String): String {
+        val parts = token.split('.')
+        require(parts.size == 3) { "Your session is invalid. Please sign in again." }
+        val payload = android.util.Base64.decode(
+            parts[1],
+            android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+        )
+        val userId = JSONObject(String(payload, StandardCharsets.UTF_8)).optString("sub")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Your session is invalid. Please sign in again." }
+        return userId
+    }
+
+    private fun parseSingleRow(response: ByteArray): JSONObject {
+        val body = String(response, StandardCharsets.UTF_8)
+        return if (body.trimStart().startsWith("[")) {
+            val rows = JSONArray(body)
+            require(rows.length() > 0) { "The job was not returned by the server." }
+            rows.getJSONObject(0)
+        } else JSONObject(body)
+    }
+
     private fun parseJob(x: JSONObject) = RemoteJob(
         id = x.getString("id"),
         title = x.getString("title"),
