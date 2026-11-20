@@ -33,6 +33,21 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Configure stable APK signing
+        env:
+          FREELANCE_HUB_KEYSTORE_BASE64: ${{ secrets.FREELANCE_HUB_KEYSTORE_BASE64 }}
+          FREELANCE_HUB_KEYSTORE_PASSWORD: ${{ secrets.FREELANCE_HUB_KEYSTORE_PASSWORD }}
+          FREELANCE_HUB_KEY_ALIAS: ${{ secrets.FREELANCE_HUB_KEY_ALIAS }}
+          FREELANCE_HUB_KEY_PASSWORD: ${{ secrets.FREELANCE_HUB_KEY_PASSWORD }}
+        run: |
+          if [ -n "$FREELANCE_HUB_KEYSTORE_BASE64" ]; then
+            echo "$FREELANCE_HUB_KEYSTORE_BASE64" | base64 --decode > app/freelance-hub-upload-key.p12
+            echo "FREELANCE_HUB_KEYSTORE_PATH=$GITHUB_WORKSPACE/app/freelance-hub-upload-key.p12" >> "$GITHUB_ENV"
+            echo "Stable APK signing is configured."
+          else
+            echo "::warning::Stable signing secrets are not configured; this build will use the temporary default debug key."
+          fi
+
       - name: Build APK
         env:
           FREELANCE_HUB_API_URL: https://imffbmwdlenhmhxopwoq.supabase.co
