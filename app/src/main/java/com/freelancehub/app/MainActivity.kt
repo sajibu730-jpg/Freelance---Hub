@@ -2611,33 +2611,98 @@ fun RemoteHomeScreen(
 }
 
 @Composable fun RemotePostJobScreen(role:UserRole,marketplace:RemoteMarketplaceRepository,back:()->Unit,onPublished:()->Unit){
-    var title by remember{mutableStateOf("")};var budget by remember{mutableStateOf("")};var skills by remember{mutableStateOf("")};var desc by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
+    var step by remember{mutableIntStateOf(1)}
+    var title by remember{mutableStateOf("")};var budget by remember{mutableStateOf("")};var skills by remember{mutableStateOf("")};var desc by remember{mutableStateOf("")}
+    var category by remember{mutableStateOf("")};var experience by remember{mutableStateOf("Beginner")};var durationDays by remember{mutableStateOf("7")};var freelancersNeeded by remember{mutableStateOf("1")}
+    var categoryExpanded by remember{mutableStateOf(false)};var experienceExpanded by remember{mutableStateOf(false)}
+    var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
+    val categories=listOf("Design & Creative","Programming & Tech","Writing & Translation","Digital Marketing","Data Entry","Video & Animation","Business","Customer Support","AI Services","Other")
+    val experiences=listOf("Beginner","Intermediate","Expert")
     if(role!=UserRole.CLIENT){Column(Modifier.fillMaxSize().padding(20.dp)){Text("Only client accounts can post jobs.",color=MaterialTheme.colorScheme.error);TextButton(onClick=back){Text("Back")}};return}
     val budgetMinor=budget.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
-    val valid=Validation.text(title,3,160)&&Validation.text(desc,20,10000)&&budgetMinor!=null&&budgetMinor>=0&&Validation.text(skills,0,1000)
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Post a job",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
-        OutlinedTextField(title,{title=it},label={Text("Job title")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(budget,{budget=it},label={Text("Budget (USD)")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(skills,{skills=it},label={Text("Skills (comma separated)")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(desc,{desc=it},label={Text("Description (20–10000 chars)")},minLines=5,modifier=Modifier.fillMaxWidth())
-        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(12.dp))
-        Button(enabled=valid&&!busy,onClick={
-            busy=true;error=""
-            scope.launch(Dispatchers.IO){
-                runCatching{marketplace.createJob(RemoteJobCreate(title.trim(),desc.trim(),budgetMinor!!,"USD",skills.split(',').map{it.trim()}.filter{it.isNotBlank()}))}
-                    .onSuccess{withContext(Dispatchers.Main){onPublished()}}
-                    .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Job publication failed."}}
+    val duration=durationDays.trim().toIntOrNull()
+    val freelancersCount=freelancersNeeded.toIntOrNull()
+    val headValid=Validation.text(title,3,160)&&Validation.text(desc,20,10000)&&budgetMinor!=null&&budgetMinor>=0&&Validation.text(skills,1,1000)
+    val requirementsValid=category.isNotBlank()&&experience in experiences&&duration!=null&&duration in 1..3650&&freelancersCount!=null&&freelancersCount in 1..100
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
+        Text("Post a Job",style=MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(6.dp));Text("Step $step of 3",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)){repeat(3){index->Box(Modifier.weight(1f).height(5.dp).background(if(index<step)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,androidx.compose.foundation.shape.RoundedCornerShape(8.dp)))}}
+        Spacer(Modifier.height(18.dp))
+        when(step){
+            1->{
+                Text("Basic Information",style=MaterialTheme.typography.titleMedium)
+                Text("Tell freelancers what work you need done.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(title,{title=it;error=""},label={Text("Job Title")},placeholder={Text("e.g. Simple Data Entry")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(budget,{budget=it;error=""},label={Text("Budget (USD)")},placeholder={Text("e.g. 50")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(skills,{skills=it;error=""},label={Text("Skills")},placeholder={Text("Data Entry, Microsoft Excel")},supportingText={Text("Separate multiple skills with commas.")},modifier=Modifier.fillMaxWidth())
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(desc,{desc=it;error=""},label={Text("Description")},placeholder={Text("Describe the work, requirements and expected result.")},minLines=5,maxLines=10,modifier=Modifier.fillMaxWidth())
             }
-        },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Publishing…" else "Publish job")}
-        TextButton(onClick=back){Text("Cancel")}
+            2->{
+                Text("Job Requirements",style=MaterialTheme.typography.titleMedium)
+                Text("Help freelancers understand the type and size of the project.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(14.dp))
+                Box(Modifier.fillMaxWidth()){
+                    OutlinedTextField(category,{categoryExpanded=true},readOnly=true,label={Text("Category")},placeholder={Text("Select a category")},trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth())
+                    DropdownMenu(expanded=categoryExpanded,onDismissRequest={categoryExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){categories.forEach{item->DropdownMenuItem(text={Text(item)},onClick={category=item;categoryExpanded=false;error=""})}}
+                }
+                Spacer(Modifier.height(12.dp))
+                Box(Modifier.fillMaxWidth()){
+                    OutlinedTextField(experience,{experienceExpanded=true},readOnly=true,label={Text("Experience Level")},trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth())
+                    DropdownMenu(expanded=experienceExpanded,onDismissRequest={experienceExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){experiences.forEach{item->DropdownMenuItem(text={Text(item)},onClick={experience=item;experienceExpanded=false})}}
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(durationDays,{durationDays=it.filter(Char::isDigit);error=""},label={Text("Project Duration / Deadline (days)")},placeholder={Text("e.g. 7")},supportingText={Text("Enter the number of days allowed to complete the project.")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(freelancersNeeded,{freelancersNeeded=it.filter(Char::isDigit);error=""},label={Text("Number of Freelancers Needed")},placeholder={Text("1")},supportingText={Text("Choose how many freelancers you want to hire (1–100).")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            }
+            else->{
+                Text("Review Your Job",style=MaterialTheme.typography.titleMedium)
+                Text("Check all details before publishing.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+                Card(Modifier.fillMaxWidth()){
+                    Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
+                        Text(title,style=MaterialTheme.typography.titleLarge)
+                        Text("Budget (USD): "+budget.trim(),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)
+                        HorizontalDivider()
+                        Text("Skills",style=MaterialTheme.typography.labelLarge);Text(skills)
+                        Text("Description",style=MaterialTheme.typography.labelLarge);Text(desc)
+                        HorizontalDivider()
+                        Text("Category: $category");Text("Experience Level: $experience")
+                        Text("Project Duration / Deadline: $durationDays days");Text("Freelancers Needed: $freelancersNeeded")
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                TextButton(onClick={step=1;error=""},modifier=Modifier.fillMaxWidth()){Text("Edit Basic Information")}
+                TextButton(onClick={step=2;error=""},modifier=Modifier.fillMaxWidth()){Text("Edit Job Requirements")}
+            }
+        }
+        if(error.isNotBlank()){Spacer(Modifier.height(8.dp));Text(error,color=MaterialTheme.colorScheme.error)}
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+            if(step==1){OutlinedButton(onClick=back,modifier=Modifier.weight(1f)){Text("Cancel")};Button(enabled=headValid,onClick={step=2;error=""},modifier=Modifier.weight(1f)){Text("Next")}}
+            else{
+                OutlinedButton(onClick={step=if(step==2)1 else 2;error=""},enabled=!busy,modifier=Modifier.weight(1f)){Text("Back")}
+                if(step==2)Button(enabled=requirementsValid,onClick={step=3;error=""},modifier=Modifier.weight(1f)){Text("Review Job")}
+                else Button(enabled=!busy,onClick={
+                    busy=true;error=""
+                    scope.launch(Dispatchers.IO){
+                        runCatching{marketplace.createJob(RemoteJobCreate(title=title.trim(),description=desc.trim(),budgetMinor=budgetMinor!!,currency="USD",skills=skills.split(',').map{it.trim()}.filter{it.isNotBlank()},category=category,experienceLevel=experience,durationDays=duration!!,freelancersNeeded=freelancersCount!!))}
+                            .onSuccess{withContext(Dispatchers.Main){onPublished()}}
+                            .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?: "Job publication failed."}}
+                    }
+                },modifier=Modifier.weight(1f)){Text(if(busy)"Publishing…" else "Confirm & Publish")}
+            }
+        }
     }
 }
-
 private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longValueExact()}.getOrNull()
-
 @Composable fun RemoteJobDetailsScreen(j:RemoteJob,account:RemoteAccountRepository,marketplace:RemoteMarketplaceRepository,role:UserRole,back:()->Unit){
     var current by remember(j.id){mutableStateOf(j)}
     var proposalOpen by remember{mutableStateOf(false)}
