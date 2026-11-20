@@ -19,6 +19,16 @@ val supabaseAnonKey = providers.environmentVariable("FREELANCE_HUB_SUPABASE_ANON
     .orElse("")
     .get()
 
+val stableKeystorePath = System.getenv("FREELANCE_HUB_KEYSTORE_PATH")
+val stableStorePassword = System.getenv("FREELANCE_HUB_KEYSTORE_PASSWORD")
+val stableKeyAlias = System.getenv("FREELANCE_HUB_KEY_ALIAS")
+val stableKeyPassword = System.getenv("FREELANCE_HUB_KEY_PASSWORD")
+val hasStableSigning = !stableKeystorePath.isNullOrBlank() &&
+    !stableStorePassword.isNullOrBlank() &&
+    !stableKeyAlias.isNullOrBlank() &&
+    !stableKeyPassword.isNullOrBlank() &&
+    file(stableKeystorePath).exists()
+
 android {
     namespace = "com.freelancehub.app"
     compileSdk = 35
@@ -47,6 +57,27 @@ android {
             "SUPABASE_ANON_KEY",
             "\"${supabaseAnonKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
         )
+    }
+
+    signingConfigs {
+        create("stable") {
+            if (hasStableSigning) {
+                storeFile = file(stableKeystorePath!!)
+                storePassword = stableStorePassword
+                keyAlias = stableKeyAlias
+                keyPassword = stableKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            if (hasStableSigning) signingConfig = signingConfigs.getByName("stable")
+        }
+        getByName("release") {
+            isMinifyEnabled = false
+            if (hasStableSigning) signingConfig = signingConfigs.getByName("stable")
+        }
     }
 
     compileOptions {
