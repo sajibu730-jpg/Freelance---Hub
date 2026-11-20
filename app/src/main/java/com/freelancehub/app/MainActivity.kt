@@ -3112,7 +3112,6 @@ fun RemoteCommunicationScreen(){
         ) { tokenStore.readAccessToken() } else null
     }
     var conversations by remember { mutableStateOf<List<RemoteConversation>>(emptyList()) }
-    var notifications by remember { mutableStateOf<List<RemoteNotification>>(emptyList()) }
     var selected by remember { mutableStateOf<RemoteConversation?>(null) }
     var messages by remember { mutableStateOf<List<RemoteMessage>>(emptyList()) }
     var body by remember { mutableStateOf("") }
@@ -3125,8 +3124,8 @@ fun RemoteCommunicationScreen(){
         if (repo == null) return@LaunchedEffect
         loading = true
         error = ""
-        runCatching { withContext(Dispatchers.IO) { repo.listConversations() to repo.listNotifications() } }
-            .onSuccess { (c, n) -> conversations = c; notifications = n }
+        runCatching { withContext(Dispatchers.IO) { repo.listConversations() } }
+            .onSuccess { conversations = it }
             .onFailure { error = it.message ?: "Unable to load communication data." }
         loading = false
     }
@@ -3140,7 +3139,7 @@ fun RemoteCommunicationScreen(){
     }
 
     Column(Modifier.fillMaxSize().padding(20.dp)) {
-        Text("Messages & Notifications", style = MaterialTheme.typography.headlineSmall)
+        Text("Messages", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         if (repo == null) {
             Text("Production backend is not configured. Remote communication is disabled.", color = MaterialTheme.colorScheme.error)
@@ -3160,21 +3159,6 @@ fun RemoteCommunicationScreen(){
                         if (conversation.jobId.isNotBlank()) Text("Job: ${conversation.jobId}")
                         if (conversation.lastMessage.isNotBlank()) Text(conversation.lastMessage.take(120), style = MaterialTheme.typography.bodySmall)
                         if (conversation.unreadCount > 0) Text("${conversation.unreadCount} unread", style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Text("Notifications", style = MaterialTheme.typography.titleLarge)
-            notifications.take(10).forEach { n ->
-                ElevatedCard(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(n.title, style = MaterialTheme.typography.titleMedium)
-                        Text(n.message)
-                        if (!n.read) TextButton(onClick = {
-                            scope.launch { runCatching { withContext(Dispatchers.IO) { repo.markNotificationRead(n.id) } }
-                                .onSuccess { notifications = notifications.map { x -> if (x.id == n.id) x.copy(read = true) else x } }
-                                .onFailure { error = it.message ?: "Unable to mark notification as read." } }
-                        }) { Text("Mark read") }
                     }
                 }
             }
