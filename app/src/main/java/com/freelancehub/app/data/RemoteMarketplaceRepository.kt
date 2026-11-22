@@ -186,9 +186,17 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
     fun listWorkSubmissions(jobId: String): List<RemoteWorkSubmission> {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val root = JSONObject(String(client.readJsonResponse(client.openGet("/jobs/$jobId/work-submissions", accessTokenProvider())), StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: root.optJSONArray("submissions") ?: JSONArray()
-        return (0 until items.length()).map { parseWorkSubmission(items.getJSONObject(it)) }
+        // Work submissions are stored in Supabase's public.work_submissions table.
+        // The former custom /jobs/{id}/work-submissions route is not deployed and
+        // returns HTTP 404 on the production project.
+        val path = "/rest/v1/work_submissions?select=*&job_id=eq.$jobId&order=created_at.desc"
+        val rows = JSONArray(
+            String(
+                client.readJsonResponse(client.openGet(path, accessTokenProvider())),
+                StandardCharsets.UTF_8
+            )
+        )
+        return (0 until rows.length()).map { parseWorkSubmission(rows.getJSONObject(it)) }
     }
 
     fun analyzeWorkSubmission(submissionId: String, input: RemoteWorkAnalysisCreate): RemoteWorkAnalysis {
