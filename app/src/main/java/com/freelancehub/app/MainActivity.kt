@@ -2738,7 +2738,16 @@ fun RemoteHomeScreen(
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
             if(step==1){
                 OutlinedButton(onClick=back,modifier=Modifier.weight(1f)){Text("Cancel")}
-                Button(enabled=headValid,onClick={step=2;error=""},modifier=Modifier.weight(1f)){Text("Continue")}
+                Button(enabled=!busy,onClick={
+                    val issues=buildList{
+                        if(!titleValid)add("Enter a job title with at least 3 characters.")
+                        if(!budgetValid)add("Enter the budget as a valid USD amount (up to 2 decimal places).")
+                        if(!skillsValid)add("Enter at least one required skill.")
+                        if(!descriptionValid)add("Project description must contain at least 20 characters.")
+                    }
+                    if(issues.isEmpty()){error="";step=2}
+                    else error=issues.joinToString("\\n")
+                },modifier=Modifier.weight(1f)){Text("Continue")}
             }else{
                 OutlinedButton(onClick={step=if(step==2)1 else 2;error=""},enabled=!busy,modifier=Modifier.weight(1f)){Text("Back")}
                 if(step==2)Button(enabled=requirementsValid,onClick={step=3;error=""},modifier=Modifier.weight(1f)){Text("Review Job")}
