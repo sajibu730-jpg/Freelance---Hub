@@ -2688,21 +2688,24 @@ fun RemoteHomeScreen(
                     2->{
                         Text("Project requirements",style=MaterialTheme.typography.titleMedium)
                         Text("These details help match your project with the right freelancers.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Job Category",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
                         Box(Modifier.fillMaxWidth()){
-                            OutlinedTextField(category,{categoryExpanded=true},readOnly=true,label={Text("Job Category")},placeholder={Text("Choose a category")},trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                            OutlinedTextField(category,{categoryExpanded=true},readOnly=true,trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
                             DropdownMenu(expanded=categoryExpanded,onDismissRequest={categoryExpanded=false},modifier=Modifier.fillMaxWidth(.88f)){categories.forEach{item->DropdownMenuItem(text={Text(item)},onClick={category=item;categoryExpanded=false;error=""})}}
                         }
-                        Text("Experience level",style=MaterialTheme.typography.labelLarge)
+                        Text("Experience Level",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)){
                             experiences.forEach{level->
                                 val selected=experience==level
-                                androidx.compose.foundation.layout.Box(Modifier.weight(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp)).background(if(selected)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant).clickable{experience=level}.padding(vertical=13.dp),contentAlignment=androidx.compose.ui.Alignment.Center){
+                                androidx.compose.foundation.layout.Box(Modifier.weight(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(if(selected)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface).then(if(selected)Modifier.border(1.dp,MaterialTheme.colorScheme.primary,androidx.compose.foundation.shape.RoundedCornerShape(14.dp)) else Modifier.border(1.dp,MaterialTheme.colorScheme.outlineVariant,androidx.compose.foundation.shape.RoundedCornerShape(14.dp))).clickable{experience=level;error=""}.padding(vertical=15.dp),contentAlignment=androidx.compose.ui.Alignment.Center){
                                     Text(level,style=MaterialTheme.typography.labelMedium,color=if(selected)MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
-                        OutlinedTextField(durationDays,{durationDays=it.filter(Char::isDigit);error=""},label={Text("Project Duration / Deadline")},placeholder={Text("e.g. 14")},supportingText={Text("Enter the number of days (1–3650).")},singleLine=true,trailingIcon={Text("days",modifier=Modifier.padding(end=8.dp),style=MaterialTheme.typography.bodySmall)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                        OutlinedTextField(freelancersNeeded,{freelancersNeeded=it.filter(Char::isDigit);error=""},label={Text("Number of Freelancers Needed")},placeholder={Text("1")},supportingText={Text("How many freelancers do you want to hire? (1–100)")},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                        Text("Project Duration / Deadline",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(durationDays,{durationDays=it.filter(Char::isDigit);error=""},singleLine=true,trailingIcon={Text("days",modifier=Modifier.padding(end=8.dp),style=MaterialTheme.typography.bodySmall)},supportingText={Text("Enter a duration from 1 to 3650 days.")},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Number of Freelancers Needed",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(freelancersNeeded,{freelancersNeeded=it.filter(Char::isDigit);error=""},singleLine=true,supportingText={Text("Enter a number from 1 to 100.")},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
                     }
                     else->{
                         Text("Project preview",style=MaterialTheme.typography.titleMedium)
@@ -2750,7 +2753,16 @@ fun RemoteHomeScreen(
                 },modifier=Modifier.weight(1f)){Text("Continue")}
             }else{
                 OutlinedButton(onClick={step=if(step==2)1 else 2;error=""},enabled=!busy,modifier=Modifier.weight(1f)){Text("Back")}
-                if(step==2)Button(enabled=requirementsValid,onClick={step=3;error=""},modifier=Modifier.weight(1f)){Text("Review Job")}
+                if(step==2)Button(enabled=!busy,onClick={
+                    val issues=buildList{
+                        if(!categoryValid)add("Choose a job category.")
+                        if(!experienceValid)add("Select an experience level.")
+                        if(!durationValid)add("Enter a project duration from 1 to 3650 days.")
+                        if(!freelancersValid)add("Enter the number of freelancers (1–100).")
+                    }
+                    if(issues.isEmpty()){error="";step=3}
+                    else error=issues.joinToString("\n")
+                },modifier=Modifier.weight(1f)){Text("Review Job")}
                 else Button(enabled=!busy,onClick={
                     busy=true;error=""
                     scope.launch(Dispatchers.IO){
