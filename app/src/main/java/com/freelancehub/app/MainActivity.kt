@@ -2746,7 +2746,7 @@ fun RemoteHomeScreen(
                         if(!descriptionValid)add("Project description must contain at least 20 characters.")
                     }
                     if(issues.isEmpty()){error="";step=2}
-                    else error=issues.joinToString("\\n")
+                    else error=issues.joinToString("\n")
                 },modifier=Modifier.weight(1f)){Text("Continue")}
             }else{
                 OutlinedButton(onClick={step=if(step==2)1 else 2;error=""},enabled=!busy,modifier=Modifier.weight(1f)){Text("Back")}
