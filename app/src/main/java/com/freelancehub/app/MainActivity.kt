@@ -2691,7 +2691,8 @@ fun RemoteHomeScreen(
                         Text("These details help match your project with the right freelancers.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Job Category",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
                         Box(Modifier.fillMaxWidth()){
-                            OutlinedTextField(category,{categoryExpanded=true},readOnly=true,trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                            OutlinedTextField(category,{},readOnly=true,trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                            Box(Modifier.matchParentSize().clickable{categoryExpanded=true})
                             DropdownMenu(expanded=categoryExpanded,onDismissRequest={categoryExpanded=false},modifier=Modifier.fillMaxWidth(.88f)){categories.forEach{item->DropdownMenuItem(text={Text(item)},onClick={category=item;categoryExpanded=false;error=""})}}
                         }
                         Text("Experience Level",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
