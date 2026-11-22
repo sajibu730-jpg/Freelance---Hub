@@ -43,6 +43,9 @@ jobs:
           if [ -n "$FREELANCE_HUB_KEYSTORE_BASE64" ]; then
             echo "$FREELANCE_HUB_KEYSTORE_BASE64" | base64 --decode > app/freelance-hub-upload-key.p12
             echo "FREELANCE_HUB_KEYSTORE_PATH=$GITHUB_WORKSPACE/app/freelance-hub-upload-key.p12" >> "$GITHUB_ENV"
+            echo "FREELANCE_HUB_KEYSTORE_PASSWORD=$FREELANCE_HUB_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "FREELANCE_HUB_KEY_ALIAS=$FREELANCE_HUB_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "FREELANCE_HUB_KEY_PASSWORD=$FREELANCE_HUB_KEY_PASSWORD" >> "$GITHUB_ENV"
             echo "Stable APK signing is configured."
           else
             echo "::warning::Stable signing secrets are not configured; this build will use the temporary default debug key."
