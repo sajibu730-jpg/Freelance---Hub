@@ -2910,7 +2910,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         Spacer(Modifier.height(10.dp))
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
-        if(submissions.isEmpty())Text("No authorized work submissions are available yet.")
+        if(error.isBlank() && submissions.isEmpty())Text("No work submissions have been submitted for this job yet.")
         submissions.forEach{s->
             ElevatedCard(onClick={selected=s},modifier=Modifier.fillMaxWidth().padding(vertical=4.dp)){
                 Column(Modifier.padding(12.dp)){
