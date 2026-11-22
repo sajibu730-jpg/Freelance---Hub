@@ -2613,7 +2613,7 @@ fun RemoteHomeScreen(
 @Composable fun RemotePostJobScreen(role:UserRole,marketplace:RemoteMarketplaceRepository,back:()->Unit,onPublished:()->Unit){
     var step by remember{mutableIntStateOf(1)}
     var title by remember{mutableStateOf("")};var budget by remember{mutableStateOf("")};var skills by remember{mutableStateOf("")};var desc by remember{mutableStateOf("")}
-    var category by remember{mutableStateOf("")};var experience by remember{mutableStateOf("Beginner")};var durationDays by remember{mutableStateOf("7")};var freelancersNeeded by remember{mutableStateOf("1")}
+    var category by remember{mutableStateOf("")};var experience by remember{mutableStateOf("")};var durationDays by remember{mutableStateOf("")};var freelancersNeeded by remember{mutableStateOf("")}
     var categoryExpanded by remember{mutableStateOf(false)};var experienceExpanded by remember{mutableStateOf(false)}
     var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
