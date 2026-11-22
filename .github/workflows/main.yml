@@ -55,6 +55,23 @@ jobs:
           FREELANCE_HUB_SUPABASE_ANON_KEY: ${{ secrets.FREELANCE_HUB_SUPABASE_ANON_KEY }}
         run: gradle assembleDebug :owner-console:assembleDebug --stacktrace
 
+      - name: Verify APK signing certificate fingerprint
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -n "$APKSIGNER" || { echo "::error::apksigner was not found"; exit 1; }
+          test -f "$APK" || { echo "::error::APK was not found"; exit 1; }
+          OUTPUT="$("$APKSIGNER" verify --print-certs "$APK")"
+          printf '%s\\n' "$OUTPUT"
+          ACTUAL="$(printf '%s\\n' "$OUTPUT" | awk -F': ' '/certificate SHA-256 digest/ {print tolower($2); exit}' | tr -d ':')"
+          EXPECTED="ab512573308d34d8d55182fad3c99ff8a30bb30a619c1d36b86c1457b16faab5"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::APK signer fingerprint does not match the saved Freelance Hub upload certificate."
+            exit 1
+          fi
+          echo "APK signature fingerprint matches the saved Freelance Hub certificate."
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
