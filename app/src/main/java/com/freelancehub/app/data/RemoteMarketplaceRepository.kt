@@ -37,17 +37,27 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         require(input.description.length in 20..10_000)
         require(input.budgetMinor >= 0)
         require(input.currency.matches(Regex("^[A-Z]{3}$")))
+        require(input.category.trim().length in 2..80)
+        require(input.experienceLevel in listOf("Beginner", "Intermediate", "Expert"))
+        require(input.durationDays in 1..3650)
+        require(input.freelancersNeeded in 1..100)
+        val token = accessTokenProvider() ?: throw IllegalStateException("Please sign in again.")
         val payload = JSONObject()
+            .put("owner_id", authenticatedUserId(token))
             .put("title", input.title.trim())
             .put("description", input.description.trim())
             .put("budget_minor", input.budgetMinor)
             .put("currency", input.currency)
             .put("skills", JSONArray(input.skills.map { it.trim() }.filter { it.isNotBlank() }))
+            .put("category", input.category.trim())
+            .put("experience_level", input.experienceLevel)
+            .put("duration_days", input.durationDays)
+            .put("freelancers_needed", input.freelancersNeeded)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPost("/jobs", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/jobs", payload, token, SecureApiClient.newIdempotencyKey(), true)
         )
-        return parseJob(JSONObject(String(response, StandardCharsets.UTF_8)))
+        return parseJob(parseSingleRow(response))
     }
 
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
@@ -176,9 +186,17 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
     fun listWorkSubmissions(jobId: String): List<RemoteWorkSubmission> {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val root = JSONObject(String(client.readJsonResponse(client.openGet("/jobs/$jobId/work-submissions", accessTokenProvider())), StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: root.optJSONArray("submissions") ?: JSONArray()
-        return (0 until items.length()).map { parseWorkSubmission(items.getJSONObject(it)) }
+        // Work submissions are stored in Supabase's public.work_submissions table.
+        // The former custom /jobs/{id}/work-submissions route is not deployed and
+        // returns HTTP 404 on the production project.
+        val path = "/rest/v1/work_submissions?select=*&job_id=eq.$jobId&order=created_at.desc"
+        val rows = JSONArray(
+            String(
+                client.readJsonResponse(client.openGet(path, accessTokenProvider())),
+                StandardCharsets.UTF_8
+            )
+        )
+        return (0 until rows.length()).map { parseWorkSubmission(rows.getJSONObject(it)) }
     }
 
     fun analyzeWorkSubmission(submissionId: String, input: RemoteWorkAnalysisCreate): RemoteWorkAnalysis {
@@ -262,6 +280,27 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         status = x.optString("status", "active")
     )
 
+    private fun authenticatedUserId(token: String): String {
+        val parts = token.split('.')
+        require(parts.size == 3) { "Your session is invalid. Please sign in again." }
+        val payload = android.util.Base64.decode(
+            parts[1],
+            android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+        )
+        val userId = JSONObject(String(payload, StandardCharsets.UTF_8)).optString("sub")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Your session is invalid. Please sign in again." }
+        return userId
+    }
+
+    private fun parseSingleRow(response: ByteArray): JSONObject {
+        val body = String(response, StandardCharsets.UTF_8)
+        return if (body.trimStart().startsWith("[")) {
+            val rows = JSONArray(body)
+            require(rows.length() > 0) { "The job was not returned by the server." }
+            rows.getJSONObject(0)
+        } else JSONObject(body)
+    }
+
     private fun parseJob(x: JSONObject) = RemoteJob(
         id = x.getString("id"),
         title = x.getString("title"),
@@ -270,7 +309,11 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         currency = x.optString("currency", "USD"),
         status = x.optString("status", JobStatus.OPEN),
         ownerId = x.optString("owner_id", ""),
-        skills = parseStringList(x.optJSONArray("skills"))
+        skills = parseStringList(x.optJSONArray("skills")),
+        category = x.optString("category", "Other"),
+        experienceLevel = x.optString("experience_level", "Beginner"),
+        durationDays = x.optInt("duration_days", 7),
+        freelancersNeeded = x.optInt("freelancers_needed", 1)
     )
 
     private fun parseStringList(array: JSONArray?): List<String> = if (array == null) emptyList() else (0 until array.length()).mapNotNull { array.optString(it, null)?.trim() }.filter { it.isNotBlank() }
@@ -290,7 +333,11 @@ data class RemoteJob(
     val currency: String,
     val status: String,
     val ownerId: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "Other",
+    val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7,
+    val freelancersNeeded: Int = 1
 )
 
 data class RemoteJobCreate(
@@ -298,7 +345,11 @@ data class RemoteJobCreate(
     val description: String,
     val budgetMinor: Long,
     val currency: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "",
+    val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7,
+    val freelancersNeeded: Int = 1
 )
 
 data class RemoteProposal(

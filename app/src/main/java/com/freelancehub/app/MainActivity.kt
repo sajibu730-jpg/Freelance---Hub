@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -2611,33 +2612,173 @@ fun RemoteHomeScreen(
 }
 
 @Composable fun RemotePostJobScreen(role:UserRole,marketplace:RemoteMarketplaceRepository,back:()->Unit,onPublished:()->Unit){
-    var title by remember{mutableStateOf("")};var budget by remember{mutableStateOf("")};var skills by remember{mutableStateOf("")};var desc by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
+    var step by remember{mutableIntStateOf(1)}
+    var title by remember{mutableStateOf("")};var budget by remember{mutableStateOf("")};var skills by remember{mutableStateOf("")};var desc by remember{mutableStateOf("")}
+    var category by remember{mutableStateOf("")};var experience by remember{mutableStateOf("")};var durationDays by remember{mutableStateOf("")};var freelancersNeeded by remember{mutableStateOf("")}
+    var categoryExpanded by remember{mutableStateOf(false)};var experienceExpanded by remember{mutableStateOf(false)}
+    var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
+    val categories=listOf("Design & Creative","Programming & Tech","Writing & Translation","Digital Marketing","Data Entry","Video & Animation","Business","Customer Support","AI Services","Other")
+    val experiences=listOf("Beginner","Intermediate","Expert")
     if(role!=UserRole.CLIENT){Column(Modifier.fillMaxSize().padding(20.dp)){Text("Only client accounts can post jobs.",color=MaterialTheme.colorScheme.error);TextButton(onClick=back){Text("Back")}};return}
     val budgetMinor=budget.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
-    val valid=Validation.text(title,3,160)&&Validation.text(desc,20,10000)&&budgetMinor!=null&&budgetMinor>=0&&Validation.text(skills,0,1000)
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Post a job",style=MaterialTheme.typography.headlineSmall);Spacer(Modifier.height(12.dp))
-        OutlinedTextField(title,{title=it},label={Text("Job title")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(budget,{budget=it},label={Text("Budget (USD)")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(skills,{skills=it},label={Text("Skills (comma separated)")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(desc,{desc=it},label={Text("Description (20–10000 chars)")},minLines=5,modifier=Modifier.fillMaxWidth())
-        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(12.dp))
-        Button(enabled=valid&&!busy,onClick={
-            busy=true;error=""
-            scope.launch(Dispatchers.IO){
-                runCatching{marketplace.createJob(RemoteJobCreate(title.trim(),desc.trim(),budgetMinor!!,"USD",skills.split(',').map{it.trim()}.filter{it.isNotBlank()}))}
-                    .onSuccess{withContext(Dispatchers.Main){onPublished()}}
-                    .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Job publication failed."}}
+    val duration=durationDays.trim().toIntOrNull()
+    val freelancersCount=freelancersNeeded.toIntOrNull()
+    val titleValid=Validation.text(title,3,160)
+    val budgetValid=budgetMinor!=null&&budgetMinor>=0
+    val skillsValid=Validation.text(skills,1,1000)
+    val descriptionValid=Validation.text(desc,20,10000)
+    val categoryValid=category.isNotBlank()
+    val experienceValid=experience in experiences
+    val durationValid=duration!=null&&duration in 1..3650
+    val freelancersValid=freelancersCount!=null&&freelancersCount in 1..100
+    val headValid=titleValid&&budgetValid&&descriptionValid&&skillsValid
+    val requirementsValid=categoryValid&&experienceValid&&durationValid&&freelancersValid
+    val completedFields=listOf(titleValid,budgetValid,skillsValid,descriptionValid,categoryValid,experienceValid,durationValid,freelancersValid).count{it}
+    val completionPercent=completedFields*100/8
+    val completionFraction=completionPercent/100f
+    val titles=listOf("Basic Information","Job Requirements","Review & Publish")
+    val subtitles=listOf("Start with the essential details of your project.","Define the expertise and project timeline.","Review your details before sharing with freelancers.")
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(horizontal=18.dp, vertical=16.dp)){
+        Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
+            Column(Modifier.weight(1f)){
+                Text("CREATE A PROJECT",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(3.dp))
+                Text("Post a Job",style=MaterialTheme.typography.headlineMedium)
             }
-        },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Publishing…" else "Publish job")}
-        TextButton(onClick=back){Text("Cancel")}
+            TextButton(onClick=back,enabled=!busy){Text("Cancel")}
+        }
+        Spacer(Modifier.height(14.dp))
+        Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),shape=androidx.compose.foundation.shape.RoundedCornerShape(22.dp)){
+            Column(Modifier.padding(17.dp)){
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                    Text("STEP $step OF 3",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("$completionPercent% complete",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)){
+                    repeat(3){index->
+                        val segmentProgress=(completionFraction*3f-index).coerceIn(0f,1f)
+                        Box(Modifier.weight(1f).height(7.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(50.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha=.72f))){
+                            if(segmentProgress>0f) Box(Modifier.fillMaxWidth(segmentProgress).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(13.dp))
+                Text(titles[step-1],style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                Spacer(Modifier.height(3.dp))
+                Text(subtitles[step-1],style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=.82f))
+            }
+        }
+        Spacer(Modifier.height(17.dp))
+        Card(Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(13.dp)){
+                when(step){
+                    1->{
+                        Text("Project overview",style=MaterialTheme.typography.titleMedium)
+                        Text("Give freelancers a clear picture of the work.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Job Title",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(title,{title=it;error=""},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Budget (USD)",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(budget,{budget=it;error=""},singleLine=true,leadingIcon={Text("$",style=MaterialTheme.typography.titleMedium)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Required Skills",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(skills,{skills=it;error=""},supportingText={Text("Separate each skill with a comma.")},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Project Description",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(desc,{desc=it;error=""},minLines=5,maxLines=9,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                    }
+                    2->{
+                        Text("Project requirements",style=MaterialTheme.typography.titleMedium)
+                        Text("These details help match your project with the right freelancers.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Job Category",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        Box(Modifier.fillMaxWidth()){
+                            OutlinedTextField(category,{},readOnly=true,trailingIcon={Icon(Icons.Filled.ArrowDropDown,null)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                            Box(Modifier.matchParentSize().clickable{categoryExpanded=true})
+                            DropdownMenu(expanded=categoryExpanded,onDismissRequest={categoryExpanded=false},modifier=Modifier.fillMaxWidth(.88f)){categories.forEach{item->DropdownMenuItem(text={Text(item)},onClick={category=item;categoryExpanded=false;error=""})}}
+                        }
+                        Text("Experience Level",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)){
+                            experiences.forEach{level->
+                                val selected=experience==level
+                                androidx.compose.foundation.layout.Box(Modifier.weight(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(if(selected)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface).then(if(selected)Modifier.border(1.dp,MaterialTheme.colorScheme.primary,androidx.compose.foundation.shape.RoundedCornerShape(14.dp)) else Modifier.border(1.dp,MaterialTheme.colorScheme.outlineVariant,androidx.compose.foundation.shape.RoundedCornerShape(14.dp))).clickable{experience=level;error=""}.padding(vertical=15.dp),contentAlignment=androidx.compose.ui.Alignment.Center){
+                                    Text(level,style=MaterialTheme.typography.labelMedium,color=if(selected)MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        Text("Project Duration / Deadline",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(durationDays,{durationDays=it.filter(Char::isDigit);error=""},singleLine=true,trailingIcon={Text("days",modifier=Modifier.padding(end=8.dp),style=MaterialTheme.typography.bodySmall)},supportingText={Text("Enter a duration from 1 to 3650 days.")},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Number of Freelancers Needed",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(freelancersNeeded,{freelancersNeeded=it.filter(Char::isDigit);error=""},singleLine=true,supportingText={Text("Enter a number from 1 to 100.")},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                    }
+                    else->{
+                        Text("Project preview",style=MaterialTheme.typography.titleMedium)
+                        Text("This is how your job details will be presented.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Card(Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(17.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)){
+                            Column(Modifier.padding(15.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
+                                Text(title,style=MaterialTheme.typography.titleLarge)
+                                Text("$"+budget.trim()+" USD",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.primary)
+                                HorizontalDivider()
+                                Text("PROJECT DESCRIPTION",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                Text(desc,style=MaterialTheme.typography.bodyMedium)
+                                Text("REQUIRED SKILLS",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                Text(skills,style=MaterialTheme.typography.bodyMedium)
+                                HorizontalDivider()
+                                Text("PROJECT DETAILS",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                Text("Category  •  $category")
+                                Text("Experience  •  $experience")
+                                Text("Duration  •  $durationDays days")
+                                Text("Freelancers  •  $freelancersNeeded")
+                            }
+                        }
+                        OutlinedButton(onClick={step=1;error=""},modifier=Modifier.fillMaxWidth(),enabled=!busy){Text("Edit basic information")}
+                        OutlinedButton(onClick={step=2;error=""},modifier=Modifier.fillMaxWidth(),enabled=!busy){Text("Edit requirements")}
+                    }
+                }
+            }
+        }
+        if(error.isNotBlank()){
+            Spacer(Modifier.height(8.dp))
+            Text(error,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium)
+        }
+        Spacer(Modifier.height(15.dp))
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+            if(step==1){
+                OutlinedButton(onClick=back,modifier=Modifier.weight(1f)){Text("Cancel")}
+                Button(enabled=!busy,onClick={
+                    val issues=buildList{
+                        if(!titleValid)add("Enter a job title with at least 3 characters.")
+                        if(!budgetValid)add("Enter the budget as a valid USD amount (up to 2 decimal places).")
+                        if(!skillsValid)add("Enter at least one required skill.")
+                        if(!descriptionValid)add("Project description must contain at least 20 characters.")
+                    }
+                    if(issues.isEmpty()){error="";step=2}
+                    else error=issues.joinToString("\n")
+                },modifier=Modifier.weight(1f)){Text("Continue")}
+            }else{
+                OutlinedButton(onClick={step=if(step==2)1 else 2;error=""},enabled=!busy,modifier=Modifier.weight(1f)){Text("Back")}
+                if(step==2)Button(enabled=!busy,onClick={
+                    val issues=buildList{
+                        if(!categoryValid)add("Choose a job category.")
+                        if(!experienceValid)add("Select an experience level.")
+                        if(!durationValid)add("Enter a project duration from 1 to 3650 days.")
+                        if(!freelancersValid)add("Enter the number of freelancers (1–100).")
+                    }
+                    if(issues.isEmpty()){error="";step=3}
+                    else error=issues.joinToString("\n")
+                },modifier=Modifier.weight(1f)){Text("Review Job")}
+                else Button(enabled=!busy,onClick={
+                    busy=true;error=""
+                    scope.launch(Dispatchers.IO){
+                        runCatching{marketplace.createJob(RemoteJobCreate(title=title.trim(),description=desc.trim(),budgetMinor=budgetMinor!!,currency="USD",skills=skills.split(',').map{it.trim()}.filter{it.isNotBlank()},category=category,experienceLevel=experience,durationDays=duration!!,freelancersNeeded=freelancersCount!!))}
+                            .onSuccess{withContext(Dispatchers.Main){onPublished()}}
+                            .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?: "Job publication failed."}}
+                    }
+                },modifier=Modifier.weight(1f)){Text(if(busy)"Publishing…" else "Confirm & Publish")}
+            }
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
-
 private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longValueExact()}.getOrNull()
-
 @Composable fun RemoteJobDetailsScreen(j:RemoteJob,account:RemoteAccountRepository,marketplace:RemoteMarketplaceRepository,role:UserRole,back:()->Unit){
     var current by remember(j.id){mutableStateOf(j)}
     var proposalOpen by remember{mutableStateOf(false)}
@@ -2769,7 +2910,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         Spacer(Modifier.height(10.dp))
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
-        if(submissions.isEmpty())Text("No authorized work submissions are available yet.")
+        if(error.isBlank() && submissions.isEmpty())Text("No work submissions have been submitted for this job yet.")
         submissions.forEach{s->
             ElevatedCard(onClick={selected=s},modifier=Modifier.fillMaxWidth().padding(vertical=4.dp)){
                 Column(Modifier.padding(12.dp)){
@@ -3112,7 +3253,6 @@ fun RemoteCommunicationScreen(){
         ) { tokenStore.readAccessToken() } else null
     }
     var conversations by remember { mutableStateOf<List<RemoteConversation>>(emptyList()) }
-    var notifications by remember { mutableStateOf<List<RemoteNotification>>(emptyList()) }
     var selected by remember { mutableStateOf<RemoteConversation?>(null) }
     var messages by remember { mutableStateOf<List<RemoteMessage>>(emptyList()) }
     var body by remember { mutableStateOf("") }
@@ -3125,8 +3265,8 @@ fun RemoteCommunicationScreen(){
         if (repo == null) return@LaunchedEffect
         loading = true
         error = ""
-        runCatching { withContext(Dispatchers.IO) { repo.listConversations() to repo.listNotifications() } }
-            .onSuccess { (c, n) -> conversations = c; notifications = n }
+        runCatching { withContext(Dispatchers.IO) { repo.listConversations() } }
+            .onSuccess { conversations = it }
             .onFailure { error = it.message ?: "Unable to load communication data." }
         loading = false
     }
@@ -3140,7 +3280,7 @@ fun RemoteCommunicationScreen(){
     }
 
     Column(Modifier.fillMaxSize().padding(20.dp)) {
-        Text("Messages & Notifications", style = MaterialTheme.typography.headlineSmall)
+        Text("Messages", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         if (repo == null) {
             Text("Production backend is not configured. Remote communication is disabled.", color = MaterialTheme.colorScheme.error)
@@ -3160,21 +3300,6 @@ fun RemoteCommunicationScreen(){
                         if (conversation.jobId.isNotBlank()) Text("Job: ${conversation.jobId}")
                         if (conversation.lastMessage.isNotBlank()) Text(conversation.lastMessage.take(120), style = MaterialTheme.typography.bodySmall)
                         if (conversation.unreadCount > 0) Text("${conversation.unreadCount} unread", style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Text("Notifications", style = MaterialTheme.typography.titleLarge)
-            notifications.take(10).forEach { n ->
-                ElevatedCard(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(n.title, style = MaterialTheme.typography.titleMedium)
-                        Text(n.message)
-                        if (!n.read) TextButton(onClick = {
-                            scope.launch { runCatching { withContext(Dispatchers.IO) { repo.markNotificationRead(n.id) } }
-                                .onSuccess { notifications = notifications.map { x -> if (x.id == n.id) x.copy(read = true) else x } }
-                                .onFailure { error = it.message ?: "Unable to mark notification as read." } }
-                        }) { Text("Mark read") }
                     }
                 }
             }

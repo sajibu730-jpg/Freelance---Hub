@@ -33,12 +33,47 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Configure stable APK signing
+        env:
+          FREELANCE_HUB_KEYSTORE_BASE64: ${{ secrets.FREELANCE_HUB_KEYSTORE_BASE64 }}
+          FREELANCE_HUB_KEYSTORE_PASSWORD: ${{ secrets.FREELANCE_HUB_KEYSTORE_PASSWORD }}
+          FREELANCE_HUB_KEY_ALIAS: ${{ secrets.FREELANCE_HUB_KEY_ALIAS }}
+          FREELANCE_HUB_KEY_PASSWORD: ${{ secrets.FREELANCE_HUB_KEY_PASSWORD }}
+        run: |
+          if [ -n "$FREELANCE_HUB_KEYSTORE_BASE64" ]; then
+            echo "$FREELANCE_HUB_KEYSTORE_BASE64" | base64 --decode > app/freelance-hub-upload-key.p12
+            echo "FREELANCE_HUB_KEYSTORE_PATH=$GITHUB_WORKSPACE/app/freelance-hub-upload-key.p12" >> "$GITHUB_ENV"
+            echo "FREELANCE_HUB_KEYSTORE_PASSWORD=$FREELANCE_HUB_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "FREELANCE_HUB_KEY_ALIAS=$FREELANCE_HUB_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "FREELANCE_HUB_KEY_PASSWORD=$FREELANCE_HUB_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "Stable APK signing is configured."
+          else
+            echo "::warning::Stable signing secrets are not configured; this build will use the temporary default debug key."
+          fi
+
       - name: Build APK
         env:
           FREELANCE_HUB_API_URL: https://imffbmwdlenhmhxopwoq.supabase.co
           FREELANCE_HUB_PROJECT_ID: imffbmwdlenhmhxopwoq
           FREELANCE_HUB_SUPABASE_ANON_KEY: ${{ secrets.FREELANCE_HUB_SUPABASE_ANON_KEY }}
         run: gradle assembleDebug :owner-console:assembleDebug --stacktrace
+
+      - name: Verify APK signing certificate fingerprint
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -n "$APKSIGNER" || { echo "::error::apksigner was not found"; exit 1; }
+          test -f "$APK" || { echo "::error::APK was not found"; exit 1; }
+          OUTPUT="$("$APKSIGNER" verify --print-certs "$APK")"
+          printf '%s\\n' "$OUTPUT"
+          ACTUAL="$(printf '%s\\n' "$OUTPUT" | awk -F': ' '/certificate SHA-256 digest/ {print tolower($NF); exit}' | tr -d ':')"
+          EXPECTED="ab512573308d34d8d55182fad3c99ff8a30bb30a619c1d36b86c1457b16faab5"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::APK signer fingerprint does not match the saved Freelance Hub upload certificate."
+            exit 1
+          fi
+          echo "APK signature fingerprint matches the saved Freelance Hub certificate."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
