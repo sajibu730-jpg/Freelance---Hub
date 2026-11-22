@@ -66,8 +66,8 @@ jobs:
           test -n "$APKSIGNER" || { echo "::error::apksigner was not found"; exit 1; }
           test -f "$APK" || { echo "::error::APK was not found"; exit 1; }
           OUTPUT="$("$APKSIGNER" verify --print-certs "$APK")"
-          printf '%s\\n' "$OUTPUT"
-          ACTUAL="$(printf '%s\\n' "$OUTPUT" | awk -F': ' '/certificate SHA-256 digest/ {print tolower($2); exit}' | tr -d ':')"
+          printf '%s\n' "$OUTPUT"
+          ACTUAL="$(printf '%s\n' "$OUTPUT" | awk -F': ' '/certificate SHA-256 digest/ {print tolower($2); exit}' | tr -d ':')"
           EXPECTED="ab512573308d34d8d55182fad3c99ff8a30bb30a619c1d36b86c1457b16faab5"
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "::error::APK signer fingerprint does not match the saved Freelance Hub upload certificate."
