@@ -2623,8 +2623,19 @@ fun RemoteHomeScreen(
     val budgetMinor=budget.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
     val duration=durationDays.trim().toIntOrNull()
     val freelancersCount=freelancersNeeded.toIntOrNull()
-    val headValid=Validation.text(title,3,160)&&Validation.text(desc,20,10000)&&budgetMinor!=null&&budgetMinor>=0&&Validation.text(skills,1,1000)
-    val requirementsValid=category.isNotBlank()&&experience in experiences&&duration!=null&&duration in 1..3650&&freelancersCount!=null&&freelancersCount in 1..100
+    val titleValid=Validation.text(title,3,160)
+    val budgetValid=budgetMinor!=null&&budgetMinor>=0
+    val skillsValid=Validation.text(skills,1,1000)
+    val descriptionValid=Validation.text(desc,20,10000)
+    val categoryValid=category.isNotBlank()
+    val experienceValid=experience in experiences
+    val durationValid=duration!=null&&duration in 1..3650
+    val freelancersValid=freelancersCount!=null&&freelancersCount in 1..100
+    val headValid=titleValid&&budgetValid&&descriptionValid&&skillsValid
+    val requirementsValid=categoryValid&&experienceValid&&durationValid&&freelancersValid
+    val completedFields=listOf(titleValid,budgetValid,skillsValid,descriptionValid,categoryValid,experienceValid,durationValid,freelancersValid).count{it}
+    val completionPercent=completedFields*100/8
+    val completionFraction=completionPercent/100f
     val titles=listOf("Basic Information","Job Requirements","Review & Publish")
     val subtitles=listOf("Start with the essential details of your project.","Define the expertise and project timeline.","Review your details before sharing with freelancers.")
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(horizontal=18.dp, vertical=16.dp)){
@@ -2641,11 +2652,16 @@ fun RemoteHomeScreen(
             Column(Modifier.padding(17.dp)){
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
                     Text("STEP $step OF 3",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text("${step*100/3}% complete",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text("$completionPercent% complete",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onPrimaryContainer)
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(7.dp)){
-                    repeat(3){index->Box(Modifier.weight(1f).height(6.dp).background(if(index<step)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha=.65f),androidx.compose.foundation.shape.RoundedCornerShape(50.dp)))}
+                    repeat(3){index->
+                        val segmentProgress=(completionFraction*3f-index).coerceIn(0f,1f)
+                        Box(Modifier.weight(1f).height(7.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(50.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha=.72f))){
+                            if(segmentProgress>0f) Box(Modifier.fillMaxWidth(segmentProgress).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                        }
+                    }
                 }
                 Spacer(Modifier.height(13.dp))
                 Text(titles[step-1],style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.onPrimaryContainer)
@@ -2660,10 +2676,14 @@ fun RemoteHomeScreen(
                     1->{
                         Text("Project overview",style=MaterialTheme.typography.titleMedium)
                         Text("Give freelancers a clear picture of the work.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                        OutlinedTextField(title,{title=it;error=""},label={Text("Job Title")},placeholder={Text("e.g. Build a business website")},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                        OutlinedTextField(budget,{budget=it;error=""},label={Text("Budget (USD)")},placeholder={Text("e.g. 250")},singleLine=true,leadingIcon={Text("$",style=MaterialTheme.typography.titleMedium)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                        OutlinedTextField(skills,{skills=it;error=""},label={Text("Required Skills")},placeholder={Text("Web Design, WordPress, SEO")},supportingText={Text("Separate each skill with a comma.")},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                        OutlinedTextField(desc,{desc=it;error=""},label={Text("Project Description")},placeholder={Text("Describe the tasks, expectations and final deliverables…")},minLines=5,maxLines=9,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                        Text("Job Title",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(title,{title=it;error=""},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Budget (USD)",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(budget,{budget=it;error=""},singleLine=true,leadingIcon={Text("$",style=MaterialTheme.typography.titleMedium)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Required Skills",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(skills,{skills=it;error=""},supportingText={Text("Separate each skill with a comma.")},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
+                        Text("Project Description",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                        OutlinedTextField(desc,{desc=it;error=""},minLines=5,maxLines=9,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=OutlinedTextFieldDefaults.colors(unfocusedContainerColor=MaterialTheme.colorScheme.surface,focusedContainerColor=MaterialTheme.colorScheme.surface))
                     }
                     2->{
                         Text("Project requirements",style=MaterialTheme.typography.titleMedium)
