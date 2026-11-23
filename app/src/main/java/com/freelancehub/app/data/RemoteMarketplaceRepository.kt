@@ -177,20 +177,24 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         require(input.summary.length in 10..10_000)
         require(input.checkScore in 0..100)
         val payload = JSONObject()
-            .put("summary", input.summary.trim())
-            .put("file_links", JSONArray(input.fileLinks.map { it.trim() }.filter { it.isNotBlank() }))
-            .put("check_score", input.checkScore)
+            .put("p_job_id", jobId)
+            .put("p_summary", input.summary.trim())
+            .put("p_file_links", JSONArray(input.fileLinks.map { it.trim() }.filter { it.isNotBlank() }))
+            .put("p_check_score", input.checkScore)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPost("/jobs/$jobId/work-submissions", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/rpc/create_my_work_submission", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
         )
         return parseWorkSubmission(JSONObject(String(response, StandardCharsets.UTF_8)))
     }
 
     fun listWorkSubmissions(jobId: String): List<RemoteWorkSubmission> {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val root = JSONObject(String(client.readJsonResponse(client.openGet("/jobs/$jobId/work-submissions", accessTokenProvider())), StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: root.optJSONArray("submissions") ?: JSONArray()
+        val payload = JSONObject().put("p_job_id", jobId).toString().toByteArray(StandardCharsets.UTF_8)
+        val items = JSONArray(String(
+            client.readJsonResponse(client.openJsonPost("/rest/v1/rpc/list_my_work_submissions", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())),
+            StandardCharsets.UTF_8
+        ))
         return (0 until items.length()).map { parseWorkSubmission(items.getJSONObject(it)) }
     }
 
