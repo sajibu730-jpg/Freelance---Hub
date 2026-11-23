@@ -43,6 +43,10 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
             .put("budget_minor", input.budgetMinor)
             .put("currency", input.currency)
             .put("skills", JSONArray(input.skills.map { it.trim() }.filter { it.isNotBlank() }))
+            .put("category", input.category)
+            .put("experience_level", input.experienceLevel)
+            .put("duration_days", input.durationDays)
+            .put("freelancers_needed", input.freelancersNeeded)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
             client.openJsonPost("/jobs", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
@@ -298,7 +302,11 @@ data class RemoteJobCreate(
     val description: String,
     val budgetMinor: Long,
     val currency: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "Other",
+    val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7,
+    val freelancersNeeded: Int = 1
 )
 
 data class RemoteProposal(
