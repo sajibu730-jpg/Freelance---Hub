@@ -37,17 +37,23 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         require(input.description.length in 20..10_000)
         require(input.budgetMinor >= 0)
         require(input.currency.matches(Regex("^[A-Z]{3}$")))
+        val token = accessTokenProvider() ?: throw IllegalStateException("Please sign in again.")
         val payload = JSONObject()
+            .put("owner_id", authenticatedUserId(token))
             .put("title", input.title.trim())
             .put("description", input.description.trim())
             .put("budget_minor", input.budgetMinor)
             .put("currency", input.currency)
             .put("skills", JSONArray(input.skills.map { it.trim() }.filter { it.isNotBlank() }))
+            .put("category", input.category)
+            .put("experience_level", input.experienceLevel)
+            .put("duration_days", input.durationDays)
+            .put("freelancers_needed", input.freelancersNeeded)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPost("/jobs", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/jobs", payload, token, SecureApiClient.newIdempotencyKey(), true)
         )
-        return parseJob(JSONObject(String(response, StandardCharsets.UTF_8)))
+        return parseJob(parseSingleRow(response))
     }
 
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
@@ -56,25 +62,56 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         require(input.bidMinor >= 0)
         require(input.currency.matches(Regex("^[A-Z]{3}$")))
         require(input.deliveryDays in 1..3650)
+        val token = accessTokenProvider() ?: throw IllegalStateException("Please sign in again.")
         val payload = JSONObject()
+            .put("job_id", jobId)
+            .put("freelancer_id", authenticatedUserId(token))
             .put("cover_letter", input.coverLetter.trim())
-            .put("bid_minor", input.bidMinor)
-            .put("currency", input.currency)
+            .put("proposed_budget_minor", input.bidMinor)
             .put("delivery_days", input.deliveryDays)
+            .put("currency", input.currency)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPost("/jobs/$jobId/proposals", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/proposals", payload, token, SecureApiClient.newIdempotencyKey(), true)
         )
-        return parseProposal(JSONObject(String(response, StandardCharsets.UTF_8)))
+        return parseProposal(parseSingleRow(response))
     }
 
+    fun listJobProposals(jobId: String): List<RemoteProposal> {
+        require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val path = "/rest/v1/proposals?select=*&job_id=eq.$jobId&order=created_at.desc&limit=100"
+        val response = client.readJsonResponse(client.openGet(path, accessTokenProvider()))
+        val rows = JSONArray(String(response, StandardCharsets.UTF_8))
+        return (0 until rows.length()).map { parseProposal(rows.getJSONObject(it)) }
+    }
 
     fun acceptProposal(proposalId: String): RemoteContract {
         require(proposalId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val payload = JSONObject().put("p_proposal_id", proposalId).toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPatch("/proposals/$proposalId", JSONObject().put("status", ProposalStatus.ACCEPTED).toString().toByteArray(StandardCharsets.UTF_8), accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/rpc/accept_job_proposal", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
         )
         return parseContract(JSONObject(String(response, StandardCharsets.UTF_8)))
+    }
+
+    fun rejectProposal(proposalId: String) {
+        require(proposalId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val payload = JSONObject().put("p_proposal_id", proposalId).toString().toByteArray(StandardCharsets.UTF_8)
+        client.readJsonResponse(
+            client.openJsonPost("/rest/v1/rpc/reject_job_proposal", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+        )
+    }
+
+    private fun authenticatedUserId(token: String): String {
+        val encodedPayload = token.split(".").getOrNull(1)
+            ?: throw IllegalStateException("Invalid sign-in session.")
+        val decoded = android.util.Base64.decode(
+            encodedPayload,
+            android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+        )
+        val userId = JSONObject(String(decoded, StandardCharsets.UTF_8)).optString("sub")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid sign-in session." }
+        return userId
     }
 
     fun getContractForJob(jobId: String): RemoteContract {
@@ -255,6 +292,17 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         createdAt = x.optString("created_at")
     )
 
+    private fun parseSingleRow(response: ByteArray): JSONObject {
+        val json = String(response, StandardCharsets.UTF_8).trim()
+        return if (json.startsWith("[")) {
+            val rows = JSONArray(json)
+            require(rows.length() == 1) { "The server did not return the created record." }
+            rows.getJSONObject(0)
+        } else {
+            JSONObject(json)
+        }
+    }
+
     private fun parseContract(x: JSONObject) = RemoteContract(
         id = x.getString("id"), jobId = x.getString("job_id"), proposalId = x.getString("proposal_id"),
         clientId = x.getString("client_id"), freelancerId = x.getString("freelancer_id"),
@@ -270,7 +318,9 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         currency = x.optString("currency", "USD"),
         status = x.optString("status", JobStatus.OPEN),
         ownerId = x.optString("owner_id", ""),
-        skills = parseStringList(x.optJSONArray("skills"))
+        skills = parseStringList(x.optJSONArray("skills")),
+        category = x.optString("category"), experienceLevel = x.optString("experience_level"),
+        durationDays = x.optInt("duration_days", 7), freelancersNeeded = x.optInt("freelancers_needed", 1)
     )
 
     private fun parseStringList(array: JSONArray?): List<String> = if (array == null) emptyList() else (0 until array.length()).mapNotNull { array.optString(it, null)?.trim() }.filter { it.isNotBlank() }
@@ -278,7 +328,13 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
     private fun parseProposal(x: JSONObject) = RemoteProposal(
         id = x.getString("id"),
         jobId = x.getString("job_id"),
-        status = x.optString("status", ProposalStatus.SUBMITTED)
+        status = x.optString("status", ProposalStatus.SUBMITTED),
+        freelancerId = x.optString("freelancer_id", ""),
+        coverLetter = x.optString("cover_letter", ""),
+        proposedBudgetMinor = x.optLong("proposed_budget_minor", 0L),
+        deliveryDays = x.optInt("delivery_days", 7),
+        currency = x.optString("currency", "USD"),
+        createdAt = x.optString("created_at", "")
     )
 }
 
@@ -290,7 +346,9 @@ data class RemoteJob(
     val currency: String,
     val status: String,
     val ownerId: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "", val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7, val freelancersNeeded: Int = 1
 )
 
 data class RemoteJobCreate(
@@ -298,13 +356,21 @@ data class RemoteJobCreate(
     val description: String,
     val budgetMinor: Long,
     val currency: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "", val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7, val freelancersNeeded: Int = 1
 )
 
 data class RemoteProposal(
     val id: String,
     val jobId: String,
-    val status: String
+    val status: String,
+    val freelancerId: String = "",
+    val coverLetter: String = "",
+    val proposedBudgetMinor: Long = 0L,
+    val deliveryDays: Int = 7,
+    val currency: String = "USD",
+    val createdAt: String = ""
 )
 
 data class RemoteContract(

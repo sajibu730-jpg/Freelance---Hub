@@ -88,3 +88,5 @@ jobs:
         run: |
           psql --version
           psql -v ON_ERROR_STOP=1 -f tests/sql/freelancer-reviews-postgres-test.sql
+          createdb -h localhost -U postgres freelance_hub_jobs_test
+          PGDATABASE=freelance_hub_jobs_test psql -v ON_ERROR_STOP=1 -f tests/sql/jobs-proposals-workflow-postgres-test.sql
