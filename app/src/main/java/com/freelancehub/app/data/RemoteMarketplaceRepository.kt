@@ -77,10 +77,12 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         return parseContract(JSONObject(String(response, StandardCharsets.UTF_8)))
     }
 
-    fun getContractForJob(jobId: String): RemoteContract {
+    fun getContractForJob(jobId: String): RemoteContract? {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val response = client.readJsonResponse(client.openGet("/jobs/$jobId/contract", accessTokenProvider()))
-        return parseContract(JSONObject(String(response, StandardCharsets.UTF_8)))
+        val path = "/rest/v1/contracts?select=id,job_id,proposal_id,client_id,freelancer_id,agreed_budget_minor,currency,status&job_id=eq.$jobId&limit=1"
+        val response = client.readJsonResponse(client.openGet(path, accessTokenProvider()))
+        val rows = JSONArray(String(response, StandardCharsets.UTF_8))
+        return if (rows.length() == 0) null else parseContract(rows.getJSONObject(0))
     }
 
     fun listMyContracts(): List<RemoteContract> {
