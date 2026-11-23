@@ -2879,9 +2879,9 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var proposalOpen by remember{mutableStateOf(false)}
     var workOpen by remember{mutableStateOf(false)}
     var reviewOpen by remember{mutableStateOf(false)}
-    if(proposalOpen){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
-    if(workOpen){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
-    if(reviewOpen){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
+    if(proposalOpen && role == UserRole.FREELANCER){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
+    if(workOpen && role == UserRole.FREELANCER){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
+    if(reviewOpen && role == UserRole.CLIENT){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
     var error by remember{mutableStateOf("")}
     LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{account.currentUser()}.onSuccess{me=it}.onFailure{error=it.message?:"Unable to load account."}}}
@@ -2926,12 +2926,11 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         Spacer(Modifier.height(10.dp))
         ElevatedCard(modifier=Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp)) {
-                Text("What happens next",style=MaterialTheme.typography.titleMedium)
-                Text("1. You submit your completed work and files.")
-                Text("2. The client checks the delivery.")
-                Text("3. If changes are needed, the client requests a revision and you submit the updated work.")
-                Text("4. If everything is correct, the client approves it and confirms contract completion.")
-                Text("5. Payment is handled separately; approval does not itself transfer money.")
+                Text("Your submission checklist",style=MaterialTheme.typography.titleMedium)
+                Text("• Describe the completed work clearly.")
+                Text("• Add links to the finished files or delivery location.")
+                Text("• List the client requirements you completed.")
+                Text("• Submit your delivery for the client to review.")
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -3009,9 +3008,12 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         Text(j.title,style=MaterialTheme.typography.titleMedium)
         ElevatedCard(modifier=Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp)) {
-                Text("Review workflow",style=MaterialTheme.typography.titleMedium)
-                Text("Check the freelancer's summary and delivery files. Choose Request changes if anything needs fixing, or Approve if the delivery is correct.")
-                Text("After approval, confirm contract completion separately. Payment is not processed by this review action.")
+                Text("Client review tasks",style=MaterialTheme.typography.titleMedium)
+                Text("• Read the freelancer's work summary.")
+                Text("• Open and check the submitted delivery files or links.")
+                Text("• Request changes if the delivery needs correction.")
+                Text("• Approve the delivery when it meets your requirements.")
+                Text("• Confirm contract completion separately. This review does not transfer payment.")
             }
         }
         Spacer(Modifier.height(10.dp))
