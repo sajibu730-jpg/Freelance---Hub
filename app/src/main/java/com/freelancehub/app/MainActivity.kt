@@ -2916,7 +2916,18 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         Text("Work Submission & Analysis",style=MaterialTheme.typography.headlineSmall)
         Text(j.title,style=MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(10.dp))
-        Text("Submit the finished work, then record a structured analysis. Client approval remains separate.")
+        Text("Submit the finished work and its delivery links. The client will review it before the contract can be marked complete.")
+        Spacer(Modifier.height(10.dp))
+        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) {
+                Text("What happens next",style=MaterialTheme.typography.titleMedium)
+                Text("1. You submit your completed work and files.")
+                Text("2. The client checks the delivery.")
+                Text("3. If changes are needed, the client requests a revision and you submit the updated work.")
+                Text("4. If everything is correct, the client approves it and confirms contract completion.")
+                Text("5. Payment is handled separately; approval does not itself transfer money.")
+            }
+        }
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(summary,{summary=it},label={Text("Completed work / deliverables")},minLines=5,modifier=Modifier.fillMaxWidth())
         OutlinedTextField(links,{links=it},label={Text("File links / delivery location")},minLines=2,modifier=Modifier.fillMaxWidth())
@@ -2990,6 +3001,14 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
         Text("Client Work Review",style=MaterialTheme.typography.headlineSmall)
         Text(j.title,style=MaterialTheme.typography.titleMedium)
+        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) {
+                Text("Review workflow",style=MaterialTheme.typography.titleMedium)
+                Text("Check the freelancer's summary and delivery files. Choose Request changes if anything needs fixing, or Approve if the delivery is correct.")
+                Text("After approval, confirm contract completion separately. Payment is not processed by this review action.")
+            }
+        }
+        Spacer(Modifier.height(10.dp))
         if (contract != null) {
             OutlinedButton(
                 onClick = { showFreelancerProfile = true },
@@ -3003,9 +3022,12 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         submissions.forEach{s->
             ElevatedCard(onClick={selected=s},modifier=Modifier.fillMaxWidth().padding(vertical=4.dp)){
                 Column(Modifier.padding(12.dp)){
-                    Text("Status: ${s.status}")
+                    Text("Status: " + when {
+                        s.status.equals(WorkSubmissionStatus.APPROVED, true) -> "Approved"
+                        s.status.equals(WorkSubmissionStatus.CHANGES_REQUESTED, true) -> "Changes requested"
+                        else -> "Waiting for client review"
+                    },style=MaterialTheme.typography.labelLarge)
                     Text(s.summary.take(180))
-                    Text("Check score: ${s.checkScore}%")
                 }
             }
         }
@@ -3013,7 +3035,10 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             Spacer(Modifier.height(10.dp))
             Text("Selected submission",style=MaterialTheme.typography.titleMedium)
             Text(s.summary)
-            if(s.fileLinks.isNotEmpty())Text("Files: ${s.fileLinks.joinToString()}")
+            if(s.fileLinks.isNotEmpty())Text("Delivery files / links: ${s.fileLinks.joinToString()}")
+            if(s.status.equals(WorkSubmissionStatus.CHANGES_REQUESTED,true)) {
+                Text("The client requested changes. Review the feedback, update your work, and submit the revised delivery.")
+            }
             if(!s.status.equals(WorkSubmissionStatus.APPROVED,true)){
                 OutlinedTextField(comment,{comment=it},label={Text("Review / revision feedback")},minLines=3,modifier=Modifier.fillMaxWidth())
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
