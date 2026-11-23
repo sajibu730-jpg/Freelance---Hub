@@ -2696,28 +2696,26 @@ fun RemoteHomeScreen(
                         Spacer(Modifier.height(18.dp))
                         OutlinedTextField(
                             value=title,onValueChange={title=it;error=""},
-                            label={Text("Job Title")},placeholder={Text("e.g. Build a business website")},
+                            label={Text("Job Title")},
                             singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(13.dp))
                         OutlinedTextField(
                             value=budget,onValueChange={budget=it;error=""},
-                            label={Text("Budget (USD)")},placeholder={Text("Enter your total budget")},
+                            label={Text("Budget (USD)")},
                             leadingIcon={Text("$",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)},
                             singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(13.dp))
                         OutlinedTextField(
                             value=skills,onValueChange={skills=it;error=""},
-                            label={Text("Required Skills")},placeholder={Text("e.g. Kotlin, UI Design, Testing")},
-                            supportingText={Text("Add multiple skills separated by commas.")},
+                            label={Text("Required Skills")},
                             shape=fieldShape,modifier=Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(13.dp))
                         OutlinedTextField(
                             value=desc,onValueChange={desc=it;error=""},
                             label={Text("Project Description")},
-                            placeholder={Text("Explain the work, expected result and important requirements...")},
                             minLines=5,maxLines=9,shape=fieldShape,modifier=Modifier.fillMaxWidth()
                         )
                     }
@@ -2731,7 +2729,6 @@ fun RemoteHomeScreen(
                         Box(Modifier.fillMaxWidth()){
                             OutlinedTextField(
                                 value=category,onValueChange={},readOnly=true,
-                                placeholder={Text("Choose a category")},
                                 trailingIcon={Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose category")},
                                 shape=fieldShape,modifier=Modifier.fillMaxWidth()
                             )
@@ -2758,16 +2755,12 @@ fun RemoteHomeScreen(
                         OutlinedTextField(
                             value=durationDays,onValueChange={durationDays=it.filter(Char::isDigit);error=""},
                             label={Text("Project Duration / Deadline (days)")},
-                            placeholder={Text("e.g. 7")},
-                            supportingText={Text("Enter 1–3650 days for the project timeline.")},
                             singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(15.dp))
                         OutlinedTextField(
                             value=freelancersNeeded,onValueChange={freelancersNeeded=it.filter(Char::isDigit);error=""},
                             label={Text("Number of Freelancers Needed")},
-                            placeholder={Text("e.g. 1")},
-                            supportingText={Text("Choose how many people you want to hire (1–100).")},
                             singleLine=true,shape=fieldShape,modifier=Modifier.fillMaxWidth()
                         )
                     }
@@ -2969,8 +2962,8 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                 runCatching {
                     val loadedSubmissions = marketplace.listWorkSubmissions(j.id)
                     val loadedContract = marketplace.getContractForJob(j.id)
-                    val loadedReview = if (loadedContract.status.equals("completed", true)) {
-                        runCatching { marketplace.getFreelancerReviewForContract(loadedContract.id) }.getOrNull()
+                    val loadedReview = if (loadedContract?.status.equals("completed", true)) {
+                        loadedContract?.let { runCatching { marketplace.getFreelancerReviewForContract(it.id) }.getOrNull() }
                     } else null
                     Triple(loadedSubmissions, loadedContract, loadedReview)
                 }
