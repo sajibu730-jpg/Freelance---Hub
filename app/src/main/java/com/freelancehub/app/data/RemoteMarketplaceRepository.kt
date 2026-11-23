@@ -81,10 +81,19 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         return parseContract(JSONObject(String(response, StandardCharsets.UTF_8)))
     }
 
-    fun getContractForJob(jobId: String): RemoteContract {
+    fun getContractForJob(jobId: String): RemoteContract? {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val response = client.readJsonResponse(client.openGet("/jobs/$jobId/contract", accessTokenProvider()))
-        return parseContract(JSONObject(String(response, StandardCharsets.UTF_8)))
+        val payload = JSONObject().put("p_job_id", jobId).toString().toByteArray(StandardCharsets.UTF_8)
+        val response = client.readJsonResponse(
+            client.openJsonPost(
+                "/rest/v1/rpc/get_my_contract_for_job",
+                payload,
+                accessTokenProvider(),
+                SecureApiClient.newIdempotencyKey()
+            )
+        )
+        val body = String(response, StandardCharsets.UTF_8).trim()
+        return if (body.isBlank() || body == "null") null else parseContract(JSONObject(body))
     }
 
     fun listMyContracts(): List<RemoteContract> {
