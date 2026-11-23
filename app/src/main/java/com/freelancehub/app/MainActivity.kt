@@ -1867,7 +1867,13 @@ Surface(
         withContext(Dispatchers.IO) {
             val loaded = runCatching { remoteAccount.currentUser() }.getOrNull()
                 ?: return@withContext
-            repo.cacheRemoteProfile(loaded)
+            withContext(Dispatchers.Main) {
+                // The authenticated Supabase account metadata is authoritative for the
+                // workspace. Do not let a stale local role mix client/freelancer screens.
+                role = loaded.role
+                repo.initializeAccountRole(loaded.role)
+                repo.cacheRemoteProfile(loaded)
+            }
 
             val cachedPhotoBytes = repo.cachedProfileImage("profile")
             val cachedCoverBytes = repo.cachedProfileImage("cover")
