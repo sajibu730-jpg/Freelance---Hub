@@ -51,7 +51,15 @@ class RemoteAccountRepository(
             createdAt = authUser.optString("created_at"),
             displayName = profile.optString("display_name"),
             bio = profile.optString("bio"),
-            role = UserRole.FREELANCER,
+            role = runCatching {
+                UserRole.valueOf(
+                    authUser.optJSONObject("user_metadata")
+                        ?.optString("role")
+                        ?.uppercase()
+                        ?.takeIf { it == "CLIENT" || it == "FREELANCER" }
+                        ?: UserRole.FREELANCER.name
+                )
+            }.getOrDefault(UserRole.FREELANCER),
                         capabilities = profile.optString("capabilities"),
             skills = profile.optString("skills"),
             mobileNumber = profile.optString("mobile_number"),
