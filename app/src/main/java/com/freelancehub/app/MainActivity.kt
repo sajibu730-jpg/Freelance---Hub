@@ -2732,8 +2732,8 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                 runCatching {
                     val loadedSubmissions = marketplace.listWorkSubmissions(j.id)
                     val loadedContract = marketplace.getContractForJob(j.id)
-                    val loadedReview = if (loadedContract?.status.equals("completed", true)) {
-                        loadedContract?.let { runCatching { marketplace.getFreelancerReviewForContract(it.id) }.getOrNull() }
+                    val loadedReview = if (loadedContract.status.equals("completed", true)) {
+                        runCatching { marketplace.getFreelancerReviewForContract(loadedContract.id) }.getOrNull()
                     } else null
                     Triple(loadedSubmissions, loadedContract, loadedReview)
                 }
