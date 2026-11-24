@@ -2918,43 +2918,93 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var success by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
-    Column(Modifier.fillMaxSize().padding(20.dp)){
+    Column(
+        Modifier.fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal=20.dp, vertical=18.dp)
+    ){
         Text("Work Submission & Analysis",style=MaterialTheme.typography.headlineSmall)
-        Text(j.title,style=MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(10.dp))
-        Text("Submit the finished work and its delivery links. The client will review it before the contract can be marked complete.")
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
+        Text(j.title,style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Submit your finished work, delivery links, and the client requirements you completed. The client can review your submission after it is sent.",
+            style=MaterialTheme.typography.bodyMedium
+        )
+        Spacer(Modifier.height(16.dp))
         ElevatedCard(modifier=Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(14.dp)) {
-                Text("Your submission checklist",style=MaterialTheme.typography.titleMedium)
-                Text("• Describe the completed work clearly.")
-                Text("• Add links to the finished files or delivery location.")
-                Text("• List the client requirements you completed.")
-                Text("• Submit your delivery for the client to review.")
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                Text("Before you submit",style=MaterialTheme.typography.titleMedium)
+                Text("• Explain what you completed.")
+                Text("• Add working file or delivery links.")
+                Text("• List the requirements you fulfilled.")
             }
         }
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(summary,{summary=it},label={Text("Completed work / deliverables")},minLines=5,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(links,{links=it},label={Text("File links / delivery location")},minLines=2,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(completed,{completed=it},label={Text("Requirements completed")},minLines=3,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(issues,{issues=it},label={Text("Issues encountered (optional)")},minLines=2,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(solutions,{solutions=it},label={Text("Solutions / decisions (optional)")},minLines=2,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(results,{results=it},label={Text("Results / outcome (optional)")},minLines=2,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(improvements,{improvements=it},label={Text("Future improvements (optional)")},minLines=2,modifier=Modifier.fillMaxWidth())
-        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        if(success.isNotBlank())Text(success,color=MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(12.dp))
-        Button(enabled=!busy&&summary.trim().length>=10&&completed.isNotBlank(),onClick={
-            busy=true;error="";success=""
-            scope.launch(Dispatchers.IO){
-                runCatching{
-                    val submission=marketplace.createWorkSubmission(j.id,RemoteWorkSubmissionCreate(summary.trim(),links.split(',').map{it.trim()}.filter{it.isNotBlank()},0))
-                    marketplace.analyzeWorkSubmission(submission.id,RemoteWorkAnalysisCreate(completed.trim(),issues.trim(),solutions.trim(),results.trim(),improvements.trim()))
-                }.onSuccess{withContext(Dispatchers.Main){busy=false;success="Work submitted and freelancer analysis recorded. Waiting for client review."}}
-                 .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Work submission failed."}}
+        Spacer(Modifier.height(16.dp))
+        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                Text("Work delivery",style=MaterialTheme.typography.titleLarge)
+                Text("Completed work / deliverables",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(
+                    value=summary,onValueChange={summary=it},
+                    placeholder={Text("Describe the work you finished…")},
+                    supportingText={Text("At least 10 characters")},
+                    minLines=4,modifier=Modifier.fillMaxWidth()
+                )
+                Text("Delivery link(s)",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(
+                    value=links,onValueChange={links=it},
+                    placeholder={Text("Paste file, folder, or delivery URL(s). Separate multiple links with commas.")},
+                    minLines=2,modifier=Modifier.fillMaxWidth()
+                )
+                Text("Client requirements completed",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(
+                    value=completed,onValueChange={completed=it},
+                    placeholder={Text("List the requirements you completed…")},
+                    supportingText={Text("Required")},
+                    minLines=3,modifier=Modifier.fillMaxWidth()
+                )
             }
-        },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Submit work + analysis")}
-        TextButton(onClick=back){Text("Back")}
+        }
+        Spacer(Modifier.height(14.dp))
+        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                Text("Work analysis",style=MaterialTheme.typography.titleLarge)
+                Text("Issues encountered (optional)",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(issues,{issues=it},placeholder={Text("Describe any issues…")},minLines=2,modifier=Modifier.fillMaxWidth())
+                Text("Solutions / decisions (optional)",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(solutions,{solutions=it},placeholder={Text("Explain how you handled them…")},minLines=2,modifier=Modifier.fillMaxWidth())
+                Text("Results / outcome (optional)",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(results,{results=it},placeholder={Text("What was the result?")},minLines=2,modifier=Modifier.fillMaxWidth())
+                Text("Future improvements (optional)",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(improvements,{improvements=it},placeholder={Text("What could be improved later?")},minLines=2,modifier=Modifier.fillMaxWidth())
+            }
+        }
+        if(error.isNotBlank()){
+            Spacer(Modifier.height(10.dp))
+            Text(error,color=MaterialTheme.colorScheme.error)
+        }
+        if(success.isNotBlank()){
+            Spacer(Modifier.height(10.dp))
+            Text(success,color=MaterialTheme.colorScheme.primary)
+        }
+        Spacer(Modifier.height(16.dp))
+        Button(
+            enabled=!busy&&summary.trim().length>=10&&completed.isNotBlank(),
+            onClick={
+                busy=true;error="";success=""
+                scope.launch(Dispatchers.IO){
+                    runCatching{
+                        val submission=marketplace.createWorkSubmission(j.id,RemoteWorkSubmissionCreate(summary.trim(),links.split(',').map{it.trim()}.filter{it.isNotBlank()},0))
+                        marketplace.analyzeWorkSubmission(submission.id,RemoteWorkAnalysisCreate(completed.trim(),issues.trim(),solutions.trim(),results.trim(),improvements.trim()))
+                    }.onSuccess{withContext(Dispatchers.Main){busy=false;success="Work submitted and freelancer analysis recorded. Waiting for client review."}}
+                     .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Work submission failed."}}
+                }
+            },
+            modifier=Modifier.fillMaxWidth()
+        ){Text(if(busy)"Submitting…" else "Submit work + analysis")}
+        TextButton(onClick=back,modifier=Modifier.fillMaxWidth()){Text("Back")}
+        Spacer(Modifier.height(20.dp))
     }
 }
 
