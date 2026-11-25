@@ -2906,7 +2906,40 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 }
 
-@Composable fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+@Composable
+private fun WorkAnalysisInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    minLines: Int = 2,
+    supportingText: String? = null,
+    isError: Boolean = false
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        isError = isError,
+        supportingText = supportingText?.let { hint ->
+            { Text(hint, color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+        },
+        minLines = minLines,
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f),
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedLabelColor = MaterialTheme.colorScheme.primary
+        )
+    )
+}
+
+@Composable
+fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
     var summary by remember{mutableStateOf("")}
     var links by remember{mutableStateOf("")}
     var completed by remember{mutableStateOf("")}
@@ -2917,6 +2950,36 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var error by remember{mutableStateOf("")}
     var success by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
+    var confirmedAccurate by remember{mutableStateOf(false)}
+    var validationAttempted by remember{mutableStateOf(false)}
+    val normalizedSummary = summary.trim().lowercase().replace(Regex("\\s+"), " ")
+    val normalizedCompleted = completed.trim().lowercase().replace(Regex("\\s+"), " ")
+    val deliveryLinks = links.split(',').map{it.trim()}.filter{it.isNotBlank()}
+    val summaryError = when {
+        summary.isBlank() -> "This field is required. Describe the work you actually completed."
+        summary.trim().length < 10 -> "Please write at least 10 characters describing your completed work."
+        normalizedSummary in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na") ->
+            "This looks like placeholder text. Replace it with a real description of your work."
+        else -> null
+    }
+    val completedError = when {
+        completed.isBlank() -> "This field is required. List the client requirements you completed."
+        completed.trim().length < 10 -> "Please list the actual completed requirements (at least 10 characters)."
+        normalizedCompleted in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na") ->
+            "This looks like placeholder text. List the real client requirements you completed."
+        else -> null
+    }
+    val invalidLink = deliveryLinks.indexOfFirst { link ->
+        val parsed = runCatching { Uri.parse(link) }.getOrNull()
+        parsed == null || parsed.scheme?.lowercase() !in setOf("http", "https") || parsed.host.isNullOrBlank()
+    }.takeIf { it >= 0 }
+    val linksError = invalidLink?.let { "Link ${it + 1} is not a valid web address. Use a full https:// or http:// link, or remove it." }
+    val validationErrors = buildList {
+        summaryError?.let { add(it) }
+        completedError?.let { add(it) }
+        linksError?.let { add(it) }
+        if (!confirmedAccurate) add("Tick the confirmation box after checking that all details are true.")
+    }
     val scope=rememberCoroutineScope()
     Column(
         Modifier.fillMaxSize()
@@ -2932,7 +2995,10 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             style=MaterialTheme.typography.bodyMedium
         )
         Spacer(Modifier.height(16.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 Text("Before you submit",style=MaterialTheme.typography.titleMedium)
                 Text("• Explain what you completed.")
@@ -2941,68 +3007,163 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             }
         }
         Spacer(Modifier.height(16.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text("Work delivery",style=MaterialTheme.typography.titleLarge)
-                Text("Completed work / deliverables",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=summary,onValueChange={summary=it},
-                    placeholder={Text("Describe the work you finished…")},
-                    supportingText={Text("At least 10 characters")},
-                    minLines=4,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=summary,
+                    onValueChange={summary=it},
+                    label="Completed work / deliverables",
+                    placeholder="Describe the work you finished…",
+                    minLines=4,
+                    supportingText=if (validationAttempted && summaryError != null) summaryError else "Required • Describe exactly what you delivered (minimum 10 characters)",
+                    isError=validationAttempted && summaryError != null
                 )
-                Text("Delivery link(s)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=links,onValueChange={links=it},
-                    placeholder={Text("Paste file, folder, or delivery URL(s). Separate multiple links with commas.")},
-                    minLines=2,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=links,
+                    onValueChange={links=it},
+                    label="Delivery link(s)",
+                    placeholder="Paste file, folder, or delivery URL(s). Separate multiple links with commas.",
+                    minLines=2,
+                    supportingText=if (validationAttempted && linksError != null) linksError else "Optional • Add working http(s) delivery links; separate multiple links with commas",
+                    isError=validationAttempted && linksError != null
                 )
-                Text("Client requirements completed",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=completed,onValueChange={completed=it},
-                    placeholder={Text("List the requirements you completed…")},
-                    supportingText={Text("Required")},
-                    minLines=3,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=completed,
+                    onValueChange={completed=it},
+                    label="Client requirements completed",
+                    placeholder="List the requirements you completed…",
+                    minLines=3,
+                    supportingText=if (validationAttempted && completedError != null) completedError else "Required • List each client requirement you completed",
+                    isError=validationAttempted && completedError != null
                 )
             }
         }
         Spacer(Modifier.height(14.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text("Work analysis",style=MaterialTheme.typography.titleLarge)
-                Text("Issues encountered (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(issues,{issues=it},placeholder={Text("Describe any issues…")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Solutions / decisions (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(solutions,{solutions=it},placeholder={Text("Explain how you handled them…")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Results / outcome (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(results,{results=it},placeholder={Text("What was the result?")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Future improvements (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(improvements,{improvements=it},placeholder={Text("What could be improved later?")},minLines=2,modifier=Modifier.fillMaxWidth())
+                WorkAnalysisInputField(
+                    value=issues,
+                    onValueChange={issues=it},
+                    label="Issues encountered (optional)",
+                    placeholder="Describe any issues…",
+                    supportingText="Optional • If nothing went wrong, write “No issues”. Leave blank if not applicable."
+                )
+                WorkAnalysisInputField(
+                    value=solutions,
+                    onValueChange={solutions=it},
+                    label="Solutions / decisions (optional)",
+                    placeholder="Explain how you handled them…",
+                    supportingText="Optional • Explain the steps you took to resolve the issues."
+                )
+                WorkAnalysisInputField(
+                    value=results,
+                    onValueChange={results=it},
+                    label="Results / outcome (optional)",
+                    placeholder="What was the result?",
+                    supportingText="Optional • Describe the final result for the client."
+                )
+                WorkAnalysisInputField(
+                    value=improvements,
+                    onValueChange={improvements=it},
+                    label="Future improvements (optional)",
+                    placeholder="What could be improved later?",
+                    supportingText="Optional • Mention useful next steps or improvements."
+                )
             }
+        }
+        if (validationAttempted && validationErrors.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                validationErrors.joinToString(separator = "\n") { "• $it" },
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
         if(error.isNotBlank()){
             Spacer(Modifier.height(10.dp))
-            Text(error,color=MaterialTheme.colorScheme.error)
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Text(
+                    error,
+                    modifier = Modifier.padding(12.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
         if(success.isNotBlank()){
             Spacer(Modifier.height(10.dp))
             Text(success,color=MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = confirmedAccurate,
+                onCheckedChange = { confirmedAccurate = it }
+            )
+            Text(
+                "I confirm these details accurately describe the work I delivered.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
         Button(
-            enabled=!busy&&summary.trim().length>=10&&completed.isNotBlank(),
-            onClick={
-                busy=true;error="";success=""
-                scope.launch(Dispatchers.IO){
-                    runCatching{
-                        val submission=marketplace.createWorkSubmission(j.id,RemoteWorkSubmissionCreate(summary.trim(),links.split(',').map{it.trim()}.filter{it.isNotBlank()},0))
-                        marketplace.analyzeWorkSubmission(submission.id,RemoteWorkAnalysisCreate(completed.trim(),issues.trim(),solutions.trim(),results.trim(),improvements.trim()))
-                    }.onSuccess{withContext(Dispatchers.Main){busy=false;success="Work submitted and freelancer analysis recorded. Waiting for client review."}}
-                     .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Work submission failed."}}
+            enabled = !busy,
+            onClick = {
+                validationAttempted = true
+                if (validationErrors.isEmpty()) {
+                    busy = true
+                    error = ""
+                    success = ""
+                    scope.launch(Dispatchers.IO) {
+                        runCatching {
+                            val submission = marketplace.createWorkSubmission(
+                                j.id,
+                                RemoteWorkSubmissionCreate(summary.trim(), deliveryLinks, 0)
+                            )
+                            marketplace.analyzeWorkSubmission(
+                                submission.id,
+                                RemoteWorkAnalysisCreate(completed.trim(), issues.trim(), solutions.trim(), results.trim(), improvements.trim())
+                            )
+                        }.onSuccess {
+                            withContext(Dispatchers.Main) {
+                                busy = false
+                                success = "Work submitted and freelancer analysis recorded. Waiting for client review."
+                            }
+                        }.onFailure { e ->
+                            withContext(Dispatchers.Main) {
+                                busy = false
+                                val serverMessage = e.message.orEmpty().lowercase()
+                                error = when {
+                                    serverMessage.contains("active contract") ->
+                                        "You cannot submit this work yet because this job has no active contract for your account. Ask the client to accept your proposal and hire you first. Once the contract is active, try again."
+                                    serverMessage.contains("not the assigned freelancer") ->
+                                        "This job is not assigned to your account. Please check that the client hired the correct freelancer."
+                                    serverMessage.contains("permission denied") || serverMessage.contains("42501") ->
+                                        "The server did not allow this action. Please check that you are signed in with the hired freelancer account and that the job has an active contract."
+                                    serverMessage.contains("network") || serverMessage.contains("timeout") || serverMessage.contains("unable to resolve") ->
+                                        "Connection problem. Check your internet connection and try submitting again."
+                                    else -> "We could not submit your work. Please check the information and your active job contract, then try again. Details: ${e.message ?: "Unknown error"}"
+                                }
+                            }
+                        }
+                    }
                 }
             },
-            modifier=Modifier.fillMaxWidth()
-        ){Text(if(busy)"Submitting…" else "Submit work + analysis")}
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(if (busy) "Submitting…" else "Validate & submit work") }
         TextButton(onClick=back,modifier=Modifier.fillMaxWidth()){Text("Back")}
         Spacer(Modifier.height(20.dp))
     }
