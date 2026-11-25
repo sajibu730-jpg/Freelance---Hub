@@ -3504,7 +3504,6 @@ fun RemoteProposalScreen(
                     value = letter,
                     onValueChange = { letter = it },
                     label = { Text("Cover Letter") },
-                    placeholder = { Text("Write your proposal to the client…") },
                     minLines = 6,
                     modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
@@ -3512,13 +3511,22 @@ fun RemoteProposalScreen(
                 Text("Experience Level", style = MaterialTheme.typography.labelLarge)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
                     listOf("Beginner", "Intermediate", "Expert").forEach { level ->
                         FilterChip(
                             selected = experience == level,
                             onClick = { experience = level },
-                            label = { Text(level) }
+                            modifier = Modifier.weight(1f),
+                            label = {
+                                Text(
+                                    level,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
                         )
                     }
                 }
@@ -3526,7 +3534,6 @@ fun RemoteProposalScreen(
                     value = bid,
                     onValueChange = { bid = it },
                     label = { Text("Your Bid (USD)") },
-                    placeholder = { Text("Enter your proposed budget") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
@@ -3536,7 +3543,6 @@ fun RemoteProposalScreen(
                     value = days,
                     onValueChange = { days = it },
                     label = { Text("Delivery Time (Days)") },
-                    placeholder = { Text("e.g. 3") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
