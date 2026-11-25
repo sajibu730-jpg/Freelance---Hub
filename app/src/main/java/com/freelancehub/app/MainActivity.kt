@@ -2712,7 +2712,7 @@ private fun RemoteClientJobProposalsScreen(
                     Text("Proposed budget: ${proposal.proposedBudgetMinor/100.0} ${proposal.currency}")
                     Text("Delivery time: ${proposal.deliveryDays} days")
                     Text("Status: ${proposal.status.replaceFirstChar{it.uppercase()}}")
-                    if(proposal.status.equals("submitted",true)||proposal.status.equals("pending",true)){
+                    if(proposal.status.equals("submitted",true)||proposal.status.equals("pending",true)||proposal.status.equals("shortlisted",true)){
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                             Button(
                                 enabled=busyId==null,
