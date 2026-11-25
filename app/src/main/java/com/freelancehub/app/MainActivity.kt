@@ -2907,6 +2907,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
 }
 
 @Composable fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+    var existingSubmission by remember{mutableStateOf<RemoteWorkSubmission?>(null)}
     var summary by remember{mutableStateOf("")}
     var links by remember{mutableStateOf("")}
     var completed by remember{mutableStateOf("")}
@@ -2918,17 +2919,29 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var success by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     val scope=rememberCoroutineScope()
+    LaunchedEffect(j.id) {
+        runCatching { withContext(Dispatchers.IO) { marketplace.listWorkSubmissions(j.id).firstOrNull { it.status.equals(WorkSubmissionStatus.CHANGES_REQUESTED, true) } } }
+            .onSuccess { pending ->
+                existingSubmission = pending
+                if (pending != null) {
+                    summary = pending.summary
+                    links = pending.fileLinks.joinToString(", ")
+                }
+            }
+            .onFailure { error = it.message ?: "Unable to check pending revisions." }
+    }
     Column(
         Modifier.fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal=20.dp, vertical=18.dp)
     ){
-        Text("Work Submission & Analysis",style=MaterialTheme.typography.headlineSmall)
+        Text(if(existingSubmission==null)"Work Submission & Analysis" else "Resubmit Revised Work",style=MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(6.dp))
         Text(j.title,style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(12.dp))
         Text(
-            "Submit your finished work, delivery links, and the client requirements you completed. The client can review your submission after it is sent.",
+            if(existingSubmission==null) "Submit your finished work, delivery links, and the client requirements you completed. The client can review your submission after it is sent."
+            else "The client requested changes. Update your delivery below and resubmit it for another review.",
             style=MaterialTheme.typography.bodyMedium
         )
         Spacer(Modifier.height(16.dp))
@@ -2990,19 +3003,23 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         }
         Spacer(Modifier.height(16.dp))
         Button(
-            enabled=!busy&&summary.trim().length>=10&&completed.isNotBlank(),
+            enabled=!busy&&summary.trim().length>=10&&(existingSubmission!=null||completed.isNotBlank()),
             onClick={
                 busy=true;error="";success=""
                 scope.launch(Dispatchers.IO){
                     runCatching{
-                        val submission=marketplace.createWorkSubmission(j.id,RemoteWorkSubmissionCreate(summary.trim(),links.split(',').map{it.trim()}.filter{it.isNotBlank()},0))
-                        marketplace.analyzeWorkSubmission(submission.id,RemoteWorkAnalysisCreate(completed.trim(),issues.trim(),solutions.trim(),results.trim(),improvements.trim()))
-                    }.onSuccess{withContext(Dispatchers.Main){busy=false;success="Work submitted and freelancer analysis recorded. Waiting for client review."}}
+                        val fileLinks=links.split(',').map{it.trim()}.filter{it.isNotBlank()}
+                        val submission=existingSubmission?.let {
+                            marketplace.resubmitWorkSubmission(it.id,RemoteWorkSubmissionCreate(summary.trim(),fileLinks,0))
+                        } ?: marketplace.createWorkSubmission(j.id,RemoteWorkSubmissionCreate(summary.trim(),fileLinks,0))
+                        if(completed.isNotBlank()) marketplace.analyzeWorkSubmission(submission.id,RemoteWorkAnalysisCreate(completed.trim(),issues.trim(),solutions.trim(),results.trim(),improvements.trim()))
+                        submission
+                    }.onSuccess{withContext(Dispatchers.Main){busy=false;existingSubmission=null;success="Revised work submitted. Waiting for client review."}}
                      .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Work submission failed."}}
                 }
             },
             modifier=Modifier.fillMaxWidth()
-        ){Text(if(busy)"Submitting…" else "Submit work + analysis")}
+        ){Text(if(busy)"Submitting…" else if(existingSubmission!=null)"Resubmit revised work" else "Submit work + analysis")}
         TextButton(onClick=back,modifier=Modifier.fillMaxWidth()){Text("Back")}
         Spacer(Modifier.height(20.dp))
     }
