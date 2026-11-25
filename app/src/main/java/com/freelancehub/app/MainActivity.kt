@@ -2913,14 +2913,18 @@ private fun WorkAnalysisInputField(
     label: String,
     placeholder: String,
     minLines: Int = 2,
-    supportingText: String? = null
+    supportingText: String? = null,
+    isError: Boolean = false
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
         placeholder = { Text(placeholder) },
-        supportingText = supportingText?.let { hint -> { Text(hint) } },
+        isError = isError,
+        supportingText = supportingText?.let { hint ->
+            { Text(hint, color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+        },
         minLines = minLines,
         modifier = Modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
@@ -2951,22 +2955,30 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
     val normalizedSummary = summary.trim().lowercase().replace(Regex("\\s+"), " ")
     val normalizedCompleted = completed.trim().lowercase().replace(Regex("\\s+"), " ")
     val deliveryLinks = links.split(',').map{it.trim()}.filter{it.isNotBlank()}
+    val summaryError = when {
+        summary.isBlank() -> "This field is required. Describe the work you actually completed."
+        summary.trim().length < 10 -> "Please write at least 10 characters describing your completed work."
+        normalizedSummary in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na") ->
+            "This looks like placeholder text. Replace it with a real description of your work."
+        else -> null
+    }
+    val completedError = when {
+        completed.isBlank() -> "This field is required. List the client requirements you completed."
+        completed.trim().length < 10 -> "Please list the actual completed requirements (at least 10 characters)."
+        normalizedCompleted in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na") ->
+            "This looks like placeholder text. List the real client requirements you completed."
+        else -> null
+    }
+    val invalidLink = deliveryLinks.indexOfFirst { link ->
+        val parsed = runCatching { Uri.parse(link) }.getOrNull()
+        parsed == null || parsed.scheme?.lowercase() !in setOf("http", "https") || parsed.host.isNullOrBlank()
+    }.takeIf { it >= 0 }
+    val linksError = invalidLink?.let { "Link ${it + 1} is not a valid web address. Use a full https:// or http:// link, or remove it." }
     val validationErrors = buildList {
-        if (summary.trim().length < 10) add("Work summary must contain at least 10 characters.")
-        if (normalizedSummary in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na")) {
-            add("Please replace the placeholder text in Work Summary with the actual work you completed.")
-        }
-        if (completed.trim().length < 10) add("List the client requirements you completed (at least 10 characters).")
-        if (normalizedCompleted in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na")) {
-            add("Please replace the placeholder text in Completed Requirements with the actual requirements.")
-        }
-        deliveryLinks.forEachIndexed { index, link ->
-            val parsed = runCatching { Uri.parse(link) }.getOrNull()
-            if (parsed == null || parsed.scheme?.lowercase() !in setOf("http", "https") || parsed.host.isNullOrBlank()) {
-                add("Delivery link ${index + 1} is not a valid http(s) URL. Correct it or remove it.")
-            }
-        }
-        if (!confirmedAccurate) add("Confirm that the information accurately describes the work you delivered.")
+        summaryError?.let { add(it) }
+        completedError?.let { add(it) }
+        linksError?.let { add(it) }
+        if (!confirmedAccurate) add("Tick the confirmation box after checking that all details are true.")
     }
     val scope=rememberCoroutineScope()
     Column(
@@ -3007,14 +3019,17 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
                     label="Completed work / deliverables",
                     placeholder="Describe the work you finished…",
                     minLines=4,
-                    supportingText="At least 10 characters"
+                    supportingText=if (validationAttempted && summaryError != null) summaryError else "Required • Describe exactly what you delivered (minimum 10 characters)",
+                    isError=validationAttempted && summaryError != null
                 )
                 WorkAnalysisInputField(
                     value=links,
                     onValueChange={links=it},
                     label="Delivery link(s)",
                     placeholder="Paste file, folder, or delivery URL(s). Separate multiple links with commas.",
-                    minLines=2
+                    minLines=2,
+                    supportingText=if (validationAttempted && linksError != null) linksError else "Optional • Add working http(s) delivery links; separate multiple links with commas",
+                    isError=validationAttempted && linksError != null
                 )
                 WorkAnalysisInputField(
                     value=completed,
@@ -3022,7 +3037,8 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
                     label="Client requirements completed",
                     placeholder="List the requirements you completed…",
                     minLines=3,
-                    supportingText="Required"
+                    supportingText=if (validationAttempted && completedError != null) completedError else "Required • List each client requirement you completed",
+                    isError=validationAttempted && completedError != null
                 )
             }
         }
@@ -3037,25 +3053,29 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
                     value=issues,
                     onValueChange={issues=it},
                     label="Issues encountered (optional)",
-                    placeholder="Describe any issues…"
+                    placeholder="Describe any issues…",
+                    supportingText="Optional • If nothing went wrong, write “No issues”. Leave blank if not applicable."
                 )
                 WorkAnalysisInputField(
                     value=solutions,
                     onValueChange={solutions=it},
                     label="Solutions / decisions (optional)",
-                    placeholder="Explain how you handled them…"
+                    placeholder="Explain how you handled them…",
+                    supportingText="Optional • Explain the steps you took to resolve the issues."
                 )
                 WorkAnalysisInputField(
                     value=results,
                     onValueChange={results=it},
                     label="Results / outcome (optional)",
-                    placeholder="What was the result?"
+                    placeholder="What was the result?",
+                    supportingText="Optional • Describe the final result for the client."
                 )
                 WorkAnalysisInputField(
                     value=improvements,
                     onValueChange={improvements=it},
                     label="Future improvements (optional)",
-                    placeholder="What could be improved later?"
+                    placeholder="What could be improved later?",
+                    supportingText="Optional • Mention useful next steps or improvements."
                 )
             }
         }
@@ -3069,7 +3089,17 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
         }
         if(error.isNotBlank()){
             Spacer(Modifier.height(10.dp))
-            Text(error,color=MaterialTheme.colorScheme.error)
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Text(
+                    error,
+                    modifier = Modifier.padding(12.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
         if(success.isNotBlank()){
             Spacer(Modifier.height(10.dp))
@@ -3115,7 +3145,18 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
                         }.onFailure { e ->
                             withContext(Dispatchers.Main) {
                                 busy = false
-                                error = e.message ?: "Work submission failed."
+                                val serverMessage = e.message.orEmpty().lowercase()
+                                error = when {
+                                    serverMessage.contains("active contract") ->
+                                        "You cannot submit this work yet because this job has no active contract for your account. Ask the client to accept your proposal and hire you first. Once the contract is active, try again."
+                                    serverMessage.contains("not the assigned freelancer") ->
+                                        "This job is not assigned to your account. Please check that the client hired the correct freelancer."
+                                    serverMessage.contains("permission denied") || serverMessage.contains("42501") ->
+                                        "The server did not allow this action. Please check that you are signed in with the hired freelancer account and that the job has an active contract."
+                                    serverMessage.contains("network") || serverMessage.contains("timeout") || serverMessage.contains("unable to resolve") ->
+                                        "Connection problem. Check your internet connection and try submitting again."
+                                    else -> "We could not submit your work. Please check the information and your active job contract, then try again. Details: ${e.message ?: "Unknown error"}"
+                                }
                             }
                         }
                     }
