@@ -58,7 +58,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        require(input.coverLetter.trim().length in 20..10_000)
+        require(input.coverLetter.isNotBlank())
         require(input.bidMinor >= 0)
         require(input.currency.matches(Regex("^[A-Z]{3}$")))
         require(input.deliveryDays in 1..3650)
@@ -70,6 +70,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
             .put("proposed_budget_minor", input.bidMinor)
             .put("currency", input.currency)
             .put("delivery_days", input.deliveryDays)
+            .put("experience_level", input.experienceLevel)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
             client.openJsonPost("/rest/v1/proposals", payload, token, SecureApiClient.newIdempotencyKey(), true)
@@ -79,7 +80,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
     fun listJobProposals(jobId: String): List<RemoteJobProposal> {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val path = "/rest/v1/proposals?select=id,job_id,freelancer_id,cover_letter,proposed_budget_minor,currency,status,delivery_days,created_at&job_id=eq.$jobId&order=created_at.desc"
+        val path = "/rest/v1/proposals?select=id,job_id,freelancer_id,cover_letter,proposed_budget_minor,currency,status,delivery_days,experience_level,created_at&job_id=eq.$jobId&order=created_at.desc"
         val rows = JSONArray(String(client.readJsonResponse(client.openGet(path, accessTokenProvider())), StandardCharsets.UTF_8))
         return (0 until rows.length()).map { index ->
             val row = rows.getJSONObject(index)
@@ -92,6 +93,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
                 currency = row.optString("currency", "USD"),
                 status = row.optString("status", "submitted"),
                 deliveryDays = row.optInt("delivery_days"),
+                experienceLevel = row.optString("experience_level", "Beginner"),
                 createdAt = row.optString("created_at")
             )
         }
@@ -401,6 +403,7 @@ data class RemoteJobProposal(
     val currency: String,
     val status: String,
     val deliveryDays: Int,
+    val experienceLevel: String,
     val createdAt: String
 )
 
@@ -413,7 +416,8 @@ data class RemoteProposalCreate(
     val coverLetter: String,
     val bidMinor: Long,
     val currency: String,
-    val deliveryDays: Int
+    val deliveryDays: Int,
+    val experienceLevel: String = "Beginner"
 )
 
 
