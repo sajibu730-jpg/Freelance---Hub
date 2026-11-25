@@ -2577,42 +2577,159 @@ fun RemoteHomeScreen(
 ){
     var jobs by remember{mutableStateOf<List<RemoteJob>>(emptyList())}
     var selected by remember{mutableStateOf<RemoteJob?>(null)}
+    var proposalsJob by remember{mutableStateOf<RemoteJob?>(null)}
+    var myAccountId by remember{mutableStateOf<String?>(null)}
+    var showMyJobs by remember{mutableStateOf(role==UserRole.CLIENT)}
     var loading by remember{mutableStateOf(true)}
     var error by remember{mutableStateOf("")}
     val scope=rememberCoroutineScope()
     fun reload(){
         loading=true; error=""
         scope.launch(Dispatchers.IO){
-            runCatching{marketplace.listJobs(50)}.onSuccess{result->withContext(Dispatchers.Main){jobs=result;loading=false}}.onFailure{e->withContext(Dispatchers.Main){error=e.message?:"Unable to load jobs.";loading=false}}
+            val result=runCatching {
+                val loadedJobs=marketplace.listJobs(50)
+                val current=if(role==UserRole.CLIENT) account.currentUser().id else null
+                Pair(loadedJobs,current)
+            }
+            withContext(Dispatchers.Main){
+                result.onSuccess{jobs=it.first;myAccountId=it.second}
+                    .onFailure{error=it.message?:"Unable to load jobs."}
+                loading=false
+            }
         }
     }
     LaunchedEffect(Unit){reload()}
+    if(proposalsJob!=null){
+        RemoteClientJobProposalsScreen(proposalsJob!!,marketplace){proposalsJob=null;reload()}
+        return
+    }
     if(selected!=null){
         RemoteJobDetailsScreen(selected!!,account,marketplace,role,{selected=null})
         return
     }
     var query by remember{mutableStateOf("")}
+    val ownedJobs=jobs.filter{it.ownerId==myAccountId}
+    val source=if(role==UserRole.CLIENT&&showMyJobs)ownedJobs else jobs
+    val filtered=source.filter{it.title.contains(query,true)||it.description.contains(query,true)}
     Column(Modifier.fillMaxSize().padding(16.dp)){
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
             Text("Jobs",style=MaterialTheme.typography.headlineSmall)
             if(role==UserRole.CLIENT)Button(onClick=post){Text("Post job")}
+        }
+        if(role==UserRole.CLIENT){
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                FilterChip(selected=showMyJobs,onClick={showMyJobs=true},label={Text("My Jobs (${ownedJobs.size})")})
+                FilterChip(selected=!showMyJobs,onClick={showMyJobs=false},label={Text("All Jobs")})
+            }
         }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(query,{query=it},label={Text("Search jobs or skills")},modifier=Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
         if(loading)CircularProgressIndicator()
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        val filtered=jobs.filter{it.title.contains(query,true)||it.description.contains(query,true)}
-        LazyColumn{items(filtered){j->
-            ElevatedCard(onClick={selected=j},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp)){
-                Column(Modifier.padding(16.dp)){
-                    Text(j.title,style=MaterialTheme.typography.titleMedium)
-                    Text("Budget: ${j.budgetMinor/100.0} ${j.currency}")
-                    Text("Status: ${j.status}")
-                    if(j.description.isNotBlank())Text(j.description,maxLines=3)
+        if(!loading&&filtered.isEmpty())Text(if(role==UserRole.CLIENT&&showMyJobs)"You have not posted any jobs yet." else "No jobs found.")
+        LazyColumn{
+            items(filtered){j->
+                ElevatedCard(modifier=Modifier.fillMaxWidth().padding(vertical=6.dp)){
+                    Column(Modifier.fillMaxWidth().padding(16.dp)){
+                        Text(j.title,style=MaterialTheme.typography.titleMedium)
+                        Text("Budget: ${j.budgetMinor/100.0} ${j.currency}")
+                        Text("Status: ${j.status}")
+                        if(j.description.isNotBlank())Text(j.description,maxLines=3)
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                            OutlinedButton(onClick={selected=j},modifier=Modifier.weight(1f)){Text("View Job")}
+                            if(role==UserRole.CLIENT&&j.ownerId==myAccountId){
+                                Button(onClick={proposalsJob=j},modifier=Modifier.weight(1f)){Text("View Proposals")}
+                            }
+                        }
+                    }
                 }
             }
-        }}
+        }
+    }
+}
+
+@Composable
+private fun RemoteClientJobProposalsScreen(
+    job:RemoteJob,
+    marketplace:RemoteMarketplaceRepository,
+    back:()->Unit
+){
+    var proposals by remember{mutableStateOf<List<RemoteJobProposal>>(emptyList())}
+    var loading by remember{mutableStateOf(true)}
+    var busyId by remember{mutableStateOf<String?>(null)}
+    var error by remember{mutableStateOf("")}
+    var notice by remember{mutableStateOf("")}
+    var pendingAction by remember{mutableStateOf<Pair<RemoteJobProposal,Boolean>?>(null)}
+    val scope=rememberCoroutineScope()
+    fun reload(){
+        loading=true;error=""
+        scope.launch(Dispatchers.IO){
+            val result=runCatching{marketplace.listJobProposals(job.id)}
+            withContext(Dispatchers.Main){
+                result.onSuccess{proposals=it}.onFailure{error=it.message?:"Unable to load proposals."}
+                loading=false
+            }
+        }
+    }
+    LaunchedEffect(job.id){reload()}
+    pendingAction?.let{(proposal,accepting)->
+        AlertDialog(
+            onDismissRequest={pendingAction=null},
+            title={Text(if(accepting)"Accept proposal and hire?" else "Decline proposal?")},
+            text={Text(if(accepting)"This will create an active contract with this freelancer. Other proposals may no longer be accepted for this job." else "This proposal will be marked as declined.")},
+            confirmButton={TextButton(onClick={
+                pendingAction=null;busyId=proposal.id;error="";notice=""
+                scope.launch(Dispatchers.IO){
+                    val result=runCatching{if(accepting)marketplace.acceptProposal(proposal.id) else {marketplace.rejectProposal(proposal.id);null}}
+                    withContext(Dispatchers.Main){
+                        result.onSuccess{
+                            notice=if(accepting)"Proposal accepted. The freelancer has been hired and the contract is active." else "Proposal declined."
+                            reload()
+                        }.onFailure{error=it.message?:"Unable to update this proposal."}
+                        busyId=null
+                    }
+                }
+            }){Text(if(accepting)"Accept & Hire" else "Decline")}},
+            dismissButton={TextButton(onClick={pendingAction=null}){Text("Cancel")}}
+        )
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)){
+        Text("Job Proposals",style=MaterialTheme.typography.headlineSmall)
+        Text(job.title,style=MaterialTheme.typography.titleMedium)
+        Text("Review each freelancer's offer before hiring.")
+        Spacer(Modifier.height(10.dp))
+        if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
+        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+        if(loading)CircularProgressIndicator()
+        if(!loading&&proposals.isEmpty())Text("No proposals have been submitted for this job yet.")
+        proposals.forEach{proposal->
+            ElevatedCard(Modifier.fillMaxWidth().padding(vertical=6.dp)){
+                Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    Text("Freelancer ID: ${proposal.freelancerId.take(8)}…",style=MaterialTheme.typography.labelLarge)
+                    Text("Proposal",style=MaterialTheme.typography.titleMedium)
+                    Text(proposal.coverLetter.ifBlank{"No cover letter provided."})
+                    Text("Proposed budget: ${proposal.proposedBudgetMinor/100.0} ${proposal.currency}")
+                    Text("Delivery time: ${proposal.deliveryDays} days")
+                    Text("Status: ${proposal.status.replaceFirstChar{it.uppercase()}}")
+                    if(proposal.status.equals("submitted",true)||proposal.status.equals("pending",true)){
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                            Button(
+                                enabled=busyId==null,
+                                onClick={pendingAction=proposal to true},
+                                modifier=Modifier.weight(1f)
+                            ){Text(if(busyId==proposal.id)"Please wait…" else "Accept & Hire")}
+                            OutlinedButton(
+                                enabled=busyId==null,
+                                onClick={pendingAction=proposal to false},
+                                modifier=Modifier.weight(1f)
+                            ){Text("Decline")}
+                        }
+                    }
+                }
+            }
+        }
+        TextButton(onClick=back){Text("Back to My Jobs")}
     }
 }
 
