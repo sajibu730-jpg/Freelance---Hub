@@ -2946,6 +2946,28 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
     var error by remember{mutableStateOf("")}
     var success by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
+    var confirmedAccurate by remember{mutableStateOf(false)}
+    var validationAttempted by remember{mutableStateOf(false)}
+    val normalizedSummary = summary.trim().lowercase().replace(Regex("\\s+"), " ")
+    val normalizedCompleted = completed.trim().lowercase().replace(Regex("\\s+"), " ")
+    val deliveryLinks = links.split(',').map{it.trim()}.filter{it.isNotBlank()}
+    val validationErrors = buildList {
+        if (summary.trim().length < 10) add("Work summary must contain at least 10 characters.")
+        if (normalizedSummary in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na")) {
+            add("Please replace the placeholder text in Work Summary with the actual work you completed.")
+        }
+        if (completed.trim().length < 10) add("List the client requirements you completed (at least 10 characters).")
+        if (normalizedCompleted in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na")) {
+            add("Please replace the placeholder text in Completed Requirements with the actual requirements.")
+        }
+        deliveryLinks.forEachIndexed { index, link ->
+            val parsed = runCatching { Uri.parse(link) }.getOrNull()
+            if (parsed == null || parsed.scheme?.lowercase() !in setOf("http", "https") || parsed.host.isNullOrBlank()) {
+                add("Delivery link ${index + 1} is not a valid http(s) URL. Correct it or remove it.")
+            }
+        }
+        if (!confirmedAccurate) add("Confirm that the information accurately describes the work you delivered.")
+    }
     val scope=rememberCoroutineScope()
     Column(
         Modifier.fillMaxSize()
@@ -3037,6 +3059,14 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
                 )
             }
         }
+        if (validationAttempted && validationErrors.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                validationErrors.joinToString(separator = "\\n") { "• $it" },
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
         if(error.isNotBlank()){
             Spacer(Modifier.height(10.dp))
             Text(error,color=MaterialTheme.colorScheme.error)
@@ -3046,20 +3076,53 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
             Text(success,color=MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = confirmedAccurate,
+                onCheckedChange = { confirmedAccurate = it }
+            )
+            Text(
+                "I confirm these details accurately describe the work I delivered.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
         Button(
-            enabled=!busy&&summary.trim().length>=10&&completed.isNotBlank(),
-            onClick={
-                busy=true;error="";success=""
-                scope.launch(Dispatchers.IO){
-                    runCatching{
-                        val submission=marketplace.createWorkSubmission(j.id,RemoteWorkSubmissionCreate(summary.trim(),links.split(',').map{it.trim()}.filter{it.isNotBlank()},0))
-                        marketplace.analyzeWorkSubmission(submission.id,RemoteWorkAnalysisCreate(completed.trim(),issues.trim(),solutions.trim(),results.trim(),improvements.trim()))
-                    }.onSuccess{withContext(Dispatchers.Main){busy=false;success="Work submitted and freelancer analysis recorded. Waiting for client review."}}
-                     .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Work submission failed."}}
+            enabled = !busy,
+            onClick = {
+                validationAttempted = true
+                if (validationErrors.isEmpty()) {
+                    busy = true
+                    error = ""
+                    success = ""
+                    scope.launch(Dispatchers.IO) {
+                        runCatching {
+                            val submission = marketplace.createWorkSubmission(
+                                j.id,
+                                RemoteWorkSubmissionCreate(summary.trim(), deliveryLinks, 0)
+                            )
+                            marketplace.analyzeWorkSubmission(
+                                submission.id,
+                                RemoteWorkAnalysisCreate(completed.trim(), issues.trim(), solutions.trim(), results.trim(), improvements.trim())
+                            )
+                        }.onSuccess {
+                            withContext(Dispatchers.Main) {
+                                busy = false
+                                success = "Work submitted and freelancer analysis recorded. Waiting for client review."
+                            }
+                        }.onFailure { e ->
+                            withContext(Dispatchers.Main) {
+                                busy = false
+                                error = e.message ?: "Work submission failed."
+                            }
+                        }
+                    }
                 }
             },
-            modifier=Modifier.fillMaxWidth()
-        ){Text(if(busy)"Submitting…" else "Submit work + analysis")}
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(if (busy) "Submitting…" else "Validate & submit work") }
         TextButton(onClick=back,modifier=Modifier.fillMaxWidth()){Text("Back")}
         Spacer(Modifier.height(20.dp))
     }
