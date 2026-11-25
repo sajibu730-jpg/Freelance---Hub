@@ -316,7 +316,11 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         currency = x.optString("currency", "USD"),
         status = x.optString("status", JobStatus.OPEN),
         ownerId = x.optString("owner_id", ""),
-        skills = parseStringList(x.optJSONArray("skills"))
+        skills = parseStringList(x.optJSONArray("skills")),
+        category = x.optString("category", "Other"),
+        experienceLevel = x.optString("experience_level", "Beginner"),
+        durationDays = x.optInt("duration_days", 7),
+        freelancersNeeded = x.optInt("freelancers_needed", 1)
     )
 
     private fun parseStringList(array: JSONArray?): List<String> = if (array == null) emptyList() else (0 until array.length()).mapNotNull { array.optString(it, null)?.trim() }.filter { it.isNotBlank() }
@@ -336,7 +340,11 @@ data class RemoteJob(
     val currency: String,
     val status: String,
     val ownerId: String,
-    val skills: List<String> = emptyList()
+    val skills: List<String> = emptyList(),
+    val category: String = "Other",
+    val experienceLevel: String = "Beginner",
+    val durationDays: Int = 7,
+    val freelancersNeeded: Int = 1
 )
 
 data class RemoteJobCreate(
