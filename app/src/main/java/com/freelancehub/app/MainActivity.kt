@@ -3028,6 +3028,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
 @Composable fun RemoteWorkReviewScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,account:RemoteAccountRepository,back:()->Unit){
     var submissions by remember{mutableStateOf<List<RemoteWorkSubmission>>(emptyList())}
     var selected by remember{mutableStateOf<RemoteWorkSubmission?>(null)}
+    var revisions by remember{mutableStateOf<List<RemoteWorkRevision>>(emptyList())}
     var contract by remember{mutableStateOf<RemoteContract?>(null)}
     var existingReview by remember{mutableStateOf<RemoteFreelancerReview?>(null)}
     var showFreelancerProfile by remember{mutableStateOf(false)}
@@ -3095,7 +3096,15 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
         if(submissions.isEmpty())Text("No authorized work submissions are available yet.")
         submissions.forEach{s->
-            ElevatedCard(onClick={selected=s},modifier=Modifier.fillMaxWidth().padding(vertical=4.dp)){
+            ElevatedCard(onClick={
+                selected=s
+                revisions=emptyList()
+                scope.launch(Dispatchers.IO){
+                    runCatching{marketplace.listWorkSubmissionRevisions(s.id)}
+                        .onSuccess{items->withContext(Dispatchers.Main){revisions=items}}
+                        .onFailure{e->withContext(Dispatchers.Main){error=e.message?:"Unable to load revision history."}}
+                }
+            },modifier=Modifier.fillMaxWidth().padding(vertical=4.dp)){
                 Column(Modifier.padding(12.dp)){
                     Text("Status: " + when {
                         s.status.equals(WorkSubmissionStatus.APPROVED, true) -> "Approved"
@@ -3111,6 +3120,19 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             Text("Selected submission",style=MaterialTheme.typography.titleMedium)
             Text(s.summary)
             if(s.fileLinks.isNotEmpty())Text("Delivery files / links: ${s.fileLinks.joinToString()}")
+            if(revisions.isNotEmpty()){
+                Spacer(Modifier.height(8.dp))
+                Text("Revision history",style=MaterialTheme.typography.titleSmall)
+                revisions.forEach{revision->
+                    ElevatedCard(modifier=Modifier.fillMaxWidth().padding(vertical=3.dp)){
+                        Column(Modifier.padding(10.dp)){
+                            Text("Version ${revision.version}",style=MaterialTheme.typography.labelLarge)
+                            Text(revision.summary)
+                            if(revision.fileLinks.isNotEmpty())Text("Files: ${revision.fileLinks.joinToString()}")
+                        }
+                    }
+                }
+            }
             if(s.status.equals(WorkSubmissionStatus.CHANGES_REQUESTED,true)) {
                 Text("The client requested changes. Review the feedback, update your work, and submit the revised delivery.")
             }
