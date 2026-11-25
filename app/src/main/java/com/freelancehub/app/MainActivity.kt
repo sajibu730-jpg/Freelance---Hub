@@ -2711,6 +2711,7 @@ private fun RemoteClientJobProposalsScreen(
                     Text(proposal.coverLetter.ifBlank{"No cover letter provided."})
                     Text("Proposed budget: ${proposal.proposedBudgetMinor/100.0} ${proposal.currency}")
                     Text("Delivery time: ${proposal.deliveryDays} days")
+                    Text("Experience level: ${proposal.experienceLevel}")
                     Text("Status: ${proposal.status.replaceFirstChar{it.uppercase()}}")
                     if(proposal.status.equals("submitted",true)||proposal.status.equals("pending",true)||proposal.status.equals("shortlisted",true)){
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
@@ -3458,19 +3459,122 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
     }
 }
 
-@Composable fun RemoteProposalScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit,onSubmitted:()->Unit){
-    var letter by remember{mutableStateOf("")};var bid by remember{mutableStateOf("")};var days by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};val scope=rememberCoroutineScope()
-    val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull();val daysValue=days.trim().toIntOrNull()
-    val valid=letter.trim().length in 20..10000&&bidMinor!=null&&bidMinor>=0&&daysValue!=null&&daysValue in 1..3650
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Submit proposal",style=MaterialTheme.typography.headlineSmall);Text(j.title);Spacer(Modifier.height(10.dp))
-        OutlinedTextField(letter,{letter=it},label={Text("Cover letter (20–10000 chars)")},minLines=6,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(bid,{bid=it},label={Text("Your bid (USD)")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(days,{days=it},label={Text("Delivery time (days)")},modifier=Modifier.fillMaxWidth())
-        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(12.dp))
-        Button(enabled=valid&&!busy,onClick={busy=true;error="";scope.launch(Dispatchers.IO){runCatching{marketplace.createProposal(j.id,RemoteProposalCreate(letter.trim(),bidMinor!!,"USD",daysValue!!))}.onSuccess{withContext(Dispatchers.Main){onSubmitted()}}.onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Proposal submission failed."}}}},modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Send proposal")}
-        TextButton(onClick=back){Text("Cancel")}
+@Composable
+fun RemoteProposalScreen(
+    j: RemoteJob,
+    marketplace: RemoteMarketplaceRepository,
+    back: () -> Unit,
+    onSubmitted: () -> Unit
+) {
+    var letter by remember { mutableStateOf("") }
+    var bid by remember { mutableStateOf("") }
+    var days by remember { mutableStateOf("") }
+    var experience by remember { mutableStateOf("Beginner") }
+    var error by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val bidMinor = bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
+    val daysValue = days.trim().toIntOrNull()
+    val letterValid = letter.isNotBlank()
+    val bidValid = bidMinor != null && bidMinor >= 0
+    val daysValid = daysValue != null && daysValue in 1..3650
+    val valid = letterValid && bidValid && daysValid
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text("Submit Proposal", style = MaterialTheme.typography.headlineSmall)
+        Text(j.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Your offer", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Introduce yourself, explain how you will complete the project, and share your offer.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = letter,
+                    onValueChange = { letter = it },
+                    label = { Text("Cover Letter") },
+                    placeholder = { Text("Write your proposal to the client…") },
+                    minLines = 6,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                )
+                Text("Experience Level", style = MaterialTheme.typography.labelLarge)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("Beginner", "Intermediate", "Expert").forEach { level ->
+                        FilterChip(
+                            selected = experience == level,
+                            onClick = { experience = level },
+                            label = { Text(level) }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = bid,
+                    onValueChange = { bid = it },
+                    label = { Text("Your Bid (USD)") },
+                    placeholder = { Text("Enter your proposed budget") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                    isError = bid.isNotBlank() && !bidValid
+                )
+                OutlinedTextField(
+                    value = days,
+                    onValueChange = { days = it },
+                    label = { Text("Delivery Time (Days)") },
+                    placeholder = { Text("e.g. 3") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                    isError = days.isNotBlank() && !daysValid
+                )
+            }
+        }
+        if (error.isNotBlank()) {
+            Text(error, color = MaterialTheme.colorScheme.error)
+        }
+        Button(
+            enabled = valid && !busy,
+            onClick = {
+                busy = true
+                error = ""
+                scope.launch(Dispatchers.IO) {
+                    runCatching {
+                        marketplace.createProposal(
+                            j.id,
+                            RemoteProposalCreate(letter.trim(), bidMinor!!, "USD", daysValue!!, experience)
+                        )
+                    }.onSuccess {
+                        withContext(Dispatchers.Main) { onSubmitted() }
+                    }.onFailure { e ->
+                        withContext(Dispatchers.Main) {
+                            busy = false
+                            error = e.message ?: "Proposal submission failed."
+                        }
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (busy) "Submitting…" else "Send Proposal")
+        }
+        TextButton(onClick = back, modifier = Modifier.fillMaxWidth()) {
+            Text("Cancel")
+        }
     }
 }
 
