@@ -3000,8 +3000,22 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     if(workOpen && role == UserRole.FREELANCER){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
     if(reviewOpen && role == UserRole.CLIENT){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
+    var canSubmitWork by remember(j.id){mutableStateOf(false)}
     var error by remember{mutableStateOf("")}
-    LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{account.currentUser()}.onSuccess{me=it}.onFailure{error=it.message?:"Unable to load account."}}}
+    LaunchedEffect(j.id,role){
+        withContext(Dispatchers.IO){
+            runCatching{
+                val user=account.currentUser()
+                val contract=if(role==UserRole.FREELANCER) marketplace.getContractForJob(j.id) else null
+                user to contract
+            }.onSuccess{(user,contract)->
+                me=user
+                canSubmitWork=contract?.let{
+                    it.freelancerId==user.id && it.status.equals("active",true)
+                }==true
+            }.onFailure{error=it.message?:"Unable to load account or contract."}
+        }
+    }
     Column(Modifier.fillMaxSize().padding(20.dp)){
         Text(current.title,style=MaterialTheme.typography.headlineSmall)
         Text("Budget: ${current.budgetMinor/100.0} ${current.currency}")
@@ -3010,10 +3024,9 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(20.dp))
         if(role==UserRole.FREELANCER&&current.status==JobStatus.OPEN){Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}}
-        if(role==UserRole.FREELANCER&&current.status!=JobStatus.CLOSED){
+        if(role==UserRole.FREELANCER&&canSubmitWork&&current.status!=JobStatus.CLOSED){
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={workOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit work & analyze delivery")}
-            Text("Server authorization will allow this only when you are the assigned freelancer for the job.",style=MaterialTheme.typography.bodySmall)
         }
         if(role==UserRole.CLIENT&&current.status!=JobStatus.CLOSED){
             Spacer(Modifier.height(8.dp))
