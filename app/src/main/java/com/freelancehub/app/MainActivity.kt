@@ -3018,7 +3018,13 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
     Column(Modifier.fillMaxSize().padding(20.dp)){
         Text(current.title,style=MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(8.dp))
         Text("Budget: ${current.budgetMinor/100.0} ${current.currency}")
+        Text("Category: ${current.category}")
+        Text("Experience Level: ${current.experienceLevel}")
+        Text("Project Duration / Deadline: ${current.durationDays} days")
+        Text("Number of Freelancers Needed: ${current.freelancersNeeded}")
+        Text("Skills: ${if(current.skills.isEmpty()) "Not specified" else current.skills.joinToString(", ")}")
         Text("Status: ${current.status}")
         Spacer(Modifier.height(10.dp));Text(current.description)
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
