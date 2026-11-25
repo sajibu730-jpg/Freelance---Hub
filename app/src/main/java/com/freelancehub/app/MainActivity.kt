@@ -3062,7 +3062,7 @@ fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository
         if (validationAttempted && validationErrors.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
             Text(
-                validationErrors.joinToString(separator = "\\n") { "• $it" },
+                validationErrors.joinToString(separator = "\n") { "• $it" },
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall
             )
