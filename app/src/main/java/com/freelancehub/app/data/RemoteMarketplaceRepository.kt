@@ -1,5 +1,7 @@
 package com.freelancehub.app.data
 
+import android.util.Base64
+
 import com.freelancehub.app.network.SecureApiClient
 import org.json.JSONArray
 import org.json.JSONObject
@@ -56,22 +58,24 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        require(input.coverLetter.length in 20..10_000)
+        require(input.coverLetter.trim().length in 20..10_000)
         require(input.bidMinor >= 0)
         require(input.currency.matches(Regex("^[A-Z]{3}$")))
         require(input.deliveryDays in 1..3650)
+        val token = accessTokenProvider() ?: throw IllegalStateException("Please sign in again.")
         val payload = JSONObject()
+            .put("job_id", jobId)
+            .put("freelancer_id", authenticatedUserId(token))
             .put("cover_letter", input.coverLetter.trim())
-            .put("bid_minor", input.bidMinor)
+            .put("proposed_budget_minor", input.bidMinor)
             .put("currency", input.currency)
             .put("delivery_days", input.deliveryDays)
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPost("/jobs/$jobId/proposals", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/proposals", payload, token, SecureApiClient.newIdempotencyKey(), true)
         )
-        return parseProposal(JSONObject(String(response, StandardCharsets.UTF_8)))
+        return parseProposal(parseSingleRow(response))
     }
-
 
     fun listJobProposals(jobId: String): List<RemoteJobProposal> {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
@@ -324,6 +328,29 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
     )
 
     private fun parseStringList(array: JSONArray?): List<String> = if (array == null) emptyList() else (0 until array.length()).mapNotNull { array.optString(it, null)?.trim() }.filter { it.isNotBlank() }
+
+    private fun authenticatedUserId(token: String): String {
+        val encodedPayload = token.split(".").getOrNull(1)
+            ?: throw IllegalStateException("Invalid sign-in session.")
+        val decoded = Base64.decode(
+            encodedPayload,
+            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+        )
+        val userId = JSONObject(String(decoded, StandardCharsets.UTF_8)).optString("sub")
+        require(userId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid sign-in session." }
+        return userId
+    }
+
+    private fun parseSingleRow(response: ByteArray): JSONObject {
+        val json = String(response, StandardCharsets.UTF_8).trim()
+        return if (json.startsWith("[")) {
+            val rows = JSONArray(json)
+            require(rows.length() == 1) { "The server did not confirm the created proposal." }
+            rows.getJSONObject(0)
+        } else {
+            JSONObject(json)
+        }
+    }
 
     private fun parseProposal(x: JSONObject) = RemoteProposal(
         id = x.getString("id"),
