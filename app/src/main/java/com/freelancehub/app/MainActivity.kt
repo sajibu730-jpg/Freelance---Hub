@@ -2577,42 +2577,160 @@ fun RemoteHomeScreen(
 ){
     var jobs by remember{mutableStateOf<List<RemoteJob>>(emptyList())}
     var selected by remember{mutableStateOf<RemoteJob?>(null)}
+    var proposalsJob by remember{mutableStateOf<RemoteJob?>(null)}
+    var myAccountId by remember{mutableStateOf<String?>(null)}
+    var showMyJobs by remember{mutableStateOf(role==UserRole.CLIENT)}
     var loading by remember{mutableStateOf(true)}
     var error by remember{mutableStateOf("")}
     val scope=rememberCoroutineScope()
     fun reload(){
         loading=true; error=""
         scope.launch(Dispatchers.IO){
-            runCatching{marketplace.listJobs(50)}.onSuccess{result->withContext(Dispatchers.Main){jobs=result;loading=false}}.onFailure{e->withContext(Dispatchers.Main){error=e.message?:"Unable to load jobs.";loading=false}}
+            val result=runCatching {
+                val loadedJobs=marketplace.listJobs(50)
+                val current=if(role==UserRole.CLIENT) account.currentUser().id else null
+                Pair(loadedJobs,current)
+            }
+            withContext(Dispatchers.Main){
+                result.onSuccess{jobs=it.first;myAccountId=it.second}
+                    .onFailure{error=it.message?:"Unable to load jobs."}
+                loading=false
+            }
         }
     }
     LaunchedEffect(Unit){reload()}
+    if(proposalsJob!=null){
+        RemoteClientJobProposalsScreen(proposalsJob!!,marketplace){proposalsJob=null;reload()}
+        return
+    }
     if(selected!=null){
         RemoteJobDetailsScreen(selected!!,account,marketplace,role,{selected=null})
         return
     }
     var query by remember{mutableStateOf("")}
+    val ownedJobs=jobs.filter{it.ownerId==myAccountId}
+    val source=if(role==UserRole.CLIENT&&showMyJobs)ownedJobs else jobs
+    val filtered=source.filter{it.title.contains(query,true)||it.description.contains(query,true)}
     Column(Modifier.fillMaxSize().padding(16.dp)){
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
             Text("Jobs",style=MaterialTheme.typography.headlineSmall)
             if(role==UserRole.CLIENT)Button(onClick=post){Text("Post job")}
+        }
+        if(role==UserRole.CLIENT){
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                FilterChip(selected=showMyJobs,onClick={showMyJobs=true},label={Text("My Jobs (${ownedJobs.size})")})
+                FilterChip(selected=!showMyJobs,onClick={showMyJobs=false},label={Text("All Jobs")})
+            }
         }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(query,{query=it},label={Text("Search jobs or skills")},modifier=Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
         if(loading)CircularProgressIndicator()
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        val filtered=jobs.filter{it.title.contains(query,true)||it.description.contains(query,true)}
-        LazyColumn{items(filtered){j->
-            ElevatedCard(onClick={selected=j},modifier=Modifier.fillMaxWidth().padding(vertical=6.dp)){
-                Column(Modifier.padding(16.dp)){
-                    Text(j.title,style=MaterialTheme.typography.titleMedium)
-                    Text("Budget: ${j.budgetMinor/100.0} ${j.currency}")
-                    Text("Status: ${j.status}")
-                    if(j.description.isNotBlank())Text(j.description,maxLines=3)
+        if(!loading&&filtered.isEmpty())Text(if(role==UserRole.CLIENT&&showMyJobs)"You have not posted any jobs yet." else "No jobs found.")
+        LazyColumn{
+            items(filtered){j->
+                ElevatedCard(modifier=Modifier.fillMaxWidth().padding(vertical=6.dp)){
+                    Column(Modifier.fillMaxWidth().padding(16.dp)){
+                        Text(j.title,style=MaterialTheme.typography.titleMedium)
+                        Text("Budget: ${j.budgetMinor/100.0} ${j.currency}")
+                        Text("Status: ${j.status}")
+                        if(j.description.isNotBlank())Text(j.description,maxLines=3)
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                            OutlinedButton(onClick={selected=j},modifier=Modifier.weight(1f)){Text("View Job")}
+                            if(role==UserRole.CLIENT&&j.ownerId==myAccountId){
+                                Button(onClick={proposalsJob=j},modifier=Modifier.weight(1f)){Text("View Proposals")}
+                            }
+                        }
+                    }
                 }
             }
-        }}
+        }
+    }
+}
+
+@Composable
+private fun RemoteClientJobProposalsScreen(
+    job:RemoteJob,
+    marketplace:RemoteMarketplaceRepository,
+    back:()->Unit
+){
+    var proposals by remember{mutableStateOf<List<RemoteJobProposal>>(emptyList())}
+    var loading by remember{mutableStateOf(true)}
+    var busyId by remember{mutableStateOf<String?>(null)}
+    var error by remember{mutableStateOf("")}
+    var notice by remember{mutableStateOf("")}
+    var pendingAction by remember{mutableStateOf<Pair<RemoteJobProposal,Boolean>?>(null)}
+    val scope=rememberCoroutineScope()
+    fun reload(){
+        loading=true;error=""
+        scope.launch(Dispatchers.IO){
+            val result=runCatching{marketplace.listJobProposals(job.id)}
+            withContext(Dispatchers.Main){
+                result.onSuccess{proposals=it}.onFailure{error=it.message?:"Unable to load proposals."}
+                loading=false
+            }
+        }
+    }
+    LaunchedEffect(job.id){reload()}
+    pendingAction?.let{(proposal,accepting)->
+        AlertDialog(
+            onDismissRequest={pendingAction=null},
+            title={Text(if(accepting)"Accept proposal and hire?" else "Decline proposal?")},
+            text={Text(if(accepting)"This will create an active contract with this freelancer. Other proposals may no longer be accepted for this job." else "This proposal will be marked as declined.")},
+            confirmButton={TextButton(onClick={
+                pendingAction=null;busyId=proposal.id;error="";notice=""
+                scope.launch(Dispatchers.IO){
+                    val result=runCatching{if(accepting)marketplace.acceptProposal(proposal.id) else {marketplace.rejectProposal(proposal.id);null}}
+                    withContext(Dispatchers.Main){
+                        result.onSuccess{
+                            notice=if(accepting)"Proposal accepted. The freelancer has been hired and the contract is active." else "Proposal declined."
+                            reload()
+                        }.onFailure{error=it.message?:"Unable to update this proposal."}
+                        busyId=null
+                    }
+                }
+            }){Text(if(accepting)"Accept & Hire" else "Decline")}},
+            dismissButton={TextButton(onClick={pendingAction=null}){Text("Cancel")}}
+        )
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)){
+        Text("Job Proposals",style=MaterialTheme.typography.headlineSmall)
+        Text(job.title,style=MaterialTheme.typography.titleMedium)
+        Text("Review each freelancer's offer before hiring.")
+        Spacer(Modifier.height(10.dp))
+        if(notice.isNotBlank())Text(notice,color=MaterialTheme.colorScheme.primary)
+        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
+        if(loading)CircularProgressIndicator()
+        if(!loading&&proposals.isEmpty())Text("No proposals have been submitted for this job yet.")
+        proposals.forEach{proposal->
+            ElevatedCard(Modifier.fillMaxWidth().padding(vertical=6.dp)){
+                Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    Text("Freelancer ID: ${proposal.freelancerId.take(8)}…",style=MaterialTheme.typography.labelLarge)
+                    Text("Proposal",style=MaterialTheme.typography.titleMedium)
+                    Text(proposal.coverLetter.ifBlank{"No cover letter provided."})
+                    Text("Proposed budget: ${proposal.proposedBudgetMinor/100.0} ${proposal.currency}")
+                    Text("Delivery time: ${proposal.deliveryDays} days")
+                    Text("Experience level: ${proposal.experienceLevel}")
+                    Text("Status: ${proposal.status.replaceFirstChar{it.uppercase()}}")
+                    if(proposal.status.equals("submitted",true)||proposal.status.equals("pending",true)||proposal.status.equals("shortlisted",true)){
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                            Button(
+                                enabled=busyId==null,
+                                onClick={pendingAction=proposal to true},
+                                modifier=Modifier.weight(1f)
+                            ){Text(if(busyId==proposal.id)"Please wait…" else "Accept & Hire")}
+                            OutlinedButton(
+                                enabled=busyId==null,
+                                onClick={pendingAction=proposal to false},
+                                modifier=Modifier.weight(1f)
+                            ){Text("Decline")}
+                        }
+                    }
+                }
+            }
+        }
+        TextButton(onClick=back){Text("Back to My Jobs")}
     }
 }
 
@@ -2883,22 +3001,41 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     if(workOpen && role == UserRole.FREELANCER){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
     if(reviewOpen && role == UserRole.CLIENT){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
+    var canSubmitWork by remember(j.id){mutableStateOf(false)}
     var error by remember{mutableStateOf("")}
-    LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{account.currentUser()}.onSuccess{me=it}.onFailure{error=it.message?:"Unable to load account."}}}
-    Column(Modifier.fillMaxSize().padding(20.dp)){
+    LaunchedEffect(j.id,role){
+        withContext(Dispatchers.IO){
+            runCatching{
+                val user=account.currentUser()
+                val contract=if(role==UserRole.FREELANCER) marketplace.getContractForJob(j.id) else null
+                user to contract
+            }.onSuccess{(user,contract)->
+                me=user
+                canSubmitWork=contract?.let{
+                    it.freelancerId==user.id && it.status.equals("active",true)
+                }==true
+            }.onFailure{error=it.message?:"Unable to load account or contract."}
+        }
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
         Text(current.title,style=MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(8.dp))
         Text("Budget: ${current.budgetMinor/100.0} ${current.currency}")
+        Text("Category: ${current.category}")
+        Text("Experience Level: ${current.experienceLevel}")
+        Text("Project Duration / Deadline: ${current.durationDays} days")
+        Text("Number of Freelancers Needed: ${current.freelancersNeeded}")
+        Text("Skills: ${if(current.skills.isEmpty()) "Not specified" else current.skills.joinToString(", ")}")
         Text("Status: ${current.status}")
         Spacer(Modifier.height(10.dp));Text(current.description)
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(20.dp))
-        if(role==UserRole.FREELANCER&&current.status==JobStatus.OPEN){Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}}
-        if(role==UserRole.FREELANCER&&current.status!=JobStatus.CLOSED){
+        if(role==UserRole.FREELANCER&&current.status.equals(JobStatus.OPEN,true)){Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}}
+        if(role==UserRole.FREELANCER&&canSubmitWork&&!current.status.equals(JobStatus.CLOSED,true)){
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={workOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit work & analyze delivery")}
-            Text("Server authorization will allow this only when you are the assigned freelancer for the job.",style=MaterialTheme.typography.bodySmall)
         }
-        if(role==UserRole.CLIENT&&current.status!=JobStatus.CLOSED){
+        if(role==UserRole.CLIENT&&!current.status.equals(JobStatus.CLOSED,true)){
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={reviewOpen=true},modifier=Modifier.fillMaxWidth()){Text("Review submitted work")}
         }
@@ -2906,7 +3043,40 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 }
 
-@Composable fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+@Composable
+private fun WorkAnalysisInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    minLines: Int = 2,
+    supportingText: String? = null,
+    isError: Boolean = false
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        isError = isError,
+        supportingText = supportingText?.let { hint ->
+            { Text(hint, color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+        },
+        minLines = minLines,
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f),
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedLabelColor = MaterialTheme.colorScheme.primary
+        )
+    )
+}
+
+@Composable
+fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
     var summary by remember{mutableStateOf("")}
     var links by remember{mutableStateOf("")}
     var completed by remember{mutableStateOf("")}
@@ -2917,6 +3087,36 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var error by remember{mutableStateOf("")}
     var success by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
+    var confirmedAccurate by remember{mutableStateOf(false)}
+    var validationAttempted by remember{mutableStateOf(false)}
+    val normalizedSummary = summary.trim().lowercase().replace(Regex("\\s+"), " ")
+    val normalizedCompleted = completed.trim().lowercase().replace(Regex("\\s+"), " ")
+    val deliveryLinks = links.split(',').map{it.trim()}.filter{it.isNotBlank()}
+    val summaryError = when {
+        summary.isBlank() -> "This field is required. Describe the work you actually completed."
+        summary.trim().length < 10 -> "Please write at least 10 characters describing your completed work."
+        normalizedSummary in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na") ->
+            "This looks like placeholder text. Replace it with a real description of your work."
+        else -> null
+    }
+    val completedError = when {
+        completed.isBlank() -> "This field is required. List the client requirements you completed."
+        completed.trim().length < 10 -> "Please list the actual completed requirements (at least 10 characters)."
+        normalizedCompleted in setOf("test", "testing", "asdf", "xxx", "placeholder", "sample text", "lorem ipsum", "n/a", "na") ->
+            "This looks like placeholder text. List the real client requirements you completed."
+        else -> null
+    }
+    val invalidLink = deliveryLinks.indexOfFirst { link ->
+        val parsed = runCatching { Uri.parse(link) }.getOrNull()
+        parsed == null || parsed.scheme?.lowercase() !in setOf("http", "https") || parsed.host.isNullOrBlank()
+    }.takeIf { it >= 0 }
+    val linksError = invalidLink?.let { "Link ${it + 1} is not a valid web address. Use a full https:// or http:// link, or remove it." }
+    val validationErrors = buildList {
+        summaryError?.let { add(it) }
+        completedError?.let { add(it) }
+        linksError?.let { add(it) }
+        if (!confirmedAccurate) add("Tick the confirmation box after checking that all details are true.")
+    }
     val scope=rememberCoroutineScope()
     Column(
         Modifier.fillMaxSize()
@@ -2932,7 +3132,10 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             style=MaterialTheme.typography.bodyMedium
         )
         Spacer(Modifier.height(16.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 Text("Before you submit",style=MaterialTheme.typography.titleMedium)
                 Text("• Explain what you completed.")
@@ -2941,68 +3144,163 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             }
         }
         Spacer(Modifier.height(16.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text("Work delivery",style=MaterialTheme.typography.titleLarge)
-                Text("Completed work / deliverables",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=summary,onValueChange={summary=it},
-                    placeholder={Text("Describe the work you finished…")},
-                    supportingText={Text("At least 10 characters")},
-                    minLines=4,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=summary,
+                    onValueChange={summary=it},
+                    label="Completed work / deliverables",
+                    placeholder="Describe the work you finished…",
+                    minLines=4,
+                    supportingText=if (validationAttempted && summaryError != null) summaryError else "Required • Describe exactly what you delivered (minimum 10 characters)",
+                    isError=validationAttempted && summaryError != null
                 )
-                Text("Delivery link(s)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=links,onValueChange={links=it},
-                    placeholder={Text("Paste file, folder, or delivery URL(s). Separate multiple links with commas.")},
-                    minLines=2,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=links,
+                    onValueChange={links=it},
+                    label="Delivery link(s)",
+                    placeholder="Paste file, folder, or delivery URL(s). Separate multiple links with commas.",
+                    minLines=2,
+                    supportingText=if (validationAttempted && linksError != null) linksError else "Optional • Add working http(s) delivery links; separate multiple links with commas",
+                    isError=validationAttempted && linksError != null
                 )
-                Text("Client requirements completed",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=completed,onValueChange={completed=it},
-                    placeholder={Text("List the requirements you completed…")},
-                    supportingText={Text("Required")},
-                    minLines=3,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=completed,
+                    onValueChange={completed=it},
+                    label="Client requirements completed",
+                    placeholder="List the requirements you completed…",
+                    minLines=3,
+                    supportingText=if (validationAttempted && completedError != null) completedError else "Required • List each client requirement you completed",
+                    isError=validationAttempted && completedError != null
                 )
             }
         }
         Spacer(Modifier.height(14.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text("Work analysis",style=MaterialTheme.typography.titleLarge)
-                Text("Issues encountered (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(issues,{issues=it},placeholder={Text("Describe any issues…")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Solutions / decisions (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(solutions,{solutions=it},placeholder={Text("Explain how you handled them…")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Results / outcome (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(results,{results=it},placeholder={Text("What was the result?")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Future improvements (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(improvements,{improvements=it},placeholder={Text("What could be improved later?")},minLines=2,modifier=Modifier.fillMaxWidth())
+                WorkAnalysisInputField(
+                    value=issues,
+                    onValueChange={issues=it},
+                    label="Issues encountered (optional)",
+                    placeholder="Describe any issues…",
+                    supportingText="Optional • If nothing went wrong, write “No issues”. Leave blank if not applicable."
+                )
+                WorkAnalysisInputField(
+                    value=solutions,
+                    onValueChange={solutions=it},
+                    label="Solutions / decisions (optional)",
+                    placeholder="Explain how you handled them…",
+                    supportingText="Optional • Explain the steps you took to resolve the issues."
+                )
+                WorkAnalysisInputField(
+                    value=results,
+                    onValueChange={results=it},
+                    label="Results / outcome (optional)",
+                    placeholder="What was the result?",
+                    supportingText="Optional • Describe the final result for the client."
+                )
+                WorkAnalysisInputField(
+                    value=improvements,
+                    onValueChange={improvements=it},
+                    label="Future improvements (optional)",
+                    placeholder="What could be improved later?",
+                    supportingText="Optional • Mention useful next steps or improvements."
+                )
             }
+        }
+        if (validationAttempted && validationErrors.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                validationErrors.joinToString(separator = "\n") { "• $it" },
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
         if(error.isNotBlank()){
             Spacer(Modifier.height(10.dp))
-            Text(error,color=MaterialTheme.colorScheme.error)
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Text(
+                    error,
+                    modifier = Modifier.padding(12.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
         if(success.isNotBlank()){
             Spacer(Modifier.height(10.dp))
             Text(success,color=MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = confirmedAccurate,
+                onCheckedChange = { confirmedAccurate = it }
+            )
+            Text(
+                "I confirm these details accurately describe the work I delivered.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
         Button(
-            enabled=!busy&&summary.trim().length>=10&&completed.isNotBlank(),
-            onClick={
-                busy=true;error="";success=""
-                scope.launch(Dispatchers.IO){
-                    runCatching{
-                        val submission=marketplace.createWorkSubmission(j.id,RemoteWorkSubmissionCreate(summary.trim(),links.split(',').map{it.trim()}.filter{it.isNotBlank()},0))
-                        marketplace.analyzeWorkSubmission(submission.id,RemoteWorkAnalysisCreate(completed.trim(),issues.trim(),solutions.trim(),results.trim(),improvements.trim()))
-                    }.onSuccess{withContext(Dispatchers.Main){busy=false;success="Work submitted and freelancer analysis recorded. Waiting for client review."}}
-                     .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Work submission failed."}}
+            enabled = !busy,
+            onClick = {
+                validationAttempted = true
+                if (validationErrors.isEmpty()) {
+                    busy = true
+                    error = ""
+                    success = ""
+                    scope.launch(Dispatchers.IO) {
+                        runCatching {
+                            val submission = marketplace.createWorkSubmission(
+                                j.id,
+                                RemoteWorkSubmissionCreate(summary.trim(), deliveryLinks, 0)
+                            )
+                            marketplace.analyzeWorkSubmission(
+                                submission.id,
+                                RemoteWorkAnalysisCreate(completed.trim(), issues.trim(), solutions.trim(), results.trim(), improvements.trim())
+                            )
+                        }.onSuccess {
+                            withContext(Dispatchers.Main) {
+                                busy = false
+                                success = "Work submitted and freelancer analysis recorded. Waiting for client review."
+                            }
+                        }.onFailure { e ->
+                            withContext(Dispatchers.Main) {
+                                busy = false
+                                val serverMessage = e.message.orEmpty().lowercase()
+                                error = when {
+                                    serverMessage.contains("active contract") ->
+                                        "You cannot submit this work yet because this job has no active contract for your account. Ask the client to accept your proposal and hire you first. Once the contract is active, try again."
+                                    serverMessage.contains("not the assigned freelancer") ->
+                                        "This job is not assigned to your account. Please check that the client hired the correct freelancer."
+                                    serverMessage.contains("permission denied") || serverMessage.contains("42501") ->
+                                        "The server did not allow this action. Please check that you are signed in with the hired freelancer account and that the job has an active contract."
+                                    serverMessage.contains("network") || serverMessage.contains("timeout") || serverMessage.contains("unable to resolve") ->
+                                        "Connection problem. Check your internet connection and try submitting again."
+                                    else -> "We could not submit your work. Please check the information and your active job contract, then try again. Details: ${e.message ?: "Unknown error"}"
+                                }
+                            }
+                        }
+                    }
                 }
             },
-            modifier=Modifier.fillMaxWidth()
-        ){Text(if(busy)"Submitting…" else "Submit work + analysis")}
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(if (busy) "Submitting…" else "Validate & submit work") }
         TextButton(onClick=back,modifier=Modifier.fillMaxWidth()){Text("Back")}
         Spacer(Modifier.height(20.dp))
     }
@@ -3161,19 +3459,128 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 }
 
-@Composable fun RemoteProposalScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit,onSubmitted:()->Unit){
-    var letter by remember{mutableStateOf("")};var bid by remember{mutableStateOf("")};var days by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};val scope=rememberCoroutineScope()
-    val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull();val daysValue=days.trim().toIntOrNull()
-    val valid=letter.trim().length in 20..10000&&bidMinor!=null&&bidMinor>=0&&daysValue!=null&&daysValue in 1..3650
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Submit proposal",style=MaterialTheme.typography.headlineSmall);Text(j.title);Spacer(Modifier.height(10.dp))
-        OutlinedTextField(letter,{letter=it},label={Text("Cover letter (20–10000 chars)")},minLines=6,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(bid,{bid=it},label={Text("Your bid (USD)")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(days,{days=it},label={Text("Delivery time (days)")},modifier=Modifier.fillMaxWidth())
-        if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(12.dp))
-        Button(enabled=valid&&!busy,onClick={busy=true;error="";scope.launch(Dispatchers.IO){runCatching{marketplace.createProposal(j.id,RemoteProposalCreate(letter.trim(),bidMinor!!,"USD",daysValue!!))}.onSuccess{withContext(Dispatchers.Main){onSubmitted()}}.onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Proposal submission failed."}}}},modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Send proposal")}
-        TextButton(onClick=back){Text("Cancel")}
+@Composable
+fun RemoteProposalScreen(
+    j: RemoteJob,
+    marketplace: RemoteMarketplaceRepository,
+    back: () -> Unit,
+    onSubmitted: () -> Unit
+) {
+    var letter by remember { mutableStateOf("") }
+    var bid by remember { mutableStateOf("") }
+    var days by remember { mutableStateOf("") }
+    var experience by remember { mutableStateOf("Beginner") }
+    var error by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val bidMinor = bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
+    val daysValue = days.trim().toIntOrNull()
+    val letterValid = letter.isNotBlank()
+    val bidValid = bidMinor != null && bidMinor >= 0
+    val daysValid = daysValue != null && daysValue in 1..3650
+    val valid = letterValid && bidValid && daysValid
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text("Submit Proposal", style = MaterialTheme.typography.headlineSmall)
+        Text(j.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Your offer", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Introduce yourself, explain how you will complete the project, and share your offer.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = letter,
+                    onValueChange = { letter = it },
+                    label = { Text("Cover Letter") },
+                    minLines = 6,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+                )
+                Text("Experience Level", style = MaterialTheme.typography.labelLarge)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    listOf("Beginner", "Intermediate", "Expert").forEach { level ->
+                        FilterChip(
+                            selected = experience == level,
+                            onClick = { experience = level },
+                            modifier = Modifier.weight(1f),
+                            label = {
+                                Text(
+                                    level,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = bid,
+                    onValueChange = { bid = it },
+                    label = { Text("Your Bid (USD)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                    isError = bid.isNotBlank() && !bidValid
+                )
+                OutlinedTextField(
+                    value = days,
+                    onValueChange = { days = it },
+                    label = { Text("Delivery Time (Days)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                    isError = days.isNotBlank() && !daysValid
+                )
+            }
+        }
+        if (error.isNotBlank()) {
+            Text(error, color = MaterialTheme.colorScheme.error)
+        }
+        Button(
+            enabled = valid && !busy,
+            onClick = {
+                busy = true
+                error = ""
+                scope.launch(Dispatchers.IO) {
+                    runCatching {
+                        marketplace.createProposal(
+                            j.id,
+                            RemoteProposalCreate(letter.trim(), bidMinor!!, "USD", daysValue!!, experience)
+                        )
+                    }.onSuccess {
+                        withContext(Dispatchers.Main) { onSubmitted() }
+                    }.onFailure { e ->
+                        withContext(Dispatchers.Main) {
+                            busy = false
+                            error = e.message ?: "Proposal submission failed."
+                        }
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (busy) "Submitting…" else "Send Proposal")
+        }
+        TextButton(onClick = back, modifier = Modifier.fillMaxWidth()) {
+            Text("Cancel")
+        }
     }
 }
 
