@@ -224,20 +224,38 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         require(input.status == WorkSubmissionStatus.APPROVED || input.status == WorkSubmissionStatus.CHANGES_REQUESTED)
         require(input.comment.length <= 10_000)
         val payload = JSONObject()
-            .put("status", input.status)
-            .put("comment", input.comment.trim())
+            .put("p_submission_id", submissionId)
+            .put("p_status", input.status)
+            .put("p_comment", input.comment.trim())
             .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPatch("/work-submissions/$submissionId/review", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/rpc/review_my_work_submission", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
         )
         return parseWorkReview(JSONObject(String(response, StandardCharsets.UTF_8)))
     }
 
+    fun resubmitWorkSubmission(submissionId: String, input: RemoteWorkSubmissionCreate): RemoteWorkSubmission {
+        require(submissionId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        require(input.summary.length in 10..10_000)
+        val payload = JSONObject()
+            .put("p_submission_id", submissionId)
+            .put("p_summary", input.summary.trim())
+            .put("p_file_links", JSONArray(input.fileLinks.map { it.trim() }.filter { it.isNotBlank() }))
+            .toString().toByteArray(StandardCharsets.UTF_8)
+        val response = client.readJsonResponse(
+            client.openJsonPost("/rest/v1/rpc/resubmit_my_work_submission", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+        )
+        return parseWorkSubmission(JSONObject(String(response, StandardCharsets.UTF_8)))
+    }
+
     fun listWorkSubmissionRevisions(submissionId: String): List<RemoteWorkRevision> {
         require(submissionId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        val root = JSONObject(String(client.readJsonResponse(client.openGet("/work-submissions/$submissionId/revisions", accessTokenProvider())), StandardCharsets.UTF_8))
-        val items = root.optJSONArray("items") ?: root.optJSONArray("revisions") ?: JSONArray()
-        return (0 until items.length()).map { parseWorkRevision(items.getJSONObject(it)) }
+        val payload = JSONObject().put("p_submission_id", submissionId).toString().toByteArray(StandardCharsets.UTF_8)
+        val root = JSONArray(String(
+            client.readJsonResponse(client.openJsonPost("/rest/v1/rpc/list_my_work_submission_revisions", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())),
+            StandardCharsets.UTF_8
+        ))
+        return (0 until root.length()).map { parseWorkRevision(root.getJSONObject(it)) }
     }
 
     private fun parseWorkSubmission(x: JSONObject) = RemoteWorkSubmission(
