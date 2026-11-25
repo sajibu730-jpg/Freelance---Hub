@@ -2906,7 +2906,36 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 }
 
-@Composable fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+@Composable
+private fun WorkAnalysisInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    minLines: Int = 2,
+    supportingText: String? = null
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        supportingText = supportingText?.let { hint -> { Text(hint) } },
+        minLines = minLines,
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f),
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedLabelColor = MaterialTheme.colorScheme.primary
+        )
+    )
+}
+
+@Composable
+fun RemoteWorkDeliveryScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
     var summary by remember{mutableStateOf("")}
     var links by remember{mutableStateOf("")}
     var completed by remember{mutableStateOf("")}
@@ -2932,7 +2961,10 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             style=MaterialTheme.typography.bodyMedium
         )
         Spacer(Modifier.height(16.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 Text("Before you submit",style=MaterialTheme.typography.titleMedium)
                 Text("• Explain what you completed.")
@@ -2941,43 +2973,68 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             }
         }
         Spacer(Modifier.height(16.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text("Work delivery",style=MaterialTheme.typography.titleLarge)
-                Text("Completed work / deliverables",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=summary,onValueChange={summary=it},
-                    placeholder={Text("Describe the work you finished…")},
-                    supportingText={Text("At least 10 characters")},
-                    minLines=4,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=summary,
+                    onValueChange={summary=it},
+                    label="Completed work / deliverables",
+                    placeholder="Describe the work you finished…",
+                    minLines=4,
+                    supportingText="At least 10 characters"
                 )
-                Text("Delivery link(s)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=links,onValueChange={links=it},
-                    placeholder={Text("Paste file, folder, or delivery URL(s). Separate multiple links with commas.")},
-                    minLines=2,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=links,
+                    onValueChange={links=it},
+                    label="Delivery link(s)",
+                    placeholder="Paste file, folder, or delivery URL(s). Separate multiple links with commas.",
+                    minLines=2
                 )
-                Text("Client requirements completed",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=completed,onValueChange={completed=it},
-                    placeholder={Text("List the requirements you completed…")},
-                    supportingText={Text("Required")},
-                    minLines=3,modifier=Modifier.fillMaxWidth()
+                WorkAnalysisInputField(
+                    value=completed,
+                    onValueChange={completed=it},
+                    label="Client requirements completed",
+                    placeholder="List the requirements you completed…",
+                    minLines=3,
+                    supportingText="Required"
                 )
             }
         }
         Spacer(Modifier.height(14.dp))
-        ElevatedCard(modifier=Modifier.fillMaxWidth()) {
+        ElevatedCard(
+            modifier=Modifier.fillMaxWidth(),
+            shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+        ) {
             Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text("Work analysis",style=MaterialTheme.typography.titleLarge)
-                Text("Issues encountered (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(issues,{issues=it},placeholder={Text("Describe any issues…")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Solutions / decisions (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(solutions,{solutions=it},placeholder={Text("Explain how you handled them…")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Results / outcome (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(results,{results=it},placeholder={Text("What was the result?")},minLines=2,modifier=Modifier.fillMaxWidth())
-                Text("Future improvements (optional)",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(improvements,{improvements=it},placeholder={Text("What could be improved later?")},minLines=2,modifier=Modifier.fillMaxWidth())
+                WorkAnalysisInputField(
+                    value=issues,
+                    onValueChange={issues=it},
+                    label="Issues encountered (optional)",
+                    placeholder="Describe any issues…"
+                )
+                WorkAnalysisInputField(
+                    value=solutions,
+                    onValueChange={solutions=it},
+                    label="Solutions / decisions (optional)",
+                    placeholder="Explain how you handled them…"
+                )
+                WorkAnalysisInputField(
+                    value=results,
+                    onValueChange={results=it},
+                    label="Results / outcome (optional)",
+                    placeholder="What was the result?"
+                )
+                WorkAnalysisInputField(
+                    value=improvements,
+                    onValueChange={improvements=it},
+                    label="Future improvements (optional)",
+                    placeholder="What could be improved later?"
+                )
             }
         }
         if(error.isNotBlank()){
