@@ -73,12 +73,41 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
     }
 
 
+    fun listJobProposals(jobId: String): List<RemoteJobProposal> {
+        require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val path = "/rest/v1/proposals?select=id,job_id,freelancer_id,cover_letter,proposed_budget_minor,currency,status,delivery_days,created_at&job_id=eq.$jobId&order=created_at.desc"
+        val rows = JSONArray(String(client.readJsonResponse(client.openGet(path, accessTokenProvider())), StandardCharsets.UTF_8))
+        return (0 until rows.length()).map { index ->
+            val row = rows.getJSONObject(index)
+            RemoteJobProposal(
+                id = row.getString("id"),
+                jobId = row.getString("job_id"),
+                freelancerId = row.getString("freelancer_id"),
+                coverLetter = row.optString("cover_letter"),
+                proposedBudgetMinor = row.optLong("proposed_budget_minor"),
+                currency = row.optString("currency", "USD"),
+                status = row.optString("status", "submitted"),
+                deliveryDays = row.optInt("delivery_days"),
+                createdAt = row.optString("created_at")
+            )
+        }
+    }
+
     fun acceptProposal(proposalId: String): RemoteContract {
         require(proposalId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val payload = JSONObject().put("p_proposal_id", proposalId).toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPatch("/proposals/$proposalId", JSONObject().put("status", ProposalStatus.ACCEPTED).toString().toByteArray(StandardCharsets.UTF_8), accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost("/rest/v1/rpc/accept_job_proposal", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
         )
         return parseContract(JSONObject(String(response, StandardCharsets.UTF_8)))
+    }
+
+    fun rejectProposal(proposalId: String) {
+        require(proposalId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        val payload = JSONObject().put("p_proposal_id", proposalId).toString().toByteArray(StandardCharsets.UTF_8)
+        client.readJsonResponse(
+            client.openJsonPost("/rest/v1/rpc/reject_job_proposal", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+        )
     }
 
     fun getContractForJob(jobId: String): RemoteContract? {
@@ -326,6 +355,18 @@ data class RemoteProposal(
     val id: String,
     val jobId: String,
     val status: String
+)
+
+data class RemoteJobProposal(
+    val id: String,
+    val jobId: String,
+    val freelancerId: String,
+    val coverLetter: String,
+    val proposedBudgetMinor: Long,
+    val currency: String,
+    val status: String,
+    val deliveryDays: Int,
+    val createdAt: String
 )
 
 data class RemoteContract(
