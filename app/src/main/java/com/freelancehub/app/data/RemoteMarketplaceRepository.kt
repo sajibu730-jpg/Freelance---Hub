@@ -258,11 +258,19 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         return (0 until root.length()).map { parseWorkRevision(root.getJSONObject(it)) }
     }
 
-    private fun parseWorkSubmission(x: JSONObject) = RemoteWorkSubmission(
-        id = x.getString("id"), jobId = x.getString("job_id"), summary = x.optString("summary"),
-        fileLinks = parseStringList(x.optJSONArray("file_links")), checkScore = x.optInt("check_score", 0),
-        status = x.optString("status", WorkSubmissionStatus.SUBMITTED)
-    )
+    private fun parseWorkSubmission(x: JSONObject): RemoteWorkSubmission {
+        val rawStatus = x.optString("status", WorkSubmissionStatus.SUBMITTED)
+        val displayStatus = when (rawStatus.lowercase()) {
+            "approved" -> WorkSubmissionStatus.APPROVED
+            "revision_requested", "changes requested" -> WorkSubmissionStatus.CHANGES_REQUESTED
+            else -> WorkSubmissionStatus.SUBMITTED
+        }
+        return RemoteWorkSubmission(
+            id = x.getString("id"), jobId = x.getString("job_id"), summary = x.optString("summary"),
+            fileLinks = parseStringList(x.optJSONArray("file_links")), checkScore = x.optInt("check_score", 0),
+            status = displayStatus
+        )
+    }
 
     private fun parseFreelancerReview(x: JSONObject) = RemoteFreelancerReview(
         id = x.optString("id"),
