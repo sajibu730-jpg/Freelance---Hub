@@ -3016,7 +3016,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             }.onFailure{error=it.message?:"Unable to load account or contract."}
         }
     }
-    Column(Modifier.fillMaxSize().padding(20.dp)){
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
         Text(current.title,style=MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         Text("Budget: ${current.budgetMinor/100.0} ${current.currency}")
