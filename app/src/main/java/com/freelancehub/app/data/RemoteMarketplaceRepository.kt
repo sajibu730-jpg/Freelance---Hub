@@ -86,6 +86,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
             .put("cover_letter", input.coverLetter.trim())
             .put("cover_letter_language", input.coverLetterLanguage.ifBlank { "auto" })
             .put("cover_letter_english", input.englishCoverLetter.trim().takeIf { it.isNotBlank() })
+            .put("experience_level", input.experienceLevel)
             .put("proposed_budget_minor", input.bidMinor)
             .put("currency", input.currency)
             .put("delivery_days", input.deliveryDays)
@@ -394,7 +395,8 @@ data class RemoteProposalCreate(
     val currency: String,
     val deliveryDays: Int,
     val coverLetterLanguage: String = "auto",
-    val englishCoverLetter: String = ""
+    val englishCoverLetter: String = "",
+    val experienceLevel: String = "Beginner"
 )
 
 
