@@ -3167,6 +3167,8 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var languageExpanded by remember{mutableStateOf(false)}
     var englishLetter by remember{mutableStateOf("")}
     var translating by remember{mutableStateOf(false)}
+    var experienceLevel by remember{mutableStateOf("Beginner")}
+    var experienceExpanded by remember{mutableStateOf(false)}
     var bid by remember{mutableStateOf("")}
     var days by remember{mutableStateOf("")}
     var error by remember{mutableStateOf("")}
@@ -3184,7 +3186,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             " (" + java.util.Locale(languageCode).getDisplayLanguage(java.util.Locale(languageCode)) + ")"
     val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
     val daysValue=days.trim().toIntOrNull()
-    val valid=letter.isNotBlank()&&bidMinor!=null&&bidMinor>0&&daysValue!=null&&daysValue in 1..3650
+    val valid=letter.isNotBlank()&&experienceLevel in listOf("Beginner","Intermediate","Expert")&&bidMinor!=null&&bidMinor>0&&daysValue!=null&&daysValue in 1..3650
     Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState())){
         Text("Submit proposal",style=MaterialTheme.typography.headlineSmall)
         Text(j.title)
@@ -3230,6 +3232,20 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             )
         }
         Spacer(Modifier.height(8.dp))
+        Text("Experience Level",style=MaterialTheme.typography.labelLarge)
+        Box(Modifier.fillMaxWidth()){
+            OutlinedTextField(
+                value=experienceLevel,onValueChange={},readOnly=true,singleLine=true,
+                trailingIcon={Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose experience level")},
+                modifier=Modifier.fillMaxWidth()
+            )
+            Box(Modifier.matchParentSize().clickable{experienceExpanded=true})
+            DropdownMenu(expanded=experienceExpanded,onDismissRequest={experienceExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){
+                listOf("Beginner","Intermediate","Expert").forEach{item->
+                    DropdownMenuItem(text={Text(item)},onClick={experienceLevel=item;experienceExpanded=false})
+                }
+            }
+        }
         OutlinedTextField(bid,{bid=it},label={Text("Your bid (USD)")},modifier=Modifier.fillMaxWidth())
         OutlinedTextField(days,{days=it},label={Text("Delivery time (days)")},modifier=Modifier.fillMaxWidth())
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
@@ -3240,7 +3256,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                 runCatching{
                     marketplace.createProposal(
                         j.id,
-                        RemoteProposalCreate(letter.trim(),bidMinor!!,"USD",daysValue!!,languageCode,englishLetter)
+                        RemoteProposalCreate(letter.trim(),bidMinor!!,"USD",daysValue!!,languageCode,englishLetter,experienceLevel)
                     )
                 }.onSuccess{withContext(Dispatchers.Main){onSubmitted()}}
                  .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Proposal submission failed."}}
