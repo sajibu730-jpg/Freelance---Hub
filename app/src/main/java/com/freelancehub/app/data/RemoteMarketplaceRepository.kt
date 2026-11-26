@@ -164,11 +164,25 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
 
     fun acceptProposal(proposalId: String): RemoteContract {
-        require(proposalId.matches(Regex("^[0-9a-fA-F-]{36}$")))
+        require(proposalId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid proposal id" }
+        val token = accessTokenProvider()?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("Please sign in again.")
+        val payload = JSONObject().put("p_proposal_id", proposalId)
+            .toString().toByteArray(StandardCharsets.UTF_8)
         val response = client.readJsonResponse(
-            client.openJsonPatch("/proposals/$proposalId", JSONObject().put("status", ProposalStatus.ACCEPTED).toString().toByteArray(StandardCharsets.UTF_8), accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost(
+                "/rest/v1/rpc/accept_job_proposal",
+                payload,
+                token,
+                SecureApiClient.newIdempotencyKey()
+            )
         )
-        return parseContract(JSONObject(String(response, StandardCharsets.UTF_8)))
+        val body = String(response, StandardCharsets.UTF_8).trim()
+        val contractJson = if (body.startsWith("[")) {
+            JSONArray(body).takeIf { it.length() == 1 }?.getJSONObject(0)
+                ?: throw IllegalStateException("The server did not confirm proposal acceptance.")
+        } else JSONObject(body)
+        return parseContract(contractJson)
     }
 
     fun getContractForJob(jobId: String): RemoteContract? {
