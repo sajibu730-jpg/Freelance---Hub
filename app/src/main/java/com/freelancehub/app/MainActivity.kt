@@ -3931,6 +3931,10 @@ fun RemoteNotificationsScreen() {
 
     LaunchedEffect(repo) {
         loadNotifications()
+        while (true) {
+            delay(30_000L)
+            loadNotifications()
+        }
     }
 
     Column(
