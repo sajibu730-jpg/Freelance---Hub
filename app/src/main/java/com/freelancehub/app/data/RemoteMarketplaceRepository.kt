@@ -55,21 +55,76 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
     }
 
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
-        require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$")))
-        require(input.coverLetter.length in 20..10_000)
-        require(input.bidMinor >= 0)
-        require(input.currency.matches(Regex("^[A-Z]{3}$")))
-        require(input.deliveryDays in 1..3650)
+        require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid job id" }
+        require(input.coverLetter.trim().length in 20..10_000) { "Cover letter must contain at least 20 characters" }
+        require(input.bidMinor > 0) { "Enter a bid greater than zero" }
+        require(input.currency.matches(Regex("^[A-Z]{3}$"))) { "Invalid currency" }
+        require(input.deliveryDays in 1..3650) { "Delivery time must be between 1 and 3650 days" }
+
+        val token = accessTokenProvider()?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("Please sign in again before submitting a proposal.")
+        val authUser = JSONObject(String(
+            client.readJsonResponse(client.openGet("/auth/v1/user", token)),
+            StandardCharsets.UTF_8
+        ))
+        val freelancerId = authUser.optString("id").takeIf {
+            it.matches(Regex("^[0-9a-fA-F-]{36}$"))
+        } ?: throw IllegalStateException("Your signed-in account could not be verified.")
+
+        val existingPath = "/rest/v1/proposals?select=id&job_id=eq.$jobId&freelancer_id=eq.$freelancerId&limit=1"
+        val existing = JSONArray(String(
+            client.readJsonResponse(client.openGet(existingPath, token)),
+            StandardCharsets.UTF_8
+        ))
+        if (existing.length() > 0) {
+            throw IllegalStateException("You have already submitted a proposal for this job.")
+        }
+
         val payload = JSONObject()
+            .put("job_id", jobId)
+            .put("freelancer_id", freelancerId)
             .put("cover_letter", input.coverLetter.trim())
-            .put("bid_minor", input.bidMinor)
+            .put("cover_letter_language", input.coverLetterLanguage.ifBlank { "auto" })
+            .put("cover_letter_english", input.englishCoverLetter.trim().takeIf { it.isNotBlank() })
+            .put("proposed_budget_minor", input.bidMinor)
             .put("currency", input.currency)
             .put("delivery_days", input.deliveryDays)
             .toString().toByteArray(StandardCharsets.UTF_8)
+
         val response = client.readJsonResponse(
-            client.openJsonPost("/jobs/$jobId/proposals", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            client.openJsonPost(
+                "/rest/v1/proposals?select=id,job_id,status",
+                payload,
+                token,
+                SecureApiClient.newIdempotencyKey(),
+                preferRepresentation = true
+            )
         )
-        return parseProposal(JSONObject(String(response, StandardCharsets.UTF_8)))
+        val rows = JSONArray(String(response, StandardCharsets.UTF_8))
+        if (rows.length() != 1) {
+            throw IllegalStateException("The server did not confirm that your proposal was saved.")
+        }
+        return parseProposal(rows.getJSONObject(0))
+    }
+
+    fun translateCoverLetter(text: String, sourceLanguage: String): String {
+        require(text.trim().length in 1..10_000) { "Write your cover letter before translating." }
+        val language = sourceLanguage.ifBlank { "auto" }
+        val prompt = "Translate the following freelance job proposal cover letter into natural, professional English. " +
+            "The source language code is $language (auto means detect automatically). Preserve the original meaning, names, URLs, numbers, formatting and professional tone. " +
+            "Return only the English translation, with no explanation or quotation marks.\\n\\n" + text.trim()
+        val payload = JSONObject().put("prompt", prompt).toString().toByteArray(StandardCharsets.UTF_8)
+        val response = JSONObject(String(
+            client.readJsonResponse(
+                client.openJsonPost("/functions/v1/bright-handler", payload, accessTokenProvider(), SecureApiClient.newIdempotencyKey())
+            ),
+            StandardCharsets.UTF_8
+        ))
+        if (!response.optBoolean("success", false)) {
+            throw IllegalStateException(response.optString("error").ifBlank { "Translation is temporarily unavailable." })
+        }
+        return response.optString("text").trim().takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("The translation service returned an empty result.")
     }
 
 
@@ -337,7 +392,9 @@ data class RemoteProposalCreate(
     val coverLetter: String,
     val bidMinor: Long,
     val currency: String,
-    val deliveryDays: Int
+    val deliveryDays: Int,
+    val coverLetterLanguage: String = "auto",
+    val englishCoverLetter: String = ""
 )
 
 
