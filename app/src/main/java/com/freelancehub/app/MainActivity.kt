@@ -2892,7 +2892,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         Spacer(Modifier.height(10.dp));Text(current.description)
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(20.dp))
-        if(role==UserRole.FREELANCER&&current.status==JobStatus.OPEN){Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}}
+        if(role==UserRole.FREELANCER&&current.status.equals(JobStatus.OPEN,ignoreCase=true)){Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}}
         if(role==UserRole.FREELANCER&&current.status!=JobStatus.CLOSED){
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={workOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit work & analyze delivery")}
