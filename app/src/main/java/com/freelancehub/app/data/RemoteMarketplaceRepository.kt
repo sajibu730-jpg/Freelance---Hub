@@ -56,7 +56,7 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
 
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid job id" }
-        require(input.coverLetter.trim().length in 20..10_000) { "Cover letter must contain at least 20 characters" }
+        require(input.coverLetter.isNotBlank()) { "Write your cover letter before submitting." }
         require(input.bidMinor > 0) { "Enter a bid greater than zero" }
         require(input.currency.matches(Regex("^[A-Z]{3}$"))) { "Invalid currency" }
         require(input.deliveryDays in 1..3650) { "Delivery time must be between 1 and 3650 days" }
@@ -108,11 +108,11 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
     }
 
     fun translateCoverLetter(text: String, sourceLanguage: String): String {
-        require(text.trim().length in 1..10_000) { "Write your cover letter before translating." }
+        require(text.isNotBlank()) { "Write your cover letter before translating." }
         val language = sourceLanguage.ifBlank { "auto" }
         val prompt = "Translate the following freelance job proposal cover letter into natural, professional English. " +
             "The source language code is $language (auto means detect automatically). Preserve the original meaning, names, URLs, numbers, formatting and professional tone. " +
-            "Return only the English translation, with no explanation or quotation marks.\\n\\n" + text.trim()
+            "Return only the English translation, with no explanation or quotation marks.\n\n" + text.trim()
         val payload = JSONObject().put("prompt", prompt).toString().toByteArray(StandardCharsets.UTF_8)
         val response = JSONObject(String(
             client.readJsonResponse(
