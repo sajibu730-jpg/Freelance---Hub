@@ -2880,6 +2880,8 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var workOpen by remember{mutableStateOf(false)}
     var reviewOpen by remember{mutableStateOf(false)}
     var assignedContract by remember{mutableStateOf<RemoteContract?>(null)}
+    var alreadySubmitted by remember{mutableStateOf(false)}
+    var proposalCheckLoaded by remember{mutableStateOf(false)}
     if(proposalOpen && role == UserRole.FREELANCER){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
     if(workOpen && role == UserRole.FREELANCER){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
     if(reviewOpen && role == UserRole.CLIENT){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
@@ -2890,6 +2892,9 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             runCatching{account.currentUser()}.onSuccess{user->
                 me=user
                 if(role==UserRole.FREELANCER){
+                    runCatching{marketplace.hasSubmittedProposal(current.id,user.id)}
+                        .onSuccess{alreadySubmitted=it;proposalCheckLoaded=true}
+                        .onFailure{error=it.message?:"Unable to check your proposal status.";proposalCheckLoaded=true}
                     runCatching{marketplace.getContractForJob(current.id)}
                         .onSuccess{assignedContract=it}
                         .onFailure{assignedContract=null}
@@ -2904,7 +2909,13 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         Spacer(Modifier.height(10.dp));Text(current.description)
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(20.dp))
-        if(role==UserRole.FREELANCER&&current.status.trim().equals(JobStatus.OPEN,ignoreCase=true)){Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}}
+        if(role==UserRole.FREELANCER&&current.status.trim().equals(JobStatus.OPEN,ignoreCase=true)){
+            when {
+                !proposalCheckLoaded -> CircularProgressIndicator(modifier=Modifier.size(22.dp))
+                alreadySubmitted -> Text("You have already submitted a proposal for this job.",color=MaterialTheme.colorScheme.secondary,style=MaterialTheme.typography.bodyMedium)
+                else -> Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}
+            }
+        }
         if(role==UserRole.FREELANCER&&assignedContract?.freelancerId==me?.id&&assignedContract?.status.equals("active",ignoreCase=true)){
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={workOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit work & analyze delivery")}
@@ -3199,10 +3210,17 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
     val daysValue=days.trim().toIntOrNull()
     val valid=letter.isNotBlank()&&experienceLevel in listOf("Beginner","Intermediate","Expert")&&bidMinor!=null&&bidMinor>0&&daysValue!=null&&daysValue in 1..3650
-    Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState())){
-        Text("Submit proposal",style=MaterialTheme.typography.headlineSmall)
-        Text(j.title)
-        Spacer(Modifier.height(10.dp))
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Text("Submit proposal",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)
+        Card(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)){
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                Text("Job",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(j.title,style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)
+                Text("Submit one proposal for this job. You cannot send it twice.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Card(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+            Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("Cover Letter",style=MaterialTheme.typography.titleMedium)
         Box {
             OutlinedButton(onClick={languageExpanded=true},modifier=Modifier.fillMaxWidth()) {
@@ -3256,6 +3274,13 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         OutlinedTextField(days,{days=it},label={Text("Delivery time (days)")},modifier=Modifier.fillMaxWidth())
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(12.dp))
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Card(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+            Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+        Text("Proposal Details",style=MaterialTheme.typography.titleMedium)
+        Text("Experience Level",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
         Button(enabled=valid&&!busy,onClick={
             busy=true;error=""
             scope.launch(Dispatchers.IO){
@@ -3269,6 +3294,8 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             }
         },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Send proposal")}
         TextButton(onClick=back){Text("Cancel")}
+            }
+        }
     }
 }
 
