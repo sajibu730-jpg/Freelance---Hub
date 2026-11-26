@@ -3162,17 +3162,90 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
 }
 
 @Composable fun RemoteProposalScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit,onSubmitted:()->Unit){
-    var letter by remember{mutableStateOf("")};var bid by remember{mutableStateOf("")};var days by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};val scope=rememberCoroutineScope()
-    val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull();val daysValue=days.trim().toIntOrNull()
-    val valid=letter.trim().length in 20..10000&&bidMinor!=null&&bidMinor>=0&&daysValue!=null&&daysValue in 1..3650
-    Column(Modifier.fillMaxSize().padding(20.dp)){
-        Text("Submit proposal",style=MaterialTheme.typography.headlineSmall);Text(j.title);Spacer(Modifier.height(10.dp))
-        OutlinedTextField(letter,{letter=it},label={Text("Cover letter (20–10000 chars)")},minLines=6,modifier=Modifier.fillMaxWidth())
+    var letter by remember{mutableStateOf("")}
+    var languageCode by remember{mutableStateOf("auto")}
+    var languageExpanded by remember{mutableStateOf(false)}
+    var englishLetter by remember{mutableStateOf("")}
+    var translating by remember{mutableStateOf(false)}
+    var bid by remember{mutableStateOf("")}
+    var days by remember{mutableStateOf("")}
+    var error by remember{mutableStateOf("")}
+    var busy by remember{mutableStateOf(false)}
+    val scope=rememberCoroutineScope()
+    val languages=remember {
+        (listOf(java.util.Locale("auto")) + java.util.Locale.getAvailableLocales()
+            .filter { it.language.isNotBlank() }
+            .distinctBy { it.language }
+            .sortedBy { it.getDisplayLanguage(java.util.Locale.ENGLISH).lowercase() })
+            .distinctBy { it.language }
+    }
+    val languageLabel=if(languageCode=="auto") "Auto-detect" else
+        java.util.Locale(languageCode).getDisplayLanguage(java.util.Locale.ENGLISH) +
+            " (" + java.util.Locale(languageCode).getDisplayLanguage(java.util.Locale(languageCode)) + ")"
+    val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
+    val daysValue=days.trim().toIntOrNull()
+    val valid=letter.trim().length in 20..10000&&bidMinor!=null&&bidMinor>0&&daysValue!=null&&daysValue in 1..3650
+    Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState())){
+        Text("Submit proposal",style=MaterialTheme.typography.headlineSmall)
+        Text(j.title)
+        Spacer(Modifier.height(10.dp))
+        Text("Cover Letter",style=MaterialTheme.typography.titleMedium)
+        Box {
+            OutlinedButton(onClick={languageExpanded=true},modifier=Modifier.fillMaxWidth()) {
+                Text("Writing language: $languageLabel")
+            }
+            DropdownMenu(expanded=languageExpanded,onDismissRequest={languageExpanded=false}) {
+                languages.forEach { locale ->
+                    DropdownMenuItem(
+                        text={Text(if(locale.language=="auto") "Auto-detect" else
+                            locale.getDisplayLanguage(java.util.Locale.ENGLISH) + " (" +
+                            locale.getDisplayLanguage(locale) + ")")},
+                        onClick={languageCode=locale.language.ifBlank{"auto"};languageExpanded=false}
+                    )
+                }
+            }
+        }
+        OutlinedTextField(
+            value=letter,onValueChange={letter=it;englishLetter=""},
+            label={Text("Write your cover letter in your language")},
+            minLines=6,modifier=Modifier.fillMaxWidth()
+        )
+        OutlinedButton(
+            enabled=letter.isNotBlank()&&!translating,
+            onClick={
+                translating=true;error=""
+                scope.launch(Dispatchers.IO){
+                    runCatching{marketplace.translateCoverLetter(letter,languageCode)}
+                        .onSuccess{translated->withContext(Dispatchers.Main){englishLetter=translated;translating=false}}
+                        .onFailure{e->withContext(Dispatchers.Main){translating=false;error=e.message?:"Translation failed."}}
+                }
+            },
+            modifier=Modifier.fillMaxWidth()
+        ){Text(if(translating) "Translating…" else "Translate to English")}
+        if(englishLetter.isNotBlank()){
+            OutlinedTextField(
+                value=englishLetter,onValueChange={englishLetter=it},
+                label={Text("English translation (editable)")},
+                minLines=4,modifier=Modifier.fillMaxWidth()
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         OutlinedTextField(bid,{bid=it},label={Text("Your bid (USD)")},modifier=Modifier.fillMaxWidth())
         OutlinedTextField(days,{days=it},label={Text("Delivery time (days)")},modifier=Modifier.fillMaxWidth())
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(12.dp))
-        Button(enabled=valid&&!busy,onClick={busy=true;error="";scope.launch(Dispatchers.IO){runCatching{marketplace.createProposal(j.id,RemoteProposalCreate(letter.trim(),bidMinor!!,"USD",daysValue!!))}.onSuccess{withContext(Dispatchers.Main){onSubmitted()}}.onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Proposal submission failed."}}}},modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Send proposal")}
+        Button(enabled=valid&&!busy,onClick={
+            busy=true;error=""
+            scope.launch(Dispatchers.IO){
+                runCatching{
+                    marketplace.createProposal(
+                        j.id,
+                        RemoteProposalCreate(letter.trim(),bidMinor!!,"USD",daysValue!!,languageCode,englishLetter)
+                    )
+                }.onSuccess{withContext(Dispatchers.Main){onSubmitted()}}
+                 .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Proposal submission failed."}}
+            }
+        },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Send proposal")}
         TextButton(onClick=back){Text("Cancel")}
     }
 }
