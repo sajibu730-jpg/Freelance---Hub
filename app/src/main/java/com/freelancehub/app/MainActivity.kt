@@ -2748,7 +2748,7 @@ fun RemoteHomeScreen(
                         Spacer(Modifier.height(7.dp))
                         Box(Modifier.fillMaxWidth()){
                             OutlinedTextField(
-                                value=experience,onValueChange={},readOnly=true,
+                                value=experience,onValueChange={},readOnly=true,singleLine=true,
                                 trailingIcon={Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose experience level")},
                                 shape=fieldShape,modifier=Modifier.fillMaxWidth()
                             )
