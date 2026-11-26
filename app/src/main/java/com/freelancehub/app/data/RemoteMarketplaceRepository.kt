@@ -54,6 +54,16 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         return parseJob(JSONObject(String(response, StandardCharsets.UTF_8)))
     }
 
+    fun hasSubmittedProposal(jobId: String, freelancerId: String): Boolean {
+        require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid job id" }
+        require(freelancerId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid freelancer id" }
+        val token = accessTokenProvider()?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("Please sign in again.")
+        val path = "/rest/v1/proposals?select=id&job_id=eq.$jobId&freelancer_id=eq.$freelancerId&limit=1"
+        val rows = JSONArray(String(client.readJsonResponse(client.openGet(path, token)), StandardCharsets.UTF_8))
+        return rows.length() > 0
+    }
+
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid job id" }
         require(input.coverLetter.isNotBlank()) { "Write your cover letter before submitting." }
