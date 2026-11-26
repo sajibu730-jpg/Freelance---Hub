@@ -3210,79 +3210,104 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
     val daysValue=days.trim().toIntOrNull()
     val valid=letter.isNotBlank()&&experienceLevel in listOf("Beginner","Intermediate","Expert")&&bidMinor!=null&&bidMinor>0&&daysValue!=null&&daysValue in 1..3650
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
         Text("Submit proposal",style=MaterialTheme.typography.headlineSmall,color=MaterialTheme.colorScheme.onSurface)
         Card(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)){
-            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
-                Text("Job",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+                Text("JOB",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(j.title,style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)
-                Text("Submit one proposal for this job. You cannot send it twice.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("One proposal per freelancer for this job.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Card(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
-            Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
-        Text("Cover Letter",style=MaterialTheme.typography.titleMedium)
-        Box {
-            OutlinedButton(onClick={languageExpanded=true},modifier=Modifier.fillMaxWidth()) {
-                Text("Writing language: $languageLabel")
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+                Text("Cover Letter",style=MaterialTheme.typography.titleMedium)
+                Box {
+                    OutlinedButton(onClick={languageExpanded=true},modifier=Modifier.fillMaxWidth()) {
+                        Text("Writing language: $languageLabel")
+                    }
+                    DropdownMenu(expanded=languageExpanded,onDismissRequest={languageExpanded=false}) {
+                        languages.forEach { locale ->
+                            DropdownMenuItem(
+                                text={Text(if(locale.language=="auto") "Auto-detect" else
+                                    locale.getDisplayLanguage(java.util.Locale.ENGLISH) + " (" +
+                                    locale.getDisplayLanguage(locale) + ")")},
+                                onClick={languageCode=locale.language.ifBlank{"auto"};languageExpanded=false}
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value=letter,
+                    onValueChange={letter=it;englishLetter="";originalLetter=""},
+                    label={Text("Write in your language")},
+                    minLines=6,
+                    modifier=Modifier.fillMaxWidth(),
+                    shape=MaterialTheme.shapes.medium
+                )
+                OutlinedButton(
+                    enabled=letter.isNotBlank()&&!translating,
+                    onClick={
+                        translating=true
+                        error=""
+                        val sourceText=letter
+                        scope.launch(Dispatchers.IO){
+                            runCatching{marketplace.translateCoverLetter(sourceText,languageCode)}
+                                .onSuccess{translated->withContext(Dispatchers.Main){
+                                    originalLetter=sourceText
+                                    letter=translated
+                                    englishLetter=translated
+                                    translating=false
+                                }}
+                                .onFailure{e->withContext(Dispatchers.Main){
+                                    translating=false
+                                    error=e.message?:"Translation failed."
+                                }}
+                        }
+                    },
+                    modifier=Modifier.fillMaxWidth()
+                ){Text(if(translating) "Translating…" else "Translate to English")}
+                Text("The translation will replace the text above. No second box is needed.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            DropdownMenu(expanded=languageExpanded,onDismissRequest={languageExpanded=false}) {
-                languages.forEach { locale ->
-                    DropdownMenuItem(
-                        text={Text(if(locale.language=="auto") "Auto-detect" else
-                            locale.getDisplayLanguage(java.util.Locale.ENGLISH) + " (" +
-                            locale.getDisplayLanguage(locale) + ")")},
-                        onClick={languageCode=locale.language.ifBlank{"auto"};languageExpanded=false}
+        }
+        Card(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+                Text("Proposal Details",style=MaterialTheme.typography.titleMedium)
+                Text("Experience Level",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
+                Box(Modifier.fillMaxWidth()){
+                    OutlinedTextField(
+                        value=experienceLevel,onValueChange={},readOnly=true,singleLine=true,
+                        trailingIcon={Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose experience level")},
+                        modifier=Modifier.fillMaxWidth(),
+                        shape=MaterialTheme.shapes.medium
                     )
+                    Box(Modifier.matchParentSize().clickable{experienceExpanded=true})
+                    DropdownMenu(expanded=experienceExpanded,onDismissRequest={experienceExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){
+                        listOf("Beginner","Intermediate","Expert").forEach{item->
+                            DropdownMenuItem(text={Text(item)},onClick={experienceLevel=item;experienceExpanded=false})
+                        }
+                    }
                 }
+                OutlinedTextField(
+                    value=bid,onValueChange={bid=it},
+                    label={Text("Your bid (USD)")},
+                    singleLine=true,
+                    modifier=Modifier.fillMaxWidth(),
+                    shape=MaterialTheme.shapes.medium
+                )
+                OutlinedTextField(
+                    value=days,onValueChange={days=it},
+                    label={Text("Delivery time (days)")},
+                    singleLine=true,
+                    modifier=Modifier.fillMaxWidth(),
+                    shape=MaterialTheme.shapes.medium
+                )
             }
         }
-        OutlinedTextField(
-            value=letter,onValueChange={letter=it;englishLetter="";originalLetter=""},
-            label={Text("Write your cover letter in your language")},
-            minLines=6,modifier=Modifier.fillMaxWidth()
-        )
-        OutlinedButton(
-            enabled=letter.isNotBlank()&&!translating,
-            onClick={
-                translating=true;error=""
-                val sourceText=letter
-                scope.launch(Dispatchers.IO){
-                    runCatching{marketplace.translateCoverLetter(sourceText,languageCode)}
-                        .onSuccess{translated->withContext(Dispatchers.Main){originalLetter=sourceText;letter=translated;englishLetter=translated;translating=false}}
-                        .onFailure{e->withContext(Dispatchers.Main){translating=false;error=e.message?:"Translation failed."}}
-                }
-            },
-            modifier=Modifier.fillMaxWidth()
-        ){Text(if(translating) "Translating…" else "Translate to English")}
-        Spacer(Modifier.height(8.dp))
-        Text("Experience Level",style=MaterialTheme.typography.labelLarge)
-        Box(Modifier.fillMaxWidth()){
-            OutlinedTextField(
-                value=experienceLevel,onValueChange={},readOnly=true,singleLine=true,
-                trailingIcon={Icon(Icons.Filled.ArrowDropDown,contentDescription="Choose experience level")},
-                modifier=Modifier.fillMaxWidth()
-            )
-            Box(Modifier.matchParentSize().clickable{experienceExpanded=true})
-            DropdownMenu(expanded=experienceExpanded,onDismissRequest={experienceExpanded=false},modifier=Modifier.fillMaxWidth(0.88f)){
-                listOf("Beginner","Intermediate","Expert").forEach{item->
-                    DropdownMenuItem(text={Text(item)},onClick={experienceLevel=item;experienceExpanded=false})
-                }
-            }
-        }
-        OutlinedTextField(bid,{bid=it},label={Text("Your bid (USD)")},modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(days,{days=it},label={Text("Delivery time (days)")},modifier=Modifier.fillMaxWidth())
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(12.dp))
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Card(modifier=Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
-            Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
-        Text("Proposal Details",style=MaterialTheme.typography.titleMedium)
-        Text("Experience Level",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.onSurface)
         Button(enabled=valid&&!busy,onClick={
-            busy=true;error=""
+            busy=true
+            error=""
             scope.launch(Dispatchers.IO){
                 runCatching{
                     marketplace.createProposal(
@@ -3293,9 +3318,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                  .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Proposal submission failed."}}
             }
         },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Submitting…" else "Send proposal")}
-        TextButton(onClick=back){Text("Cancel")}
-            }
-        }
+        TextButton(onClick=back,modifier=Modifier.fillMaxWidth()){Text("Cancel")}
     }
 }
 
