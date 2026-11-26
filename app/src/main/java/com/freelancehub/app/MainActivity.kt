@@ -2879,10 +2879,12 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var proposalOpen by remember{mutableStateOf(false)}
     var workOpen by remember{mutableStateOf(false)}
     var reviewOpen by remember{mutableStateOf(false)}
+    var proposalsOpen by remember{mutableStateOf(false)}
     var assignedContract by remember{mutableStateOf<RemoteContract?>(null)}
     var alreadySubmitted by remember{mutableStateOf(false)}
     var proposalCheckLoaded by remember{mutableStateOf(false)}
     if(proposalOpen && role == UserRole.FREELANCER){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
+    if(proposalsOpen && role == UserRole.CLIENT){RemoteClientProposalsScreen(current,marketplace,back={proposalsOpen=false});return}
     if(workOpen && role == UserRole.FREELANCER){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
     if(reviewOpen && role == UserRole.CLIENT){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
@@ -2920,9 +2922,58 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={workOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit work & analyze delivery")}
         }
-        if(role==UserRole.CLIENT&&current.status!=JobStatus.CLOSED){
+        if(role==UserRole.CLIENT){
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick={reviewOpen=true},modifier=Modifier.fillMaxWidth()){Text("Review submitted work")}
+            Button(onClick={proposalsOpen=true},modifier=Modifier.fillMaxWidth()){Text("View proposals")}
+            if(current.status!=JobStatus.CLOSED){
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick={reviewOpen=true},modifier=Modifier.fillMaxWidth()){Text("Review submitted work")}
+            }
+        }
+        TextButton(onClick=back){Text("Back")}
+    }
+}
+
+@Composable fun RemoteClientProposalsScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+    var proposals by remember(j.id){mutableStateOf<List<RemoteClientProposal>>(emptyList())}
+    var loading by remember(j.id){mutableStateOf(true)}
+    var error by remember{mutableStateOf("")}
+    val scope=rememberCoroutineScope()
+    LaunchedEffect(j.id){
+        withContext(Dispatchers.IO){
+            runCatching{marketplace.listProposalsForJob(j.id)}
+                .onSuccess{items->proposals=items;loading=false}
+                .onFailure{e->error=e.message?:"Unable to load proposals.";loading=false}
+        }
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Text("Proposals",style=MaterialTheme.typography.headlineSmall)
+        Text(j.title,style=MaterialTheme.typography.titleMedium)
+        when {
+            loading -> CircularProgressIndicator()
+            error.isNotBlank() -> Text(error,color=MaterialTheme.colorScheme.error)
+            proposals.isEmpty() -> Text("No proposals have been submitted for this job yet.")
+            else -> {
+                Text("${proposals.size} proposal(s) received",style=MaterialTheme.typography.titleSmall)
+                proposals.forEachIndexed{index,p->
+                    Card(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large){
+                        Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                            Text("Proposal ${index+1}",style=MaterialTheme.typography.titleMedium)
+                            Text("Freelancer ID: ${p.freelancerId.take(8)}…",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Status: ${p.status}")
+                            Text("Experience: ${p.experienceLevel}")
+                            Text("Bid: ${p.proposedBudgetMinor/100.0} ${p.currency}")
+                            Text("Delivery: ${p.deliveryDays} days")
+                            Text("Cover Letter",style=MaterialTheme.typography.titleSmall)
+                            Text(p.coverLetter)
+                            if(p.englishCoverLetter.isNotBlank()&&p.englishCoverLetter!=p.coverLetter){
+                                Text("English Translation",style=MaterialTheme.typography.titleSmall)
+                                Text(p.englishCoverLetter)
+                            }
+                        }
+                    }
+                }
+            }
         }
         TextButton(onClick=back){Text("Back")}
     }
