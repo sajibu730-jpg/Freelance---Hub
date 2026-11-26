@@ -2884,7 +2884,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var alreadySubmitted by remember{mutableStateOf(false)}
     var proposalCheckLoaded by remember{mutableStateOf(false)}
     if(proposalOpen && role == UserRole.FREELANCER){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
-    if(proposalsOpen && role == UserRole.CLIENT){RemoteClientProposalsScreen(current,marketplace,back={proposalsOpen=false});return}
+    if(proposalsOpen && role == UserRole.CLIENT){RemoteClientProposalsScreen(current,marketplace,account,back={proposalsOpen=false});return}
     if(workOpen && role == UserRole.FREELANCER){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
     if(reviewOpen && role == UserRole.CLIENT){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
@@ -2934,25 +2934,103 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     }
 }
 
-@Composable fun RemoteClientProposalsScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,back:()->Unit){
+@Composable fun RemoteClientProposalsScreen(j:RemoteJob,marketplace:RemoteMarketplaceRepository,account:RemoteAccountRepository,back:()->Unit){
     var proposals by remember(j.id){mutableStateOf<List<RemoteClientProposal>>(emptyList())}
+    var freelancerProfiles by remember(j.id){mutableStateOf<Map<String,RemotePublicFreelancerProfile>>(emptyMap())}
+    var freelancerPhotos by remember(j.id){mutableStateOf<Map<String,android.graphics.Bitmap>>(emptyMap())}
     var loading by remember(j.id){mutableStateOf(true)}
     var error by remember{mutableStateOf("")}
     var selectedProposal by remember{mutableStateOf<RemoteClientProposal?>(null)}
+    var selectedFreelancerProfile by remember{mutableStateOf<RemotePublicFreelancerProfile?>(null)}
     var accepting by remember{mutableStateOf(false)}
     var success by remember{mutableStateOf("")}
     val scope=rememberCoroutineScope()
 
     suspend fun refreshProposals(){
-        withContext(Dispatchers.IO){
-            marketplace.listProposalsForJob(j.id)
-        }.also { proposals=it }
+        val loaded = withContext(Dispatchers.IO){ marketplace.listProposalsForJob(j.id) }
+        proposals=loaded
+        val profiles = withContext(Dispatchers.IO) {
+            coroutineScope {
+                loaded.map { proposal ->
+                    async(Dispatchers.IO) {
+                        proposal.freelancerId to runCatching {
+                            account.getPublicFreelancerProfile(proposal.freelancerId)
+                        }.getOrNull()
+                    }
+                }.map { it.await() }.mapNotNull { (id, profile) -> profile?.let { id to it } }.toMap()
+            }
+        }
+        freelancerProfiles=profiles
+        val photos = withContext(Dispatchers.IO) {
+            coroutineScope {
+                profiles.mapNotNull { (id, profile) ->
+                    profile.photoPath?.takeIf { it.isNotBlank() }?.let { path ->
+                        async(Dispatchers.IO) {
+                            id to runCatching {
+                                val bytes=account.downloadProfilePhoto(path)
+                                BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+                            }.getOrNull()
+                        }
+                    }
+                }.map { it.await() }.mapNotNull { (id, bitmap) -> bitmap?.let { id to it } }.toMap()
+            }
+        }
+        freelancerPhotos=photos
     }
 
     LaunchedEffect(j.id){
         runCatching{refreshProposals()}
             .onFailure{e->error=e.message?:"Unable to load proposals."}
         loading=false
+    }
+
+    if(selectedFreelancerProfile!=null){
+        val profile=selectedFreelancerProfile!!
+        AlertDialog(
+            onDismissRequest={selectedFreelancerProfile=null},
+            title={Text(profile.displayName.ifBlank { "Freelancer Profile" })},
+            text={
+                Column(
+                    modifier=Modifier.fillMaxWidth().heightIn(max=480.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement=Arrangement.spacedBy(10.dp),
+                    horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally
+                ){
+                    freelancerPhotos[profile.id]?.let { photo ->
+                        androidx.compose.foundation.Image(
+                            bitmap=photo.asImageBitmap(),
+                            contentDescription="Freelancer profile photo",
+                            modifier=Modifier.size(104.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                        )
+                    }
+                    if(profile.country.isNotBlank()) Text(profile.country,style=MaterialTheme.typography.bodyMedium)
+                    if(profile.bio.isNotBlank()) {
+                        Text("About",style=MaterialTheme.typography.titleSmall)
+                        Text(profile.bio)
+                    }
+                    if(profile.capabilities.isNotBlank()) {
+                        Text("Services",style=MaterialTheme.typography.titleSmall)
+                        Text(profile.capabilities)
+                    }
+                    if(profile.skills.isNotBlank()) {
+                        Text("Skills",style=MaterialTheme.typography.titleSmall)
+                        Text(profile.skills)
+                    }
+                    Text("Completed jobs: ${profile.completedJobs}")
+                    Text("Active jobs: ${profile.activeJobs}")
+                    Text("Rating: ${String.format(java.util.Locale.US,"%.2f",profile.averageRating)} / 5 (${profile.reviewCount} reviews)")
+                    if(profile.reviews.isNotEmpty()){
+                        Text("Recent Reviews",style=MaterialTheme.typography.titleSmall)
+                        profile.reviews.take(5).forEach { review ->
+                            Column(verticalArrangement=Arrangement.spacedBy(2.dp)){
+                                Text("${review.rating}/5",style=MaterialTheme.typography.labelMedium)
+                                if(review.reviewText.isNotBlank()) Text(review.reviewText,style=MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton={TextButton(onClick={selectedFreelancerProfile=null}){Text("Close")}}
+        )
     }
 
     if(selectedProposal!=null){
@@ -3002,7 +3080,38 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                     Card(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large){
                         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                             Text("Proposal ${index+1}",style=MaterialTheme.typography.titleMedium)
-                            Text("Freelancer ID: ${p.freelancerId.take(8)}…",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            val publicProfile=freelancerProfiles[p.freelancerId]
+                            Row(
+                                modifier=Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
+                                    .clickable { selectedFreelancerProfile=publicProfile },
+                                verticalAlignment=androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement=Arrangement.spacedBy(12.dp)
+                            ){
+                                val avatar=freelancerPhotos[p.freelancerId]
+                                if(avatar!=null){
+                                    androidx.compose.foundation.Image(
+                                        bitmap=avatar.asImageBitmap(),
+                                        contentDescription="Freelancer profile photo",
+                                        modifier=Modifier.size(54.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                                    )
+                                }else{
+                                    Surface(
+                                        modifier=Modifier.size(54.dp),
+                                        shape=androidx.compose.foundation.shape.CircleShape,
+                                        color=MaterialTheme.colorScheme.secondaryContainer
+                                    ){
+                                        Box(contentAlignment=androidx.compose.ui.Alignment.Center){
+                                            Text(publicProfile?.displayName?.firstOrNull()?.uppercase() ?: "F",style=MaterialTheme.typography.titleLarge)
+                                        }
+                                    }
+                                }
+                                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
+                                    Text(publicProfile?.displayName?.ifBlank { "Freelancer" } ?: "Freelancer profile unavailable",style=MaterialTheme.typography.titleMedium)
+                                    if(publicProfile?.country?.isNotBlank()==true) Text(publicProfile.country,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(if(publicProfile!=null) "View Freelancer Profile" else "Profile details unavailable",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                }
+                                Icon(Icons.Filled.ChevronRight,contentDescription="Open freelancer profile")
+                            }
                             Text("Status: ${p.status}")
                             Text("Experience: ${p.experienceLevel}")
                             Text("Bid: ${p.proposedBudgetMinor/100.0} ${p.currency}")
