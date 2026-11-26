@@ -2879,12 +2879,24 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var proposalOpen by remember{mutableStateOf(false)}
     var workOpen by remember{mutableStateOf(false)}
     var reviewOpen by remember{mutableStateOf(false)}
+    var assignedContract by remember{mutableStateOf<RemoteContract?>(null)}
     if(proposalOpen && role == UserRole.FREELANCER){RemoteProposalScreen(current,marketplace,back={proposalOpen=false}){proposalOpen=false};return}
     if(workOpen && role == UserRole.FREELANCER){RemoteWorkDeliveryScreen(current,marketplace,{workOpen=false});return}
     if(reviewOpen && role == UserRole.CLIENT){RemoteWorkReviewScreen(current,marketplace,account,{reviewOpen=false});return}
     var me by remember{mutableStateOf<RemoteAccount?>(null)}
     var error by remember{mutableStateOf("")}
-    LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{account.currentUser()}.onSuccess{me=it}.onFailure{error=it.message?:"Unable to load account."}}}
+    LaunchedEffect(current.id,role){
+        withContext(Dispatchers.IO){
+            runCatching{account.currentUser()}.onSuccess{user->
+                me=user
+                if(role==UserRole.FREELANCER){
+                    runCatching{marketplace.getContractForJob(current.id)}
+                        .onSuccess{assignedContract=it}
+                        .onFailure{assignedContract=null}
+                }
+            }.onFailure{error=it.message?:"Unable to load account."}
+        }
+    }
     Column(Modifier.fillMaxSize().padding(20.dp)){
         Text(current.title,style=MaterialTheme.typography.headlineSmall)
         Text("Budget: ${current.budgetMinor/100.0} ${current.currency}")
@@ -2893,10 +2905,9 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(20.dp))
         if(role==UserRole.FREELANCER&&current.status.trim().equals(JobStatus.OPEN,ignoreCase=true)){Button(onClick={proposalOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit proposal")}}
-        if(role==UserRole.FREELANCER&&current.status!=JobStatus.CLOSED){
+        if(role==UserRole.FREELANCER&&assignedContract?.freelancerId==me?.id&&assignedContract?.status.equals("active",ignoreCase=true)){
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick={workOpen=true},modifier=Modifier.fillMaxWidth()){Text("Submit work & analyze delivery")}
-            Text("Server authorization will allow this only when you are the assigned freelancer for the job.",style=MaterialTheme.typography.bodySmall)
         }
         if(role==UserRole.CLIENT&&current.status!=JobStatus.CLOSED){
             Spacer(Modifier.height(8.dp))
@@ -3166,6 +3177,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var languageCode by remember{mutableStateOf("auto")}
     var languageExpanded by remember{mutableStateOf(false)}
     var englishLetter by remember{mutableStateOf("")}
+    var originalLetter by remember{mutableStateOf("")}
     var translating by remember{mutableStateOf(false)}
     var experienceLevel by remember{mutableStateOf("Beginner")}
     var experienceExpanded by remember{mutableStateOf(false)}
@@ -3208,7 +3220,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             }
         }
         OutlinedTextField(
-            value=letter,onValueChange={letter=it;englishLetter=""},
+            value=letter,onValueChange={letter=it;englishLetter="";originalLetter=""},
             label={Text("Write your cover letter in your language")},
             minLines=6,modifier=Modifier.fillMaxWidth()
         )
@@ -3216,21 +3228,15 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             enabled=letter.isNotBlank()&&!translating,
             onClick={
                 translating=true;error=""
+                val sourceText=letter
                 scope.launch(Dispatchers.IO){
-                    runCatching{marketplace.translateCoverLetter(letter,languageCode)}
-                        .onSuccess{translated->withContext(Dispatchers.Main){englishLetter=translated;translating=false}}
+                    runCatching{marketplace.translateCoverLetter(sourceText,languageCode)}
+                        .onSuccess{translated->withContext(Dispatchers.Main){originalLetter=sourceText;letter=translated;englishLetter=translated;translating=false}}
                         .onFailure{e->withContext(Dispatchers.Main){translating=false;error=e.message?:"Translation failed."}}
                 }
             },
             modifier=Modifier.fillMaxWidth()
         ){Text(if(translating) "Translating…" else "Translate to English")}
-        if(englishLetter.isNotBlank()){
-            OutlinedTextField(
-                value=englishLetter,onValueChange={englishLetter=it},
-                label={Text("English translation (editable)")},
-                minLines=4,modifier=Modifier.fillMaxWidth()
-            )
-        }
         Spacer(Modifier.height(8.dp))
         Text("Experience Level",style=MaterialTheme.typography.labelLarge)
         Box(Modifier.fillMaxWidth()){
@@ -3256,7 +3262,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                 runCatching{
                     marketplace.createProposal(
                         j.id,
-                        RemoteProposalCreate(letter.trim(),bidMinor!!,"USD",daysValue!!,languageCode,englishLetter,experienceLevel)
+                        RemoteProposalCreate(originalLetter.ifBlank{letter}.trim(),bidMinor!!,"USD",daysValue!!,languageCode,englishLetter,experienceLevel)
                     )
                 }.onSuccess{withContext(Dispatchers.Main){onSubmitted()}}
                  .onFailure{e->withContext(Dispatchers.Main){busy=false;error=e.message?:"Proposal submission failed."}}
