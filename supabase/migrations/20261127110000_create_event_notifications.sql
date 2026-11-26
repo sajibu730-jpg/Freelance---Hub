@@ -115,3 +115,48 @@ begin
   end if;
 end
 $$;
+
+-- Notify applicants when a job they applied to changes lifecycle state.
+create or replace function public.create_job_status_notifications()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_title text;
+  v_body text;
+begin
+  if old.status is distinct from new.status
+     and new.status in ('in_progress', 'completed', 'cancelled') then
+    if new.status = 'in_progress' then
+      v_title := 'Job started';
+      v_body := 'The job "' || new.title || '" has moved to in progress.';
+    elsif new.status = 'completed' then
+      v_title := 'Job completed';
+      v_body := 'The job "' || new.title || '" has been marked completed.';
+    else
+      v_title := 'Job cancelled';
+      v_body := 'The job "' || new.title || '" has been cancelled by the Client.';
+    end if;
+
+    insert into public.notifications(user_id, notification_type, title, body, target_type, target_id)
+    select distinct p.freelancer_id, 'job_' || new.status, v_title, v_body, 'job', new.id
+    from public.proposals p
+    where p.job_id = new.id
+      and (
+        (new.status in ('in_progress', 'completed') and p.status = 'accepted')
+        or (new.status = 'cancelled' and p.status in ('pending', 'accepted'))
+      )
+      and p.freelancer_id <> new.owner_id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notify_job_status on public.jobs;
+create trigger trg_notify_job_status
+after update of status on public.jobs
+for each row execute function public.create_job_status_notifications();
+
+revoke all on function public.create_job_status_notifications() from public, anon, authenticated;
