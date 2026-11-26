@@ -2938,20 +2938,63 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
     var proposals by remember(j.id){mutableStateOf<List<RemoteClientProposal>>(emptyList())}
     var loading by remember(j.id){mutableStateOf(true)}
     var error by remember{mutableStateOf("")}
+    var selectedProposal by remember{mutableStateOf<RemoteClientProposal?>(null)}
+    var accepting by remember{mutableStateOf(false)}
+    var success by remember{mutableStateOf("")}
     val scope=rememberCoroutineScope()
-    LaunchedEffect(j.id){
+
+    suspend fun refreshProposals(){
         withContext(Dispatchers.IO){
-            runCatching{marketplace.listProposalsForJob(j.id)}
-                .onSuccess{items->proposals=items;loading=false}
-                .onFailure{e->error=e.message?:"Unable to load proposals.";loading=false}
-        }
+            marketplace.listProposalsForJob(j.id)
+        }.also { proposals=it }
     }
+
+    LaunchedEffect(j.id){
+        runCatching{refreshProposals()}
+            .onFailure{e->error=e.message?:"Unable to load proposals."}
+        loading=false
+    }
+
+    if(selectedProposal!=null){
+        AlertDialog(
+            onDismissRequest={if(!accepting) selectedProposal=null},
+            title={Text("Accept this proposal?")},
+            text={Text("Accepting this proposal will assign this Freelancer to the job, create an active contract, close the job, and reject the other pending proposals. This action cannot be undone.")},
+            confirmButton={
+                Button(
+                    enabled=!accepting,
+                    onClick={
+                        val proposal=selectedProposal ?: return@Button
+                        accepting=true
+                        error=""
+                        scope.launch{
+                            val result=withContext(Dispatchers.IO){
+                                runCatching{marketplace.acceptProposal(proposal.id)}
+                            }
+                            result.onSuccess{contract->
+                                success="Proposal accepted. Freelancer assigned successfully."
+                                selectedProposal=null
+                                runCatching{refreshProposals()}
+                                    .onFailure{error="Accepted, but proposal list could not refresh: ${it.message}"}
+                            }.onFailure{error=it.message?:"Unable to accept this proposal."}
+                            accepting=false
+                        }
+                    }
+                ){if(accepting) CircularProgressIndicator(Modifier.size(18.dp)) else Text("Confirm & Accept")}
+            },
+            dismissButton={
+                TextButton(enabled=!accepting,onClick={selectedProposal=null}){Text("Cancel")}
+            }
+        )
+    }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         Text("Proposals",style=MaterialTheme.typography.headlineSmall)
         Text(j.title,style=MaterialTheme.typography.titleMedium)
+        if(success.isNotBlank()) Text(success,color=MaterialTheme.colorScheme.primary)
+        if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
         when {
             loading -> CircularProgressIndicator()
-            error.isNotBlank() -> Text(error,color=MaterialTheme.colorScheme.error)
             proposals.isEmpty() -> Text("No proposals have been submitted for this job yet.")
             else -> {
                 Text("${proposals.size} proposal(s) received",style=MaterialTheme.typography.titleSmall)
@@ -2969,6 +3012,15 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
                             if(p.englishCoverLetter.isNotBlank()&&p.englishCoverLetter!=p.coverLetter){
                                 Text("English Translation",style=MaterialTheme.typography.titleSmall)
                                 Text(p.englishCoverLetter)
+                            }
+                            if(p.status in listOf("pending","submitted","shortlisted") && j.status.equals("open",ignoreCase=true)){
+                                Button(
+                                    onClick={selectedProposal=p},
+                                    enabled=!accepting,
+                                    modifier=Modifier.fillMaxWidth()
+                                ){Text("Accept Proposal")}
+                            } else if(p.status.equals("accepted",ignoreCase=true)){
+                                Text("This proposal has been accepted.",color=MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
