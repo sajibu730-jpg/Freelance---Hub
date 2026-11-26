@@ -3184,7 +3184,7 @@ private fun java.math.BigDecimal.longValueExactOrNull():Long?=runCatching{longVa
             " (" + java.util.Locale(languageCode).getDisplayLanguage(java.util.Locale(languageCode)) + ")"
     val bidMinor=bid.trim().toBigDecimalOrNull()?.movePointRight(2)?.longValueExactOrNull()
     val daysValue=days.trim().toIntOrNull()
-    val valid=letter.trim().length in 20..10000&&bidMinor!=null&&bidMinor>0&&daysValue!=null&&daysValue in 1..3650
+    val valid=letter.isNotBlank()&&bidMinor!=null&&bidMinor>0&&daysValue!=null&&daysValue in 1..3650
     Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState())){
         Text("Submit proposal",style=MaterialTheme.typography.headlineSmall)
         Text(j.title)
