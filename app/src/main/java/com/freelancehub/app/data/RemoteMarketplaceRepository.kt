@@ -64,6 +64,30 @@ fun listJobs(limit: Int = 20, cursor: String? = null): List<RemoteJob> {
         return rows.length() > 0
     }
 
+    fun listProposalsForJob(jobId: String): List<RemoteClientProposal> {
+        require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid job id" }
+        val token = accessTokenProvider()?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("Please sign in again.")
+        val path = "/rest/v1/proposals?select=id,job_id,freelancer_id,cover_letter,cover_letter_language,cover_letter_english,experience_level,proposed_budget_minor,currency,delivery_days,status,created_at&job_id=eq.$jobId&order=created_at.desc"
+        val rows = JSONArray(String(client.readJsonResponse(client.openGet(path, token)), StandardCharsets.UTF_8))
+        return (0 until rows.length()).map { index ->
+            val item = rows.getJSONObject(index)
+            RemoteClientProposal(
+                id=item.getString("id"),
+                freelancerId=item.getString("freelancer_id"),
+                coverLetter=item.optString("cover_letter"),
+                coverLetterLanguage=item.optString("cover_letter_language","auto"),
+                englishCoverLetter=item.optString("cover_letter_english"),
+                experienceLevel=item.optString("experience_level","Beginner"),
+                proposedBudgetMinor=item.optLong("proposed_budget_minor",0),
+                currency=item.optString("currency","USD"),
+                deliveryDays=item.optInt("delivery_days",0),
+                status=item.optString("status","pending"),
+                createdAt=item.optString("created_at")
+            )
+        }
+    }
+
     fun createProposal(jobId: String, input: RemoteProposalCreate): RemoteProposal {
         require(jobId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "Invalid job id" }
         require(input.coverLetter.isNotBlank()) { "Write your cover letter before submitting." }
@@ -397,6 +421,20 @@ data class RemoteProposal(
 data class RemoteContract(
     val id: String, val jobId: String, val proposalId: String, val clientId: String, val freelancerId: String,
     val agreedBudgetMinor: Long, val currency: String, val status: String
+)
+
+data class RemoteClientProposal(
+    val id:String,
+    val freelancerId:String,
+    val coverLetter:String,
+    val coverLetterLanguage:String,
+    val englishCoverLetter:String,
+    val experienceLevel:String,
+    val proposedBudgetMinor:Long,
+    val currency:String,
+    val deliveryDays:Int,
+    val status:String,
+    val createdAt:String
 )
 
 data class RemoteProposalCreate(
