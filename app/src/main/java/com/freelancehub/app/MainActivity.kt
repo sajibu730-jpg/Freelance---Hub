@@ -85,6 +85,21 @@ class MainActivity:ComponentActivity(){
     }
     var loggedIn by remember{mutableStateOf(false)}
     var sessionChecking by remember{mutableStateOf(true)}
+    val notificationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(loggedIn) {
+        if (loggedIn) {
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            com.freelancehub.app.notifications.PushTokenRegistrar.refresh(context.applicationContext)
+        }
+    }
     var startupMinimumElapsed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         delay(2000L)
